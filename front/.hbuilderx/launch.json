@@ -1,0 +1,10 @@
+{
+    "version" : "1.0",
+    "configurations" : [
+        {
+            "customPlaygroundType" : "device",
+            "playground" : "custom",
+            "type" : "uni-app:app-android"
+        }
+    ]
+}

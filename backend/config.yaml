@@ -1,0 +1,14 @@
+version:
+  latest: "1.5.0"
+  downloadURL: "http://localhost:8080/update"
+  updateLog:
+    - "修复假条提交失败的bug"
+    - "新增审批流程推送通知"
+    - "优化表单填写体验"
+
+mysql:
+  host: "localhost"
+  port: 3306
+  database: "leave_list"
+  user: "root"
+  password: "123123"
