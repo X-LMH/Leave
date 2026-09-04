@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"backend/internal/controller"
+	"backend/internal/dao/mysql"
 	"backend/internal/utils/jwt"
 	"strings"
 
@@ -34,6 +35,11 @@ func JWTAuthMiddleware() gin.HandlerFunc {
 		claims, err := jwt.ParseToken(parts[1]) // parts[1]是提取出的令牌字符串
 		if err != nil {
 			controller.ResponseError(c, controller.CodeInvalidToken)
+			c.Abort()
+			return
+		}
+		if err := mysql.EnsureUserActive(claims.StudentID); err != nil {
+			controller.ResponseError(c, controller.CodeNeedLogin)
 			c.Abort()
 			return
 		}

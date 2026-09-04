@@ -3,26 +3,39 @@ package mysql
 import (
 	"backend/internal/models"
 	"errors"
+	"time"
 
 	"gorm.io/gorm"
 )
 
-func CheckUserExist(studentID string) (err error) {
-	var exist int64
-	if err = db.Model(&models.User{}).Where("student_id = ?", studentID).Count(&exist).Error; err != nil {
+func CreateUser(student *models.User) (err error) {
+	if err = db.Create(student).Error; err != nil {
+		if IsDuplicateKeyError(err) {
+			return ErrorUserExist
+		}
 		return err
-	}
-	if exist > 0 {
-		return ErrorUserExist
 	}
 	return nil
 }
 
-func CreateUser(student *models.User) (err error) {
-	if err = db.Create(student).Error; err != nil {
-		return ErrorRegister
+// EnsureUserActive 确认账号仍存在且处于启用状态，供鉴权阶段撤销失效令牌。
+func EnsureUserActive(studentID string) error {
+	var user models.User
+	if err := db.Select("status").Where("student_id = ?", studentID).First(&user).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return ErrorUserNotExist
+		}
+		return err
+	}
+	if user.Status != models.UserStatusActive {
+		return ErrorUserDisabled
 	}
 	return nil
+}
+
+// UpdateLastLoginAt 记录账号最近一次成功登录的时间。
+func UpdateLastLoginAt(studentID string) error {
+	return db.Model(&models.User{}).Where("student_id = ?", studentID).Update("last_login_at", time.Now()).Error
 }
 
 func FindUserByStudentID(studentID string) (*models.User, error) {

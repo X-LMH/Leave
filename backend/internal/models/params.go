@@ -2,17 +2,6 @@ package models
 
 import "time"
 
-type ParamRegister struct {
-	StudentID  string `json:"student_id"`
-	Password   string `json:"password"`
-	RePassword string `json:"re_password"`
-}
-
-type ParamLogin struct {
-	StudentID string `json:"student_id"`
-	Password  string `json:"password"`
-}
-
 type ParamProfile struct {
 	Name        string `json:"name" gorm:"not null"`
 	Phone       string `json:"phone" gorm:"not null"`

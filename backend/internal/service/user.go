@@ -2,33 +2,52 @@ package service
 
 import (
 	"backend/internal/dao/mysql"
+	"backend/internal/dto"
 	"backend/internal/models"
 	"backend/internal/utils/jwt"
+	"strings"
 )
 
-func Register(p *models.ParamRegister) (err error) {
-	// 用户已存在
-	if err = mysql.CheckUserExist(p.StudentID); err != nil {
-		return err
-	}
+func Register(req *dto.RegisterRequest) (err error) {
+	studentID := strings.TrimSpace(req.StudentID)
 	student := &models.User{
-		StudentID: p.StudentID,
-		Password:  p.Password,
+		StudentID: studentID,
+		Password:  req.Password,
 		Role:      models.RoleStudent,
 		Status:    models.UserStatusActive,
 	}
 	return mysql.CreateUser(student)
 }
 
-func Login(p *models.ParamLogin) (string, error) {
-	user, err := mysql.FindUserByStudentID(p.StudentID)
+func Login(req *dto.LoginRequest) (*dto.LoginResponse, error) {
+	studentID := strings.TrimSpace(req.StudentID)
+	user, err := mysql.FindUserByStudentID(studentID)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	if p.Password != user.Password {
-		return "", mysql.ErrorInvalidPassword
+	if req.Password != user.Password {
+		return nil, mysql.ErrorInvalidPassword
 	}
-	return jwt.GenerateToken(user.StudentID, user.Role)
+	if user.Status != models.UserStatusActive {
+		return nil, mysql.ErrorInvalidPassword
+	}
+	if err := mysql.UpdateLastLoginAt(user.StudentID); err != nil {
+		return nil, err
+	}
+	token, err := jwt.GenerateToken(user.StudentID, user.Role)
+	if err != nil {
+		return nil, err
+	}
+
+	profile, err := mysql.GetProfileByStuID(user.StudentID)
+	if err != nil {
+		return nil, err
+	}
+	name := ""
+	if profile != nil {
+		name = profile.Name
+	}
+	return &dto.LoginResponse{Token: token, Name: name}, nil
 }
 
 func ChangePassword(p *models.ParamPassword, studentID string) error {

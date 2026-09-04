@@ -3,12 +3,16 @@ package config
 import (
 	"backend/internal/models"
 	"fmt"
+	"strings"
 
 	"github.com/spf13/viper"
 )
 
 // Config 全局配置结构体（修正字段名、标签与YAML匹配）
 type Config struct {
+	JWT struct {
+		Secret string `yaml:"secret"`
+	} `yaml:"jwt"`
 	Version struct {
 		Latest      string   `yaml:"latest"`
 		DownloadURL string   `yaml:"downloadURL"`
@@ -33,6 +37,7 @@ func Init() error {
 	viper.SetConfigName("config") // 配置文件名（无后缀）
 	viper.SetConfigType("yaml")   // 配置文件类型
 	viper.AddConfigPath(".")      // 配置文件所在路径（当前根目录）
+	viper.BindEnv("jwt.secret", "JWT_SECRET")
 
 	// 读取配置文件
 	if err := viper.ReadInConfig(); err != nil {
@@ -43,9 +48,13 @@ func Init() error {
 	if err := viper.Unmarshal(&Cfg); err != nil {
 		return fmt.Errorf("解析配置失败: %w", err)
 	}
+	Cfg.JWT.Secret = strings.TrimSpace(viper.GetString("jwt.secret"))
 
 	return nil
 }
+
+// JWTSecret 返回初始化后用于 JWT 签名与验签的密钥。
+func JWTSecret() []byte { return []byte(Cfg.JWT.Secret) }
 
 func GetVersionInfo() models.VersionInfo {
 	return models.VersionInfo{

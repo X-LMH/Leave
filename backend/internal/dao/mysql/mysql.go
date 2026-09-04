@@ -21,7 +21,7 @@ func Init() (err error) {
 			config.Cfg.Mysql.Port,
 			config.Cfg.Mysql.Database,
 		),
-	), &gorm.Config{})
+	), &gorm.Config{TranslateError: true})
 	fmt.Printf("user is: %s\n", config.Cfg.Mysql.User)
 	if err != nil {
 		return fmt.Errorf("mysql open failed, err:%v", err)

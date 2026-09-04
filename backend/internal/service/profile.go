@@ -24,48 +24,18 @@ func GetProfile(studentID string) (data *models.Profile, err error) {
 	return mysql.GetProfileByStuID(studentID)
 }
 
-func CreateRecord(studentID string, p *models.ParamRecord) (err error) {
-	// 获取姓名
-	profile, err := mysql.GetProfileByStuID(studentID)
-	if err != nil {
-		return err
-	}
-	student := &models.Record{
-		StudentID:   studentID,
-		Name:        profile.Name,
-		LeaveType:   p.LeaveType,
-		LeaveReason: p.LeaveReason,
-		LeaveSchool: p.LeaveSchool,
-		PlaceDetail: p.PlaceDetail,
-		LeaveWay:    p.LeaveWay,
-		BackSchool:  p.BackSchool,
-		StartTime:   p.StartTime,
-		EndTime:     p.EndTime,
-		Nigao:       p.Nigao,
-	}
-	return mysql.InsertRecord(student)
+// CreateRecord 待请假记录接口适配新版 Record 模型后实现。
+func CreateRecord(_ string, _ *models.ParamRecord) error {
+	return mysql.ErrorSubmitRecord
 }
 
 func GetRecord(recordID int) (*models.Record, error) {
 	return mysql.GetRecordByID(recordID)
 }
 
-func GetRecordsList(studentID string) ([]*ResRecord, error) {
-	fullRecords, err := mysql.GetRecordsByStuID(studentID)
-	if err != nil {
-		return nil, err
-	}
-	responses := make([]*ResRecord, 0, len(fullRecords))
-
-	for _, record := range fullRecords {
-		respRecord := &ResRecord{
-			ID:    record.ID,
-			Name:  record.Name,
-			Nigao: record.Nigao,
-		}
-		responses = append(responses, respRecord)
-	}
-	return responses, nil
+// GetRecordsList 待请假记录列表响应适配新版 Record 模型后实现。
+func GetRecordsList(_ string) ([]*ResRecord, error) {
+	return nil, mysql.ErrorRecordNotExist
 }
 
 func DeleteRecord(recordID int) error {

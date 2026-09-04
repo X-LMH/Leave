@@ -1,13 +1,12 @@
 package jwt
 
 import (
+	"backend/internal/config"
 	"errors"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 )
-
-var jwtSecret = []byte("xmS10711")
 
 type Claims struct {
 	StudentID string `json:"student_id"`
@@ -34,7 +33,7 @@ func GenerateToken(studentID string, role string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
 	// 使用jwtSecret对令牌进行签名，确保令牌不被篡改
-	return token.SignedString(jwtSecret)
+	return token.SignedString(config.JWTSecret())
 }
 
 func ParseToken(tokenString string) (*Claims, error) {
@@ -44,7 +43,10 @@ func ParseToken(tokenString string) (*Claims, error) {
 		tokenString,
 		claims, // 用于接收解析后的负载
 		func(token *jwt.Token) (interface{}, error) {
-			return jwtSecret, nil // 返回用于验证签名的密钥
+			if token.Method.Alg() != jwt.SigningMethodHS256.Alg() {
+				return nil, errors.New("unexpected signing method")
+			}
+			return config.JWTSecret(), nil
 		},
 	)
 

@@ -3,11 +3,13 @@ package controller
 import (
 	"backend/internal/config"
 	"backend/internal/dao/mysql"
+	"backend/internal/dto"
 	"backend/internal/models"
 	"backend/internal/service"
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -18,12 +20,12 @@ func RegisterHandler(c *gin.Context) {
 	//ResponseError(c, CodeServiceFix)
 	//return
 
-	p := new(models.ParamRegister)
+	p := new(dto.RegisterRequest)
 	if err := c.ShouldBindJSON(p); err != nil {
 		ResponseError(c, CodeInvalidParam)
 		return
 	}
-	if len(p.StudentID) == 0 || len(p.Password) == 0 || len(p.RePassword) == 0 {
+	if !validStudentID(p.StudentID) || len(p.Password) < 6 || len(p.Password) > 30 || len(p.RePassword) == 0 || strings.TrimSpace(p.Password) == "" || p.Password != p.RePassword {
 		ResponseError(c, CodeInvalidParam)
 		return
 	}
@@ -46,24 +48,22 @@ func RegisterHandler(c *gin.Context) {
 // LoginHandler 用户登录
 func LoginHandler(c *gin.Context) {
 	// 参数绑定
-	p := new(models.ParamLogin)
+	p := new(dto.LoginRequest)
 	if err := c.ShouldBindJSON(p); err != nil {
 		ResponseError(c, CodeInvalidParam)
 		return
 	}
-	if len(p.StudentID) == 0 || len(p.Password) == 0 {
+	if !validStudentID(p.StudentID) || len(p.Password) == 0 {
 		ResponseError(c, CodeInvalidParam)
 		return
 	}
 
 	// 业务逻辑
-	token, err := service.Login(p)
+	data, err := service.Login(p)
 	if err != nil {
 		switch {
-		case errors.Is(err, mysql.ErrorUserNotExist):
-			ResponseError(c, CodeUserNotExist)
-			return
-		case errors.Is(err, mysql.ErrorInvalidPassword):
+		case errors.Is(err, mysql.ErrorUserNotExist), errors.Is(err, mysql.ErrorInvalidPassword):
+			// 不暴露账号是否存在，避免被用于枚举注册用户。
 			ResponseError(c, CodeInvalidPassword)
 			return
 		default:
@@ -72,7 +72,7 @@ func LoginHandler(c *gin.Context) {
 		}
 	}
 
-	ResponseSuccess(c, token)
+	ResponseSuccess(c, data)
 }
 
 // ChangePasswordHandler 修改密码
@@ -83,7 +83,7 @@ func ChangePasswordHandler(c *gin.Context) {
 		ResponseError(c, CodeInvalidParam)
 		return
 	}
-	if len(p.Password) == 0 || len(p.RePassword) == 0 || p.NewPassword != p.RePassword {
+	if len(p.Password) == 0 || len(p.NewPassword) < 6 || len(p.NewPassword) > 30 || len(p.RePassword) == 0 || strings.TrimSpace(p.NewPassword) == "" || p.NewPassword != p.RePassword {
 		ResponseError(c, CodeInvalidParam)
 		return
 	}
@@ -105,6 +105,20 @@ func ChangePasswordHandler(c *gin.Context) {
 		}
 	}
 	ResponseSuccess(c, nil)
+}
+
+// validStudentID 校验学号是否为 12 位数字。
+func validStudentID(studentID string) bool {
+	studentID = strings.TrimSpace(studentID)
+	if len(studentID) != 12 {
+		return false
+	}
+	for _, r := range studentID {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 func VersionHandler(c *gin.Context) {
