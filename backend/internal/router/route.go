@@ -1,8 +1,8 @@
 package router
 
 import (
-	"backend/controller"
-	"backend/middleware"
+	"backend/internal/controller"
+	"backend/internal/middleware"
 
 	"github.com/gin-gonic/gin"
 )

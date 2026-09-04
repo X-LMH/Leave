@@ -11,19 +11,31 @@ func (c ResCode) Message() string {
 }
 
 const (
-	CodeSuccess ResCode = iota
-	CodeInvalidParam
-	CodeServerBusy
-	CodeUserExist
-	CodeUserNotExist
-	CodeInvalidPassword
-	CodeNeedLogin
-	CodeInvalidToken
-	CodeFinishData
-	CodeNotRightPassword
-	CodeRecordNotExist
-	CodeServiceFix
-	CodeFileNotFound
+	CodeSuccess ResCode = 0
+
+	// 用户与认证类错误：1000-1999
+	CodeUserExist        ResCode = 1001
+	CodeUserNotExist     ResCode = 1002
+	CodeInvalidPassword  ResCode = 1003
+	CodeNeedLogin        ResCode = 1004
+	CodeInvalidToken     ResCode = 1005
+	CodeFinishData       ResCode = 1006
+	CodeNotRightPassword ResCode = 1007
+
+	// 通用请求类错误：2000-2999
+	CodeInvalidParam ResCode = 2001
+
+	// 请假记录类错误：3000-3999
+	CodeRecordNotExist ResCode = 3001
+
+	// 文件类错误：4000-4999
+	CodeFileNotFound ResCode = 4001
+
+	// 系统维护类错误：5000-5999
+	CodeServiceFix ResCode = 5001
+
+	// 服务异常类错误：9000-9999
+	CodeServerBusy ResCode = 9001
 )
 
 var codeMessages = map[ResCode]string{

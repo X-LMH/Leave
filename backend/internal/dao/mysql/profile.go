@@ -1,7 +1,7 @@
 package mysql
 
 import (
-	"backend/models"
+	"backend/internal/models"
 	"errors"
 
 	"gorm.io/gorm"

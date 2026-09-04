@@ -1,8 +1,8 @@
 package service
 
 import (
-	"backend/dao/mysql"
-	"backend/models"
+	"backend/internal/dao/mysql"
+	"backend/internal/models"
 )
 
 func Profile(p *models.ParamProfile, studentID string) (err error) {

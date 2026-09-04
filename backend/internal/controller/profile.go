@@ -1,9 +1,9 @@
 package controller
 
 import (
-	"backend/dao/mysql"
-	"backend/models"
-	"backend/service"
+	"backend/internal/dao/mysql"
+	"backend/internal/models"
+	"backend/internal/service"
 	"errors"
 	"fmt"
 	"strconv"
@@ -27,16 +27,17 @@ func ProfileHandler(c *gin.Context) {
 		return
 	}
 	if err := service.Profile(p, studentID); err != nil {
-		if errors.Is(err, mysql.ErrorFinishProfile) {
+		switch {
+		case errors.Is(err, mysql.ErrorFinishProfile):
 			ResponseError(c, CodeFinishData)
 			return
-		}
-		if errors.Is(err, mysql.ErrorUserExist) {
+		case errors.Is(err, mysql.ErrorUserExist):
 			ResponseError(c, CodeUserExist)
 			return
+		default:
+			ResponseError(c, CodeServerBusy)
+			return
 		}
-		ResponseError(c, CodeServerBusy)
-		return
 	}
 
 	ResponseSuccess(c, nil)
@@ -50,12 +51,14 @@ func GetProfileHandler(c *gin.Context) {
 	}
 	data, err := service.GetProfile(studentID)
 	if err != nil {
-		if errors.Is(err, mysql.ErrorUserNotExist) {
+		switch {
+		case errors.Is(err, mysql.ErrorUserNotExist):
 			ResponseError(c, CodeNeedLogin)
 			return
+		default:
+			ResponseError(c, CodeServerBusy)
+			return
 		}
-		ResponseError(c, CodeServerBusy)
-		return
 	}
 	ResponseSuccess(c, data)
 }
@@ -78,12 +81,14 @@ func RecordHandler(c *gin.Context) {
 
 	err = service.CreateRecord(studentID, p)
 	if err != nil {
-		if errors.Is(err, mysql.ErrorUserNotExist) {
+		switch {
+		case errors.Is(err, mysql.ErrorUserNotExist):
 			ResponseError(c, CodeNeedLogin)
 			return
+		default:
+			ResponseError(c, CodeServerBusy)
+			return
 		}
-		ResponseError(c, CodeServerBusy)
-		return
 	}
 	ResponseSuccess(c, nil)
 }
@@ -99,12 +104,14 @@ func GetRecordHandler(c *gin.Context) {
 
 	record, err := service.GetRecord(recordID)
 	if err != nil {
-		if errors.Is(err, mysql.ErrorRecordNotExist) {
+		switch {
+		case errors.Is(err, mysql.ErrorRecordNotExist):
 			ResponseError(c, CodeRecordNotExist)
 			return
+		default:
+			ResponseError(c, CodeServerBusy)
+			return
 		}
-		ResponseError(c, CodeServerBusy)
-		return
 	}
 
 	ResponseSuccess(c, record)
@@ -133,12 +140,14 @@ func DeleteRecordHandler(c *gin.Context) {
 
 	err = service.DeleteRecord(recordID)
 	if err != nil {
-		if errors.Is(err, mysql.ErrorRecordNotExist) {
+		switch {
+		case errors.Is(err, mysql.ErrorRecordNotExist):
 			ResponseError(c, CodeRecordNotExist)
 			return
+		default:
+			ResponseError(c, CodeServerBusy)
+			return
 		}
-		ResponseError(c, CodeServerBusy)
-		return
 	}
 	ResponseSuccess(c, nil)
 }

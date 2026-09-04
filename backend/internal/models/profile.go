@@ -11,7 +11,7 @@ type Profile struct {
 	ClassID     uint           `gorm:"column:class_id"`
 	Name        string         `gorm:"column:name"`
 	Phone       string         `gorm:"column:phone"`
-	Gender      string         `gorm:"column:gender"`
+	Gender      string         `gorm:"column:gender"` // GenderMale 或 GenderFemale
 	ParentName  string         `gorm:"column:parent_name"`
 	ParentPhone string         `gorm:"column:parent_phone"`
 	Apartment   string         `gorm:"column:apartment"`

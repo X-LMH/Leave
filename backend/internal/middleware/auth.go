@@ -1,8 +1,8 @@
 package middleware
 
 import (
-	"backend/controller"
-	"backend/utils/jwt"
+	"backend/internal/controller"
+	"backend/internal/utils/jwt"
 	"strings"
 
 	"github.com/gin-gonic/gin"

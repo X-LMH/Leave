@@ -1,12 +1,12 @@
 package main
 
 import (
-	"backend/config"
-	"backend/router"
+	"backend/internal/config"
+	"backend/internal/router"
 	"fmt"
 	"log"
 
-	"backend/dao/mysql"
+	"backend/internal/dao/mysql"
 )
 
 func main() {

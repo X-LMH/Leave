@@ -1,7 +1,7 @@
 package mysql
 
 import (
-	"backend/config"
+	"backend/internal/config"
 	"fmt"
 
 	"gorm.io/driver/mysql"

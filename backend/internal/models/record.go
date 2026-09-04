@@ -14,7 +14,7 @@ type Record struct {
 	EndTime        time.Time      `gorm:"column:end_time"`
 	Duration       uint           `gorm:"column:duration"`
 	AffectedCourse string         `gorm:"column:affected_course"`
-	IsLeaveSchool  bool           `gorm:"column:is_leave_school"`
+	IsLeaveSchool  bool           `gorm:"column:is_leave_school"` // LeaveSchoolNo 或 LeaveSchoolYes
 	LeaveReason    string         `gorm:"column:leave_reason"`
 	TravelWay      string         `gorm:"column:travel_way"`
 	AppliedAt      time.Time      `gorm:"column:applied_at"`

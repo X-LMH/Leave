@@ -6,7 +6,7 @@ CREATE TABLE `profiles`
     `class_id`     INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '班级ID，由应用层维护关联',
     `name`         VARCHAR(64)  NOT NULL COMMENT '学生姓名',
     `phone`        VARCHAR(20)  NOT NULL COMMENT '学生电话',
-    `gender`       VARCHAR(10)  NOT NULL COMMENT '性别',
+    `gender`       VARCHAR(10)  NOT NULL COMMENT '性别：男/女',
     `parent_name`  VARCHAR(64)  NOT NULL COMMENT '家长姓名',
     `parent_phone` VARCHAR(20)  NOT NULL COMMENT '家长电话',
     `apartment`    VARCHAR(100) NOT NULL DEFAULT '' COMMENT '公寓名称',

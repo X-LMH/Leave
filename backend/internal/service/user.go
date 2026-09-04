@@ -1,9 +1,9 @@
 package service
 
 import (
-	"backend/dao/mysql"
-	"backend/models"
-	"backend/utils/jwt"
+	"backend/internal/dao/mysql"
+	"backend/internal/models"
+	"backend/internal/utils/jwt"
 )
 
 func Register(p *models.ParamRegister) (err error) {
@@ -14,6 +14,8 @@ func Register(p *models.ParamRegister) (err error) {
 	student := &models.User{
 		StudentID: p.StudentID,
 		Password:  p.Password,
+		Role:      models.RoleStudent,
+		Status:    models.UserStatusActive,
 	}
 	return mysql.CreateUser(student)
 }

@@ -10,7 +10,7 @@ CREATE TABLE `records`
     `end_time`        DATETIME      NOT NULL COMMENT '请假结束时间',
     `duration`        INT UNSIGNED NOT NULL COMMENT '请假时长（小时）',
     `affected_course` VARCHAR(255)  NOT NULL DEFAULT '' COMMENT '影响课程',
-    `is_leave_school` TINYINT(1)  NOT NULL DEFAULT 0 COMMENT '是否离校：1-是，0-否',
+    `is_leave_school` TINYINT(1)  NOT NULL DEFAULT 0 COMMENT '是否离校：1=是，0=否',
     `leave_reason`    TEXT          NOT NULL COMMENT '请假理由',
     `travel_way`      VARCHAR(32)   NOT NULL DEFAULT '' COMMENT '出行方式',
     `applied_at`      DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '申请时间',

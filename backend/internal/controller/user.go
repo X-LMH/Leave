@@ -1,10 +1,10 @@
 package controller
 
 import (
-	"backend/config"
-	"backend/dao/mysql"
-	"backend/models"
-	"backend/service"
+	"backend/internal/config"
+	"backend/internal/dao/mysql"
+	"backend/internal/models"
+	"backend/internal/service"
 	"errors"
 	"os"
 	"path/filepath"
@@ -15,8 +15,8 @@ import (
 // RegisterHandler 用户注册
 func RegisterHandler(c *gin.Context) {
 	// 参数绑定
-	ResponseError(c, CodeServiceFix)
-	return
+	//ResponseError(c, CodeServiceFix)
+	//return
 
 	p := new(models.ParamRegister)
 	if err := c.ShouldBindJSON(p); err != nil {
@@ -30,12 +30,14 @@ func RegisterHandler(c *gin.Context) {
 
 	// 业务逻辑
 	if err := service.Register(p); err != nil {
-		if errors.Is(err, mysql.ErrorUserExist) {
+		switch {
+		case errors.Is(err, mysql.ErrorUserExist):
 			ResponseError(c, CodeUserExist)
 			return
+		default:
+			ResponseError(c, CodeServerBusy)
+			return
 		}
-		ResponseError(c, CodeServerBusy)
-		return
 	}
 	// 返回响应
 	ResponseSuccess(c, nil)
@@ -57,18 +59,17 @@ func LoginHandler(c *gin.Context) {
 	// 业务逻辑
 	token, err := service.Login(p)
 	if err != nil {
-		// 用户名是否存在
-		if errors.Is(err, mysql.ErrorUserNotExist) {
+		switch {
+		case errors.Is(err, mysql.ErrorUserNotExist):
 			ResponseError(c, CodeUserNotExist)
 			return
-		}
-		// 密码是否正确
-		if errors.Is(err, mysql.ErrorInvalidPassword) {
+		case errors.Is(err, mysql.ErrorInvalidPassword):
 			ResponseError(c, CodeInvalidPassword)
 			return
+		default:
+			ResponseError(c, CodeServerBusy)
+			return
 		}
-		ResponseError(c, CodeServerBusy)
-		return
 	}
 
 	ResponseSuccess(c, token)
@@ -94,12 +95,14 @@ func ChangePasswordHandler(c *gin.Context) {
 		return
 	}
 	if err := service.ChangePassword(p, studentID); err != nil {
-		if errors.Is(err, mysql.ErrorNotRightPassword) {
+		switch {
+		case errors.Is(err, mysql.ErrorNotRightPassword):
 			ResponseError(c, CodeNotRightPassword)
 			return
+		default:
+			ResponseError(c, CodeServerBusy)
+			return
 		}
-		ResponseError(c, CodeServerBusy)
-		return
 	}
 	ResponseSuccess(c, nil)
 }

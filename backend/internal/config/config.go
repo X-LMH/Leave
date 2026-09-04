@@ -1,7 +1,7 @@
 package config
 
 import (
-	"backend/models"
+	"backend/internal/models"
 	"fmt"
 
 	"github.com/spf13/viper"
