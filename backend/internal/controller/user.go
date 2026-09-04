@@ -5,6 +5,7 @@ import (
 	"backend/internal/dao/mysql"
 	"backend/internal/dto"
 	"backend/internal/models"
+	"backend/internal/response"
 	"backend/internal/service"
 	"errors"
 	"os"
@@ -17,16 +18,18 @@ import (
 // RegisterHandler 用户注册
 func RegisterHandler(c *gin.Context) {
 	// 参数绑定
-	//ResponseError(c, CodeServiceFix)
+	//response.Error(c, response.CodeServiceFix)
 	//return
 
 	p := new(dto.RegisterRequest)
 	if err := c.ShouldBindJSON(p); err != nil {
-		ResponseError(c, CodeInvalidParam)
+		response.Error(c, response.CodeInvalidParam)
 		return
 	}
-	if !validStudentID(p.StudentID) || len(p.Password) < 6 || len(p.Password) > 30 || len(p.RePassword) == 0 || strings.TrimSpace(p.Password) == "" || p.Password != p.RePassword {
-		ResponseError(c, CodeInvalidParam)
+	if !validStudentID(p.StudentID) ||
+		len(p.Password) < 6 || len(p.Password) > 30 || len(p.RePassword) == 0 ||
+		strings.TrimSpace(p.Password) == "" || p.Password != p.RePassword {
+		response.Error(c, response.CodeInvalidParam)
 		return
 	}
 
@@ -34,15 +37,15 @@ func RegisterHandler(c *gin.Context) {
 	if err := service.Register(p); err != nil {
 		switch {
 		case errors.Is(err, mysql.ErrorUserExist):
-			ResponseError(c, CodeUserExist)
+			response.Error(c, response.CodeUserExist)
 			return
 		default:
-			ResponseError(c, CodeServerBusy)
+			response.Error(c, response.CodeServerBusy)
 			return
 		}
 	}
 	// 返回响应
-	ResponseSuccess(c, nil)
+	response.Success(c, nil)
 }
 
 // LoginHandler 用户登录
@@ -50,11 +53,11 @@ func LoginHandler(c *gin.Context) {
 	// 参数绑定
 	p := new(dto.LoginRequest)
 	if err := c.ShouldBindJSON(p); err != nil {
-		ResponseError(c, CodeInvalidParam)
+		response.Error(c, response.CodeInvalidParam)
 		return
 	}
 	if !validStudentID(p.StudentID) || len(p.Password) == 0 {
-		ResponseError(c, CodeInvalidParam)
+		response.Error(c, response.CodeInvalidParam)
 		return
 	}
 
@@ -64,15 +67,15 @@ func LoginHandler(c *gin.Context) {
 		switch {
 		case errors.Is(err, mysql.ErrorUserNotExist), errors.Is(err, mysql.ErrorInvalidPassword):
 			// 不暴露账号是否存在，避免被用于枚举注册用户。
-			ResponseError(c, CodeInvalidPassword)
+			response.Error(c, response.CodeInvalidPassword)
 			return
 		default:
-			ResponseError(c, CodeServerBusy)
+			response.Error(c, response.CodeServerBusy)
 			return
 		}
 	}
 
-	ResponseSuccess(c, data)
+	response.Success(c, data)
 }
 
 // ChangePasswordHandler 修改密码
@@ -80,31 +83,31 @@ func ChangePasswordHandler(c *gin.Context) {
 	// 参数校验
 	p := new(models.ParamPassword)
 	if err := c.ShouldBindJSON(p); err != nil {
-		ResponseError(c, CodeInvalidParam)
+		response.Error(c, response.CodeInvalidParam)
 		return
 	}
 	if len(p.Password) == 0 || len(p.NewPassword) < 6 || len(p.NewPassword) > 30 || len(p.RePassword) == 0 || strings.TrimSpace(p.NewPassword) == "" || p.NewPassword != p.RePassword {
-		ResponseError(c, CodeInvalidParam)
+		response.Error(c, response.CodeInvalidParam)
 		return
 	}
 
 	// 业务处理
 	studentID, err := GetCurrentStuID(c)
 	if err != nil {
-		ResponseError(c, CodeNeedLogin)
+		response.Error(c, response.CodeNeedLogin)
 		return
 	}
 	if err := service.ChangePassword(p, studentID); err != nil {
 		switch {
 		case errors.Is(err, mysql.ErrorNotRightPassword):
-			ResponseError(c, CodeNotRightPassword)
+			response.Error(c, response.CodeNotRightPassword)
 			return
 		default:
-			ResponseError(c, CodeServerBusy)
+			response.Error(c, response.CodeServerBusy)
 			return
 		}
 	}
-	ResponseSuccess(c, nil)
+	response.Success(c, nil)
 }
 
 // validStudentID 校验学号是否为 12 位数字。
@@ -123,7 +126,7 @@ func validStudentID(studentID string) bool {
 
 func VersionHandler(c *gin.Context) {
 	version := config.GetVersionInfo()
-	ResponseSuccess(c, version)
+	response.Success(c, version)
 }
 
 // UpdateHandler 处理APK文件下载请求（从程序同级目录读取）
@@ -131,7 +134,7 @@ func UpdateHandler(c *gin.Context) {
 	// 获取当前工作目录（程序运行的同级目录）
 	workDir, err := os.Getwd()
 	if err != nil {
-		ResponseError(c, CodeServerBusy)
+		response.Error(c, response.CodeServerBusy)
 		return
 	}
 
@@ -140,7 +143,7 @@ func UpdateHandler(c *gin.Context) {
 
 	// 检查文件是否存在
 	if _, err := os.Stat(apkPath); os.IsNotExist(err) {
-		ResponseError(c, CodeFileNotFound)
+		response.Error(c, response.CodeFileNotFound)
 		return
 	}
 

@@ -3,6 +3,7 @@ package controller
 import (
 	"backend/internal/dao/mysql"
 	"backend/internal/models"
+	"backend/internal/response"
 	"backend/internal/service"
 	"errors"
 	"fmt"
@@ -16,51 +17,51 @@ func ProfileHandler(c *gin.Context) {
 	// 参数绑定
 	p := new(models.ParamProfile)
 	if err := c.ShouldBindJSON(p); err != nil {
-		ResponseError(c, CodeInvalidParam)
+		response.Error(c, response.CodeInvalidParam)
 		return
 	}
 
 	// 业务处理
 	studentID, err := GetCurrentStuID(c)
 	if err != nil {
-		ResponseError(c, CodeNeedLogin)
+		response.Error(c, response.CodeNeedLogin)
 		return
 	}
 	if err := service.Profile(p, studentID); err != nil {
 		switch {
 		case errors.Is(err, mysql.ErrorFinishProfile):
-			ResponseError(c, CodeFinishData)
+			response.Error(c, response.CodeFinishData)
 			return
 		case errors.Is(err, mysql.ErrorUserExist):
-			ResponseError(c, CodeUserExist)
+			response.Error(c, response.CodeUserExist)
 			return
 		default:
-			ResponseError(c, CodeServerBusy)
+			response.Error(c, response.CodeServerBusy)
 			return
 		}
 	}
 
-	ResponseSuccess(c, nil)
+	response.Success(c, nil)
 }
 
 func GetProfileHandler(c *gin.Context) {
 	studentID, err := GetCurrentStuID(c)
 	if err != nil {
-		ResponseError(c, CodeNeedLogin)
+		response.Error(c, response.CodeNeedLogin)
 		return
 	}
 	data, err := service.GetProfile(studentID)
 	if err != nil {
 		switch {
 		case errors.Is(err, mysql.ErrorUserNotExist):
-			ResponseError(c, CodeNeedLogin)
+			response.Error(c, response.CodeNeedLogin)
 			return
 		default:
-			ResponseError(c, CodeServerBusy)
+			response.Error(c, response.CodeServerBusy)
 			return
 		}
 	}
-	ResponseSuccess(c, data)
+	response.Success(c, data)
 }
 
 // RecordHandler 记录用户行为
@@ -69,13 +70,13 @@ func RecordHandler(c *gin.Context) {
 
 	if err := c.ShouldBindJSON(p); err != nil {
 		fmt.Println(p)
-		ResponseError(c, CodeInvalidParam)
+		response.Error(c, response.CodeInvalidParam)
 		return
 	}
 
 	studentID, err := GetCurrentStuID(c)
 	if err != nil {
-		ResponseError(c, CodeNeedLogin)
+		response.Error(c, response.CodeNeedLogin)
 		return
 	}
 
@@ -83,14 +84,14 @@ func RecordHandler(c *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, mysql.ErrorUserNotExist):
-			ResponseError(c, CodeNeedLogin)
+			response.Error(c, response.CodeNeedLogin)
 			return
 		default:
-			ResponseError(c, CodeServerBusy)
+			response.Error(c, response.CodeServerBusy)
 			return
 		}
 	}
-	ResponseSuccess(c, nil)
+	response.Success(c, nil)
 }
 
 func GetRecordHandler(c *gin.Context) {
@@ -98,7 +99,7 @@ func GetRecordHandler(c *gin.Context) {
 	recordID, err := strconv.Atoi(req)
 	if err != nil {
 		fmt.Println(req)
-		ResponseError(c, CodeInvalidParam)
+		response.Error(c, response.CodeInvalidParam)
 		return
 	}
 
@@ -106,35 +107,37 @@ func GetRecordHandler(c *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, mysql.ErrorRecordNotExist):
-			ResponseError(c, CodeRecordNotExist)
+			response.Error(c, response.CodeRecordNotExist)
 			return
 		default:
-			ResponseError(c, CodeServerBusy)
+			response.Error(c, response.CodeServerBusy)
 			return
 		}
 	}
 
-	ResponseSuccess(c, record)
+	response.Success(c, record)
 }
 
 func GetRecordsLIstHandler(c *gin.Context) {
 	studentID, err := GetCurrentStuID(c)
 	if err != nil {
-		ResponseError(c, CodeNeedLogin)
+		response.Error(c, response.CodeNeedLogin)
+		return
 	}
 
 	res, err := service.GetRecordsList(studentID)
 	if err != nil {
-		ResponseError(c, CodeServerBusy)
+		response.Error(c, response.CodeServerBusy)
+		return
 	}
-	ResponseSuccess(c, res)
+	response.Success(c, res)
 }
 
 func DeleteRecordHandler(c *gin.Context) {
 	req := c.Param("id")
 	recordID, err := strconv.Atoi(req)
 	if err != nil {
-		ResponseError(c, CodeInvalidParam)
+		response.Error(c, response.CodeInvalidParam)
 		return
 	}
 
@@ -142,12 +145,12 @@ func DeleteRecordHandler(c *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, mysql.ErrorRecordNotExist):
-			ResponseError(c, CodeRecordNotExist)
+			response.Error(c, response.CodeRecordNotExist)
 			return
 		default:
-			ResponseError(c, CodeServerBusy)
+			response.Error(c, response.CodeServerBusy)
 			return
 		}
 	}
-	ResponseSuccess(c, nil)
+	response.Success(c, nil)
 }

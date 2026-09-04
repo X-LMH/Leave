@@ -3,6 +3,7 @@ package middleware
 import (
 	"backend/internal/controller"
 	"backend/internal/dao/mysql"
+	"backend/internal/response"
 	"backend/internal/utils/jwt"
 	"strings"
 
@@ -17,7 +18,7 @@ func JWTAuthMiddleware() gin.HandlerFunc {
 
 		// 不含有请求头
 		if authHeader == "" {
-			controller.ResponseError(c, controller.CodeNeedLogin)
+			response.Error(c, response.CodeNeedLogin)
 			c.Abort() // 终止请求链，不再执行后续处理
 			return
 		}
@@ -26,7 +27,7 @@ func JWTAuthMiddleware() gin.HandlerFunc {
 		parts := strings.SplitN(authHeader, " ", 2)
 		if !(len(parts) == 2 && parts[0] == "Bearer") {
 			// 格式错误，返回401
-			controller.ResponseError(c, controller.CodeInvalidToken)
+			response.Error(c, response.CodeInvalidToken)
 			c.Abort()
 			return
 		}
@@ -34,12 +35,12 @@ func JWTAuthMiddleware() gin.HandlerFunc {
 		// 解析JWT令牌
 		claims, err := jwt.ParseToken(parts[1]) // parts[1]是提取出的令牌字符串
 		if err != nil {
-			controller.ResponseError(c, controller.CodeInvalidToken)
+			response.Error(c, response.CodeInvalidToken)
 			c.Abort()
 			return
 		}
 		if err := mysql.EnsureUserActive(claims.StudentID); err != nil {
-			controller.ResponseError(c, controller.CodeNeedLogin)
+			response.Error(c, response.CodeNeedLogin)
 			c.Abort()
 			return
 		}
