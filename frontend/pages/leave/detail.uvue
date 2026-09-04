@@ -1,0 +1,62 @@
+<template>
+	<PageTransition ref="pageTransition" enter-direction="forward">
+		<view class="compare-page">
+			<view class="safe-top">
+			</view>
+			<view class="top-nav-wrap">
+				<image class="top-nav-image" src="/static/leave/detail/top-nav.png" mode="widthFix"></image>
+				<view class="top-back-hit" @click="goHome">
+				</view>
+			</view>
+			<web-view class="compare-web-view" :src="webSrc"></web-view>
+		</view>
+	</PageTransition>
+</template>
+
+<script setup lang="uts">
+import { ref } from 'vue'
+import PageTransition from '@/components/PageTransition.uvue'
+const webSrc = ref('/static/leave/detail/index.html')
+onLoad((options) => {
+	if (options != null) {
+		webSrc.value = `/static/leave/detail/index.html?application=${encodeURIComponent(options.application ?? '')}`
+	}
+})
+function goHome() {
+	uni.reLaunch({ url: '/pages/home/index' })
+}
+</script>
+
+<style>
+.compare-page {
+	flex: 1;
+	position: relative;
+	background-color: #f6f7fb;
+}
+.safe-top {
+	height:var(--status-bar-height);
+	background-color:#fff
+}
+.top-nav-wrap {
+	position:relative;
+	background-color:#fff
+}
+.top-nav-image {
+	width:100%;
+	background-color:#fff;
+	position:relative;
+	top:-4px;
+	margin-bottom:-4px
+}
+.top-back-hit {
+	position:absolute;
+	left:0;
+	top:0;
+	width:120rpx;
+	height:100%;
+	z-index:2
+}
+.compare-web-view {
+	flex:1
+}
+</style>

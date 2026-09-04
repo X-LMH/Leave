@@ -1,0 +1,110 @@
+{
+	"pages": [
+		{
+			"path": "pages/auth/login",
+			"style": {
+				"navigationStyle": "custom",
+				"disableScroll": true,
+				"backgroundColor": "#F4F7FF",
+				"backgroundColorContent": "#F4F7FF"
+			}
+		},
+		{
+			"path": "pages/auth/register",
+			"style": {
+				"navigationStyle": "custom",
+				"disableScroll": true,
+				"backgroundColor": "#F4F7FF",
+				"backgroundColorContent": "#F4F7FF",
+				"swipeBackAsBackPress": true
+			}
+		},
+		{
+			"path": "pages/home/index",
+			"style": {
+				"navigationStyle": "custom",
+				"disableScroll": true,
+				"backgroundColor": "#F5F8FF",
+				"backgroundColorContent": "#F5F8FF"
+			}
+		},
+		{
+			"path": "pages/leave/detail",
+			"style": {
+				"navigationStyle": "custom",
+				"disableScroll": true,
+				"backgroundColor": "#F4F7FB",
+				"backgroundColorContent": "#F4F7FB",
+				"navigationBarBackgroundColor": "#F4F7FB",
+				"navigationBarTextStyle": "black",
+				"swipeBackAsBackPress": true
+			}
+		},
+		{
+			"path": "pages/leave/apply",
+			"style": {
+				"navigationStyle": "custom",
+				"navigationBarBackgroundColor": "#F4F7FB",
+				"navigationBarTextStyle": "black",
+				"backgroundColor": "#F4F7FB"
+			}
+		},
+		{
+			"path": "pages/profile/index",
+			"style": {
+				"navigationStyle": "custom",
+				"disableScroll": true,
+				"navigationBarTitleText": "我的",
+				"navigationBarBackgroundColor": "#F4F7FB",
+				"navigationBarTextStyle": "black",
+				"backgroundColor": "#F4F7FB"
+			}
+		},
+		{
+			"path": "pages/profile/info",
+			"style": {
+				"navigationStyle": "custom",
+				"backgroundColor": "#F4F7FF",
+				"backgroundColorContent": "#F4F7FF",
+				"swipeBackAsBackPress": true
+			}
+		},
+		{
+			"path": "pages/profile/edit",
+			"style": {
+				"navigationStyle": "custom",
+				"backgroundColor": "#F4F7FF",
+				"backgroundColorContent": "#F4F7FF",
+				"swipeBackAsBackPress": true
+			}
+		},
+		{
+			"path": "pages/profile/password",
+			"style": {
+				"navigationStyle": "custom",
+				"backgroundColor": "#F4F7FF",
+				"backgroundColorContent": "#F4F7FF",
+				"swipeBackAsBackPress": true
+			}
+		},
+		{
+			"path": "pages/leave/records",
+			"style": {
+				"navigationStyle": "custom",
+				"backgroundColor": "#F4F7FF",
+				"backgroundColorContent": "#F4F7FF",
+				"swipeBackAsBackPress": true
+			}
+		}
+	],
+	"globalStyle": {
+		"animationType": "none",
+		"animationDuration": 200,
+		"navigationBarTextStyle": "black",
+		"navigationBarTitleText": "请销假申请",
+		"navigationBarBackgroundColor": "#F4F7FB",
+		"backgroundColor": "#F4F7FB",
+		"backgroundColorContent": "#F4F7FB"
+	},
+	"uniIdRouter": {}
+}

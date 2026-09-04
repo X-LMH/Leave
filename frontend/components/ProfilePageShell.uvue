@@ -1,0 +1,119 @@
+<template>
+	<PageTransition ref="pageTransition" enter-direction="forward">
+		<view class="shell-page">
+			<image class="shell-background" src="/static/my/common/background/default.png" mode="aspectFill"></image>
+			<view class="shell-safe-top"></view>
+			<view class="shell-back-row">
+				<view class="shell-back-button" @click="goBack">
+					<image class="shell-back-icon" src="/static/my/password/back.png" mode="aspectFit"></image>
+				</view>
+			</view>
+			<scroll-view v-if="scrollable" class="shell-scroll" scroll-y="true" :show-scrollbar="false">
+				<view class="shell-content">
+					<view class="shell-heading">
+						<text class="shell-title">{{ title }}</text>
+						<text class="shell-subtitle">{{ subtitle }}</text>
+					</view>
+					<slot></slot>
+				</view>
+			</scroll-view>
+			<view v-else class="shell-content shell-fixed-content">
+				<view class="shell-heading">
+					<text class="shell-title">{{ title }}</text>
+					<text class="shell-subtitle">{{ subtitle }}</text>
+				</view>
+				<slot></slot>
+			</view>
+		</view>
+	</PageTransition>
+</template>
+
+<script setup lang="uts">
+import PageTransition from '@/components/PageTransition.uvue'
+
+const props = defineProps<{
+	title: string
+	subtitle: string
+	scrollable: boolean
+}>()
+
+function goBack() {
+	uni.navigateBack({})
+}
+
+function navigate(url: string, method: string = 'navigateTo', direction: string = 'forward') {
+	if (method == 'reLaunch') uni.reLaunch({ url: url })
+	else if (method == 'redirectTo') uni.redirectTo({ url: url })
+	else if (method == 'navigateBack') uni.navigateBack({})
+	else uni.navigateTo({ url: url })
+}
+
+defineExpose({ navigate })
+</script>
+
+<style>
+.shell-page {
+	position: relative;
+	flex: 1;
+	overflow: hidden;
+	background-color: #f4f7ff;
+}
+.shell-background {
+	position: absolute;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+}
+.shell-safe-top {
+	height: var(--status-bar-height);
+}
+.shell-back-row {
+	position: relative;
+	z-index: 2;
+	height: 92rpx;
+	padding-left: 38rpx;
+	justify-content: center;
+}
+.shell-back-button {
+	width: 82rpx;
+	height: 84rpx;
+	justify-content: center;
+	align-items: flex-start;
+}
+.shell-back-icon {
+	width: 50rpx;
+	height: 50rpx;
+}
+.shell-scroll {
+	position: relative;
+	z-index: 1;
+	flex: 1;
+}
+.shell-content {
+	box-sizing: border-box;
+	padding: 12rpx 44rpx 80rpx;
+}
+.shell-fixed-content {
+	position: relative;
+	z-index: 1;
+	flex: 1;
+}
+.shell-heading {
+	margin-left: 8rpx;
+}
+.shell-title {
+	color: #123b78;
+	font-size: 48rpx;
+	font-weight: 700;
+	line-height: 62rpx;
+}
+.shell-subtitle {
+	margin-top: 14rpx;
+	color: #7890bc;
+	font-size: 27rpx;
+	line-height: 40rpx;
+}
+</style>

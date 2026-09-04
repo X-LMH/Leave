@@ -1,0 +1,291 @@
+<template>
+	<PageTransition ref="pageTransition" enter-direction="peer">
+		<view class="page">
+			<image class="page-background" src="/static/my/index/background.png" mode="aspectFill"></image>
+			<scroll-view class="content-scroll" scroll-y="true" :show-scrollbar="false">
+				<view class="content">
+					<view class="header">
+						<text class="page-title">我的</text>
+						<text class="page-subtitle">管理个人信息与请假记录</text>
+					</view>
+					<view class="profile-card" @click="openInfo">
+						<image class="profile-avatar" src="/static/my/index/avatar.jpg" mode="aspectFill"></image>
+						<view class="profile-details">
+							<view class="profile-name-row">
+								<text class="profile-name">刘明慧</text>
+								<image class="edit-icon" src="/static/my/index/icons/edit.png" mode="aspectFit" @click.stop="openEdit"></image>
+							</view>
+							<view class="profile-meta-row">
+								<image class="profile-meta-icon" src="/static/my/index/icons/user-badge.png" mode="aspectFit"></image>
+								<text class="profile-meta-text">学号：2023123456</text>
+							</view>
+							<view class="profile-meta-row profile-school-row">
+								<image class="profile-meta-icon" src="/static/my/index/icons/school.png" mode="aspectFit"></image>
+								<text class="profile-meta-text">计算机科学与技术学院</text>
+							</view>
+						</view>
+						<image class="card-arrow" src="/static/my/index/icons/arrow-right.png" mode="aspectFit"></image>
+					</view>
+					<text class="section-title">我的服务</text>
+					<view class="service-card">
+						<view class="service-item" @click="openInfo">
+							<image class="service-icon" src="/static/my/index/icons/user-avatar.png" mode="aspectFit"></image>
+							<view class="service-copy">
+								<text class="service-title">个人信息</text>
+								<text class="service-description">查看与修改个人资料</text>
+							</view>
+							<image class="service-arrow" src="/static/my/index/icons/arrow-right.png" mode="aspectFit"></image>
+						</view>
+						<view class="service-divider">
+						</view>
+						<view class="service-item" @click="openRecords">
+							<image class="service-icon" src="/static/my/index/icons/form-edit.png" mode="aspectFit"></image>
+							<view class="service-copy">
+								<text class="service-title">请假记录</text>
+								<text class="service-description">查看我的请假申请记录</text>
+							</view>
+							<image class="service-arrow" src="/static/my/index/icons/arrow-right.png" mode="aspectFit"></image>
+						</view>
+						<view class="service-divider">
+						</view>
+						<view class="service-item" @click="openPassword">
+							<image class="service-icon" src="/static/my/index/icons/lock.png" mode="aspectFit"></image>
+							<view class="service-copy">
+								<text class="service-title">修改密码</text>
+								<text class="service-description">修改账户登录密码</text>
+							</view>
+							<image class="service-arrow" src="/static/my/index/icons/arrow-right.png" mode="aspectFit"></image>
+						</view>
+					</view>
+					<view class="logout-card">
+						<image class="logout-icon" src="/static/my/index/icons/power.png" mode="aspectFit"></image>
+						<text class="logout-text">退出登录</text>
+						<text class="logout-arrow">›</text>
+					</view>
+					<view class="bottom-spacer">
+					</view>
+				</view>
+			</scroll-view>
+			<BottomNavigation active="profile" @navigate="handleTabNavigation" />
+			</view>
+		</PageTransition>
+</template>
+
+<script setup lang="uts">
+import BottomNavigation from '@/components/BottomNavigation.uvue'
+import PageTransition from '@/components/PageTransition.uvue'
+import { ref } from 'vue'
+
+
+function handleTabNavigation(url: string) {
+	uni.reLaunch({ url: url })
+}
+
+function openInfo() {
+	uni.navigateTo({ url: '/pages/profile/info' })
+}
+
+function openEdit() {
+	uni.navigateTo({ url: '/pages/profile/edit' })
+}
+
+function openRecords() {
+	uni.navigateTo({ url: '/pages/leave/records' })
+}
+
+function openPassword() {
+	uni.navigateTo({ url: '/pages/profile/password' })
+}
+</script>
+
+<style>
+.page {
+	position: relative;
+	flex: 1;
+	overflow: hidden;
+	background-color: #f5f8ff;
+}
+.page-background {
+	position: absolute;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+}
+.content-scroll {
+	position: relative;
+	z-index: 1;
+	flex: 1;
+}
+.content {
+	box-sizing: border-box;
+	padding-top: 145rpx;
+	padding-right: 44rpx;
+	padding-left: 44rpx;
+}
+.header {
+	padding-left: 6rpx;
+}
+.page-title {
+	color: #173e79;
+	font-size: 48rpx;
+	font-weight: 700;
+	line-height: 60rpx;
+}
+.page-subtitle {
+	margin-top: 18rpx;
+	color: #7890bd;
+	font-size: 27rpx;
+	line-height: 38rpx;
+}
+.profile-card {
+	box-sizing: border-box;
+	height: 284rpx;
+	margin-top: 72rpx;
+	padding: 42rpx;
+	border-radius: 36rpx;
+	background-color: rgba(255, 255, 255, 0.84);
+	box-shadow: 0 14rpx 34rpx rgba(96, 130, 202, 0.14);
+	flex-direction: row;
+	align-items: center;
+}
+.profile-avatar {
+	width: 136rpx;
+	height: 136rpx;
+	border-radius: 68rpx;
+	border-width: 8rpx;
+	border-style: solid;
+	border-color: rgba(255, 255, 255, 0.8);
+	box-shadow: 0 8rpx 24rpx rgba(89, 119, 205, 0.18);
+}
+.profile-details {
+	flex: 1;
+	min-width: 0;
+	margin-left: 36rpx;
+}
+.profile-name-row {
+	flex-direction: row;
+	align-items: center;
+}
+.profile-name {
+	color: #153d79;
+	font-size: 36rpx;
+	font-weight: 700;
+	line-height: 48rpx;
+}
+.edit-icon {
+	width: 34rpx;
+	height: 34rpx;
+	margin-left: 22rpx;
+}
+.profile-meta-row {
+	margin-top: 22rpx;
+	flex-direction: row;
+	align-items: center;
+}
+.profile-school-row {
+	margin-top: 12rpx;
+}
+.profile-meta-icon {
+	width: 30rpx;
+	height: 30rpx;
+}
+.profile-meta-text {
+	margin-left: 12rpx;
+	color: #778db8;
+	font-size: 23rpx;
+	line-height: 32rpx;
+}
+.card-arrow {
+	width: 34rpx;
+	height: 34rpx;
+	margin-left: 12rpx;
+}
+.section-title {
+	margin-top: 58rpx;
+	margin-left: 26rpx;
+	margin-bottom: 26rpx;
+	color: #153d79;
+	font-size: 31rpx;
+	font-weight: 700;
+	line-height: 44rpx;
+}
+.service-card {
+	padding-right: 48rpx;
+	padding-left: 48rpx;
+	border-radius: 36rpx;
+	background-color: rgba(255, 255, 255, 0.84);
+	box-shadow: 0 14rpx 34rpx rgba(96, 130, 202, 0.12);
+}
+.service-item {
+	height: 134rpx;
+	flex-direction: row;
+	align-items: center;
+}
+.service-icon {
+	width: 84rpx;
+	height: 84rpx;
+}
+.service-copy {
+	flex: 1;
+	min-width: 0;
+	margin-left: 24rpx;
+}
+.service-title {
+	color: #153d79;
+	font-size: 28rpx;
+	font-weight: 600;
+	line-height: 38rpx;
+}
+.service-description {
+	margin-top: 8rpx;
+	color: #8297c0;
+	font-size: 23rpx;
+	line-height: 32rpx;
+}
+.service-arrow {
+	width: 32rpx;
+	height: 32rpx;
+	margin-left: 14rpx;
+}
+.service-divider {
+	height: 1rpx;
+	margin-left: 4rpx;
+	background-color: rgba(121, 150, 208, 0.18);
+}
+.logout-card {
+	height: 146rpx;
+	margin-top: 32rpx;
+	padding-right: 50rpx;
+	padding-left: 48rpx;
+	border-radius: 36rpx;
+	background-color: rgba(255, 255, 255, 0.88);
+	box-shadow: 0 14rpx 34rpx rgba(255, 116, 127, 0.1);
+	flex-direction: row;
+	align-items: center;
+}
+.logout-icon {
+	width: 86rpx;
+	height: 86rpx;
+}
+.logout-text {
+	flex: 1;
+	margin-left: 26rpx;
+	color: #ff4d54;
+	font-size: 29rpx;
+	font-weight: 500;
+	line-height: 40rpx;
+}
+.logout-arrow {
+	margin-top: -6rpx;
+	color: #ff7e86;
+	font-size: 58rpx;
+	font-weight: 300;
+	line-height: 60rpx;
+}
+.bottom-spacer {
+	height: 230rpx;
+}
+</style>

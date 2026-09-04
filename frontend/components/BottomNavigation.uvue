@@ -1,0 +1,61 @@
+<template>
+	<view class="bottom-navigation">
+		<view class="nav-item" @click="goHome">
+			<image v-if="active === 'home'" class="nav-state nav-state-active" src="/static/common/tabbar/home-active.png" mode="aspectFit"></image>
+			<image v-else class="nav-state" src="/static/common/tabbar/home.png" mode="aspectFit"></image>
+		</view>
+		<view class="nav-item" @click="goProfile">
+			<image v-if="active === 'profile'" class="nav-state nav-state-active" src="/static/common/tabbar/mine-active.png" mode="aspectFit"></image>
+			<image v-else class="nav-state" src="/static/common/tabbar/mine.png" mode="aspectFit"></image>
+		</view>
+	</view>
+</template>
+
+<script setup lang="uts">
+const props = defineProps<{ active: string }>()
+const emit = defineEmits(['navigate'])
+function goHome() {
+	if (props.active !== 'home') {
+		emit('navigate', '/pages/home/index')
+	}
+}
+
+function goProfile() {
+	if (props.active !== 'profile') {
+		emit('navigate', '/pages/profile/index')
+	}
+}
+</script>
+
+<style>
+.bottom-navigation {
+	position:fixed;
+	left:28rpx;
+	right:28rpx;
+	bottom:28rpx;
+	z-index:6;
+	height:155rpx;
+	border-radius:42rpx;
+	background:#fff;
+	flex-direction:row;
+	align-items:center;
+	justify-content:space-around
+}
+.nav-item {
+	width:50%;
+	height:155rpx;
+	align-items:center;
+	justify-content:center
+}
+.nav-state {
+	width:130rpx;
+	height:150rpx;
+	transition-property:transform;
+	transition-duration:180ms;
+	transition-timing-function:ease-out
+}
+.nav-state-active {
+	width:156rpx;
+	height:180rpx
+}
+</style>

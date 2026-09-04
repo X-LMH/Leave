@@ -1,0 +1,58 @@
+<template>
+	<ProfilePageShell ref="pageShell" title="个人信息" subtitle="查看您的个人资料" :scrollable="true">
+		<view class="info-card first-card">
+			<view class="card-title-row">
+				<view class="title-icon-wrap">
+					<image class="title-icon" src="/static/my/info/gerenxinxi.svg" mode="aspectFit"></image>
+				</view>
+				<text class="card-title">学生信息</text>
+			</view>
+			<view class="info-row"><text class="info-label">学号</text><text class="info-value">2023123456</text></view>
+			<view class="divider"></view>
+			<view class="info-row"><text class="info-label">姓名</text><text class="info-value">刘明慧</text></view>
+			<view class="divider"></view>
+			<view class="info-row"><text class="info-label">手机号</text><text class="info-value">138 0013 8888</text></view>
+			<view class="divider"></view>
+			<view class="info-row"><text class="info-label">性别</text><text class="info-value">女</text></view>
+		</view>
+
+		<view class="info-card second-card">
+			<view class="card-title-row">
+				<view class="title-icon-wrap">
+					<image class="title-icon" src="/static/my/info/zhuzhi.svg" mode="aspectFit"></image>
+				</view>
+				<text class="card-title">其他信息</text>
+			</view>
+			<view class="info-row"><text class="info-label">家长姓名</text><text class="info-value">刘女士</text></view>
+			<view class="divider"></view>
+			<view class="info-row"><text class="info-label">家长电话</text><text class="info-value">139 6677 8899</text></view>
+			<view class="divider"></view>
+			<view class="info-row"><text class="info-label">公寓名称</text><text class="info-value">北苑3号公寓</text></view>
+			<view class="divider"></view>
+			<view class="info-row"><text class="info-label">辅导员姓名</text><text class="info-value">王老师</text></view>
+		</view>
+
+		<view class="primary-button" @click="editProfile"><text class="primary-button-text">修改个人信息</text></view>
+	</ProfilePageShell>
+</template>
+
+<script setup lang="uts">
+import ProfilePageShell from '@/components/ProfilePageShell.uvue'
+function editProfile() { uni.navigateTo({ url: '/pages/profile/edit' }) }
+</script>
+
+<style>
+.info-card { padding: 28rpx 42rpx 8rpx; border-radius: 30rpx; background-color: rgba(255,255,255,0.87); box-shadow: 0 14rpx 34rpx rgba(92,126,190,0.11); }
+.first-card { margin-top: 44rpx; }
+.second-card { margin-top: 28rpx; }
+.card-title-row { height: 100rpx; margin-bottom: -24rpx; flex-direction: row; align-items: flex-start; }
+.title-icon-wrap { width: 64rpx; height: 64rpx; border-radius: 32rpx; background-color: #e0eaff; justify-content: center; align-items: center; box-shadow: 0 9rpx 22rpx rgba(71, 111, 220, 0.16); }
+.title-icon { width: 42rpx; height: 42rpx; opacity: 1; }
+.card-title { margin-top: 13rpx; margin-left: 20rpx; color: #123b78; font-size: 30rpx; font-weight: 700; }
+.info-row { height: 82rpx; flex-direction: row; align-items: center; justify-content: space-between; }
+.info-label { color: #7188b5; font-size: 26rpx; }
+.info-value { color: #506d9f; font-size: 26rpx; }
+.divider { height: 1rpx; background-color: rgba(112,143,202,0.18); }
+.primary-button { height: 94rpx; margin: 48rpx 14rpx 0; border-radius: 47rpx; background-color: #527df3; justify-content: center; align-items: center; box-shadow: 0 12rpx 26rpx rgba(65,102,224,0.25); }
+.primary-button-text { color: #ffffff; font-size: 29rpx; font-weight: 500; }
+</style>

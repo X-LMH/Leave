@@ -1,0 +1,15 @@
+<template>
+	<AuthPageShell ref="pageShell" enter-direction="forward" title="注册" subtitle="创建账号后即可使用请假申请系统" button-text="注册" switch-prefix="已有账号?" switch-text="立即登录" card-class="auth-register-card" @switch-page="goLogin">
+		<AuthInputField label="学号" placeholder="请输入学号" icon="/static/auth/icons/denglu.svg" :password="false" :required="true" :maxlength="30" field-class="" />
+		<AuthInputField label="密码" placeholder="请输入密码" icon="/static/auth/icons/mima.svg" :password="true" :required="true" :maxlength="30" field-class="auth-field-spaced" />
+		<AuthInputField label="确认密码" placeholder="请再次输入密码" icon="/static/auth/icons/mima.svg" :password="true" :required="true" :maxlength="30" field-class="auth-field-spaced" />
+	</AuthPageShell>
+</template>
+
+<script setup lang="uts">
+import AuthPageShell from '@/components/AuthPageShell.uvue'
+import AuthInputField from '@/components/AuthInputField.uvue'
+function goLogin() {
+	uni.navigateBack({})
+}
+</script>

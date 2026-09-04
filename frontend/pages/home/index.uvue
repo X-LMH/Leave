@@ -1,0 +1,265 @@
+<template>
+	<PageTransition ref="pageTransition" enter-direction="peer">
+		<view class="page">
+			<image class="page-background" src="/static/home/index/background.png" mode="aspectFill"></image>
+			<view class="foreground-content">
+				<view class="welcome-row">
+					<view class="welcome-copy">
+						<view class="greeting-row">
+							<text class="greeting">下午好，</text>
+							<text class="greeting-name">张三</text>
+							<text class="greeting-wave"> 👋</text>
+						</view>
+						<text class="greeting-subtitle">今天也要好好照顾自己哦</text>
+					</view>
+				</view>
+				<view class="hero">
+					<text class="hero-title">请假申请</text>
+					<text class="hero-subtitle">轻松请假 · 简单高效</text>
+					<view class="leave-wrap" @touchstart="handleLeavePress" @touchend="handleLeaveRelease" @touchcancel="handleLeaveRelease" @click="handleCreateLeave">
+						<view :class="isLeavePressed ? 'leave-halo halo-outer halo-outer-pressed' : 'leave-halo halo-outer'">
+						</view>
+						<view :class="isLeavePressed ? 'leave-halo halo-middle halo-middle-pressed' : 'leave-halo halo-middle'">
+						</view>
+						<view :class="isLeavePressed ? 'leave-halo halo-inner halo-inner-pressed' : 'leave-halo halo-inner'">
+						</view>
+						<view :class="isLeavePressed ? 'leave-button leave-button-pressed' : 'leave-button'">
+							<view class="leave-button-content">
+								<image class="leave-icon" src="/static/home/index/icons/leave-main.png" mode="widthFix"></image>
+								<text class="leave-label">发起请假</text>
+							</view>
+						</view>
+					</view>
+				</view>
+				<view class="flow-card">
+					<view class="flow-step">
+						<image class="flow-icon" src="/static/home/index/icons/fill-application.png" mode="widthFix"></image>
+						<text class="flow-label">填写申请</text>
+					</view>
+					<text class="flow-arrow">··›</text>
+					<view class="flow-step">
+						<image class="flow-icon" src="/static/home/index/icons/submit-application.png" mode="widthFix"></image>
+						<text class="flow-label">提交申请</text>
+					</view>
+					<text class="flow-arrow">··›</text>
+					<view class="flow-step">
+						<image class="flow-icon" src="/static/home/index/icons/approved.png" mode="widthFix"></image>
+						<text class="flow-label">审批通过</text>
+					</view>
+				</view>
+			</view>
+		</view>
+		<BottomNavigation active="home" @navigate="handleTabNavigation" />
+		</PageTransition>
+</template>
+
+<script setup lang="uts">
+import BottomNavigation from '@/components/BottomNavigation.uvue'
+import PageTransition from '@/components/PageTransition.uvue'
+import { ref } from 'vue'
+
+const isLeavePressed = ref(false)
+
+function handleLeavePress() {
+	isLeavePressed.value = true
+}
+
+function handleLeaveRelease() {
+	isLeavePressed.value = false
+}
+
+function handleCreateLeave() {
+	isLeavePressed.value = false
+	uni.navigateTo({ url: '/pages/leave/apply' })
+}
+
+function handleTabNavigation(url: string) {
+	uni.reLaunch({ url: url })
+}
+</script>
+
+<style>
+.page {
+	position:relative;
+	flex:1;
+	overflow:hidden;
+	background:#f0f3fa
+}
+.page-background {
+	position:absolute;
+	top:0;
+	right:0;
+	bottom:0;
+	left:0;
+	width:100%;
+	height:100%
+}
+.foreground-content {
+	position:relative;
+	z-index:1;
+	box-sizing:border-box;
+	padding:150rpx 60rpx 250rpx
+}
+.welcome-row {
+	flex-direction:row;
+	justify-content:space-between;
+	align-items:center
+}
+.welcome-copy {
+	flex-direction:column
+}
+.greeting-row {
+	flex-direction:row;
+	align-items:center
+}
+.greeting {
+	color:#173766;
+	font-size:42rpx;
+	font-weight:700
+}
+.greeting-name {
+	color:#254989;
+	font-size:72rpx;
+	font-weight:700;
+	letter-spacing:3rpx
+}
+.greeting-wave {
+	color:#173766;
+	font-size:42rpx;
+	font-weight:700
+}
+.greeting-subtitle {
+	margin-top:16rpx;
+	color:#7d90b3;
+	font-size:28rpx
+}
+.hero {
+	align-items:center;
+	margin-top:150rpx
+}
+.hero-title {
+	color:#173766;
+	font-size:58rpx;
+	font-weight:700;
+	letter-spacing:4rpx
+}
+.hero-subtitle {
+	margin-top:18rpx;
+	color:#7d90b3;
+	font-size:30rpx
+}
+.leave-wrap {
+	position:relative;
+	z-index:2;
+	width:550rpx;
+	height:520rpx;
+	margin-top:68rpx;
+	align-items:center;
+	justify-content:center
+}
+.leave-halo {
+	position:absolute;
+	border-radius:9999rpx;
+	transition-property:opacity;
+	transition-duration:140ms
+}
+.halo-outer {
+	width:520rpx;
+	height:520rpx;
+	opacity:.72;
+	background:rgba(255,255,255,.12);
+	border:2rpx solid rgba(255,255,255,.38)
+}
+.halo-middle {
+	width:476rpx;
+	height:476rpx;
+	opacity:.86;
+	background:rgba(255,255,255,.2);
+	border:3rpx solid rgba(255,255,255,.58);
+	box-shadow:0 0 36rpx rgba(255,255,255,.48)
+}
+.halo-inner {
+	width:426rpx;
+	height:426rpx;
+	background:rgba(255,255,255,.42);
+	border:3rpx solid rgba(255,255,255,.9);
+	box-shadow:inset 0 0 24rpx rgba(255,255,255,.72)
+}
+.halo-outer-pressed {
+	opacity:.42
+}
+.halo-middle-pressed {
+	opacity:.58
+}
+.halo-inner-pressed {
+	opacity:.78
+}
+.leave-button {
+	position:relative;
+	width:360rpx;
+	height:360rpx;
+	border-radius:180rpx;
+	align-items:center;
+	justify-content:center;
+	background-color:#4778f6;
+	background-image:linear-gradient(145deg,#5b8cff 0%,#4778f6 50%,#315fdf 100%);
+	border:3rpx solid rgba(255,255,255,.72);
+	box-shadow:inset 0 10rpx 18rpx rgba(255,255,255,.26),0 18rpx 34rpx rgba(55,88,196,.3);
+	transition-property:transform,box-shadow;
+	transition-duration:140ms
+}
+.leave-button-pressed {
+	transform:scale(.96);
+	box-shadow:inset 0 7rpx 14rpx rgba(255,255,255,.24),0 8rpx 18rpx rgba(55,88,196,.2)
+}
+.leave-button-content {
+	position:relative;
+	align-items:center;
+	justify-content:center;
+	padding-top:8rpx;
+	box-sizing:border-box
+}
+.leave-icon {
+	width:150rpx;
+	height:138rpx
+}
+.leave-label {
+	margin-top:14rpx;
+	color:#fff;
+	font-size:37rpx;
+	font-weight:700;
+	line-height:48rpx;
+	letter-spacing:2rpx
+}
+.flow-card {
+	position:relative;
+	z-index:1;
+	height:184rpx;
+	margin-top:72rpx;
+	padding:0 20rpx;
+	border-radius:36rpx;
+	background:rgba(255,255,255,.72);
+	flex-direction:row;
+	align-items:center;
+	justify-content:space-around;
+	box-shadow:0 16rpx 40rpx rgba(79,106,180,.08)
+}
+.flow-step {
+	align-items:center
+}
+.flow-icon {
+	width:84rpx;
+	height:84rpx
+}
+.flow-label {
+	margin-top:12rpx;
+	color:#7285a9;
+	font-size:26rpx
+}
+.flow-arrow {
+	position:relative;
+	top:-20rpx;
+	color:#bdcef9;
+	font-size:32rpx
+}
+</style>

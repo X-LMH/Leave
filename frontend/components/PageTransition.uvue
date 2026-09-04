@@ -1,0 +1,123 @@
+<template>
+	<view :class="transitionClass">
+		<slot></slot>
+	</view>
+</template>
+
+<script setup lang="uts">
+import { computed, onMounted, onUnmounted, ref } from 'vue'
+
+const props = defineProps<{ enterDirection: string }>()
+
+const phase = ref('enter')
+const direction = ref(props.enterDirection)
+const isNavigating = ref(false)
+let enterTimer = 0
+let navigationTimer = 0
+
+const transitionClass = computed((): string => {
+	if (phase.value == 'active') return 'page-transition page-transition-active'
+	if (phase.value == 'exit') {
+		if (direction.value == 'back') return 'page-transition page-transition-exit-back'
+		if (direction.value == 'peer') return 'page-transition page-transition-peer'
+		return 'page-transition page-transition-exit-forward'
+	}
+	if (direction.value == 'back') return 'page-transition page-transition-enter-back'
+	if (direction.value == 'peer') return 'page-transition page-transition-peer'
+	return 'page-transition page-transition-enter-forward'
+})
+
+function beginEnter(enterDirection: string) {
+	clearTimeout(enterTimer)
+	direction.value = enterDirection
+	phase.value = 'enter'
+	enterTimer = setTimeout(() => {
+		phase.value = 'active'
+	}, 20)
+}
+
+function restore() {
+	clearTimeout(navigationTimer)
+	isNavigating.value = false
+	beginEnter(direction.value)
+}
+
+function finishNavigation() {
+	clearTimeout(navigationTimer)
+	isNavigating.value = false
+	phase.value = 'active'
+}
+
+function performNavigation(url: string, method: string) {
+	if (method == 'reLaunch') {
+		uni.reLaunch({ url: url, success: () => finishNavigation(), fail: () => restore() })
+	} else if (method == 'redirectTo') {
+		uni.redirectTo({ url: url, success: () => finishNavigation(), fail: () => restore() })
+	} else if (method == 'navigateBack') {
+		uni.navigateBack({
+			success: () => finishNavigation(),
+			fail: () => {
+				if (url != '') {
+					uni.reLaunch({ url: url, success: () => finishNavigation(), fail: () => restore() })
+				} else {
+					restore()
+				}
+			}
+		})
+	} else {
+		uni.navigateTo({ url: url, success: () => finishNavigation(), fail: () => restore() })
+	}
+}
+
+function navigate(url: string, method: string = 'navigateTo', exitDirection: string = 'forward') {
+	if (isNavigating.value) return
+	isNavigating.value = true
+	clearTimeout(enterTimer)
+	direction.value = exitDirection
+	phase.value = 'exit'
+	navigationTimer = setTimeout(() => {
+		performNavigation(url, method)
+	}, 200)
+}
+
+onMounted(() => beginEnter(props.enterDirection))
+onUnmounted(() => {
+	clearTimeout(enterTimer)
+	clearTimeout(navigationTimer)
+})
+
+defineExpose({ navigate, beginEnter })
+</script>
+
+<style>
+.page-transition {
+	flex:1;
+	opacity:0;
+	transition-property:opacity,transform;
+	transition-duration:200ms;
+	transition-timing-function:cubic-bezier(0.22, 1, 0.36, 1)
+}
+.page-transition-active {
+	opacity:1;
+	transform:translateX(0)
+}
+.page-transition-enter-forward {
+	opacity:0;
+	transform:translateX(12rpx)
+}
+.page-transition-enter-back {
+	opacity:0;
+	transform:translateX(-12rpx)
+}
+.page-transition-exit-forward {
+	opacity:0;
+	transform:translateX(-12rpx)
+}
+.page-transition-exit-back {
+	opacity:0;
+	transform:translateX(12rpx)
+}
+.page-transition-peer {
+	opacity:0
+}
+</style>

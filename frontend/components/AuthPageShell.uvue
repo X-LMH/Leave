@@ -1,0 +1,107 @@
+<template>
+	<PageTransition ref="pageTransition" :enter-direction="enterDirection">
+	<view class="auth-page">
+		<image class="auth-background" src="/static/auth/background.png" mode="aspectFill"></image>
+		<view class="auth-safe-top"></view>
+		<view class="auth-content">
+			<view class="auth-heading">
+				<view class="auth-brand-row">
+					<view class="auth-brand-halo">
+						<view class="auth-brand-icon">
+							<view class="auth-brand-icon-center"></view>
+						</view>
+					</view>
+					<view class="auth-brand-label">
+						<view class="auth-brand-label-dot"></view>
+						<text class="auth-brand-label-text">LEAVE MANAGEMENT</text>
+					</view>
+				</view>
+				<text class="auth-title">{{ title }}</text>
+				<text class="auth-subtitle">{{ subtitle }}</text>
+			</view>
+			<view class="auth-form-card" :class="cardClass">
+				<view class="auth-card-accent">
+					<view class="auth-card-accent-main"></view>
+					<view class="auth-card-accent-dot"></view>
+				</view>
+				<slot></slot>
+			</view>
+			<slot name="card-footer"></slot>
+			<view class="auth-submit-button" @click="submit">
+				<view class="auth-button-light"></view>
+				<text class="auth-submit-text">{{ buttonText }}</text>
+				<view class="auth-button-arrow">
+					<text class="auth-button-arrow-text">→</text>
+				</view>
+			</view>
+			<view class="auth-switch-row" @click="switchPage">
+				<text class="auth-switch-prefix">{{ switchPrefix }}</text>
+				<text class="auth-switch-action">{{ switchText }}</text>
+			</view>
+		</view>
+	</view>
+	</PageTransition>
+</template>
+
+<script setup lang="uts">
+import PageTransition from '@/components/PageTransition.uvue'
+
+defineProps<{
+	title: string
+	subtitle: string
+	buttonText: string
+	switchPrefix: string
+	switchText: string
+	cardClass: string
+	enterDirection: string
+}>()
+
+const emit = defineEmits(['submit', 'switch-page'])
+function navigate(url: string, method: string = 'navigateTo', direction: string = 'forward') {
+	if (method == 'reLaunch') uni.reLaunch({ url: url })
+	else if (method == 'redirectTo') uni.redirectTo({ url: url })
+	else if (method == 'navigateBack') uni.navigateBack({})
+	else uni.navigateTo({ url: url })
+}
+
+function submit() {
+	emit('submit')
+}
+
+function switchPage() {
+	emit('switch-page')
+}
+
+defineExpose({ navigate })
+</script>
+
+<style>
+.auth-page { position: relative; flex: 1; overflow: hidden; background-color: #f4f7ff; }
+.auth-background { position: absolute; top: 0; right: 0; bottom: 0; left: 0; width: 100%; height: 100%; }
+.auth-safe-top { height: var(--status-bar-height); }
+.auth-content { position: relative; z-index: 1; flex: 1; box-sizing: border-box; padding: 28rpx 28rpx 44rpx; justify-content: center; }
+.auth-heading { margin-left: 30rpx; }
+.auth-brand-row { height: 104rpx; margin-bottom: -28rpx; flex-direction: row; align-items: flex-start; }
+.auth-brand-halo { width: 76rpx; height: 76rpx; border-radius: 38rpx; background-color: rgba(255, 255, 255, 0.82); justify-content: center; align-items: center; }
+.auth-brand-icon { width: 54rpx; height: 54rpx; border-radius: 27rpx; background-color: #4d78f4; background-image: linear-gradient(135deg, #9bb5ff 0%, #4c78f6 45%, #2659e9 100%); justify-content: center; align-items: center; }
+.auth-brand-icon-center { width: 28rpx; height: 28rpx; border-radius: 14rpx; background-color: #ffffff; }
+.auth-brand-label { height: 42rpx; margin-top: 17rpx; margin-left: 22rpx; padding: 0 20rpx; border-width: 1rpx; border-style: solid; border-color: rgba(102, 133, 217, 0.25); border-radius: 21rpx; background-color: rgba(255, 255, 255, 0.56); flex-direction: row; align-items: center; }
+.auth-brand-label-dot { width: 9rpx; height: 9rpx; margin-right: 12rpx; border-radius: 5rpx; background-color: #4d7cf4; }
+.auth-brand-label-text { color: #6d83b4; font-size: 17rpx; letter-spacing: 1rpx; }
+.auth-title { margin-top: 24rpx; color: #123b78; font-size: 58rpx; font-weight: 700; line-height: 74rpx; }
+.auth-subtitle { margin-top: 18rpx; color: #7890bc; font-size: 26rpx; line-height: 38rpx; }
+.auth-form-card { position: relative; box-sizing: border-box; margin: 36rpx 20rpx 0; padding: 52rpx 36rpx 46rpx; border-width: 1rpx; border-style: solid; border-color: rgba(255, 255, 255, 0.92); border-radius: 28rpx; background-color: rgba(255, 255, 255, 0.86); box-shadow: 0 18rpx 42rpx rgba(73, 108, 180, 0.16); }
+.auth-card-accent { position: absolute; top: 22rpx; left: 36rpx; height: 8rpx; flex-direction: row; align-items: center; }
+.auth-card-accent-main { width: 48rpx; height: 7rpx; border-radius: 4rpx; background-color: #5c84f5; }
+.auth-card-accent-dot { width: 7rpx; height: 7rpx; margin-left: 8rpx; border-radius: 4rpx; background-color: #b4c6f8; }
+.auth-login-card { padding-top: 46rpx; padding-bottom: 44rpx; }
+.auth-register-card { padding-top: 46rpx; padding-bottom: 42rpx; }
+.auth-submit-button { position: relative; height: 104rpx; margin: 48rpx 28rpx 0; padding: 0 28rpx; overflow: hidden; border-radius: 24rpx; background-color: #527df3; background-image: linear-gradient(100deg, #7d9cff 0%, #5780f7 48%, #2e63f3 100%); flex-direction: row; justify-content: center; align-items: center; box-shadow: 0 14rpx 28rpx rgba(48, 91, 225, 0.27); }
+.auth-button-light { position: absolute; top: -42rpx; left: -22rpx; width: 220rpx; height: 106rpx; border-radius: 54rpx; background-color: rgba(255, 255, 255, 0.12); }
+.auth-submit-text { color: #ffffff; font-size: 34rpx; font-weight: 500; }
+.auth-button-arrow { position: absolute; top: 25rpx; right: 26rpx; width: 54rpx; height: 54rpx; border-radius: 27rpx; background-color: rgba(255, 255, 255, 0.16); justify-content: center; align-items: center; }
+.auth-button-arrow-text { color: #ffffff; font-size: 28rpx; line-height: 32rpx; }
+.auth-switch-row { margin-top: 42rpx; flex-direction: row; justify-content: center; align-items: center; }
+.auth-switch-prefix { color: #526b9d; font-size: 25rpx; }
+.auth-switch-action { margin-left: 14rpx; color: #3269f4; font-size: 25rpx; }
+</style>

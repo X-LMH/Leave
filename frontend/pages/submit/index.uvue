@@ -1,0 +1,188 @@
+<template>
+	<view class="page">
+		<view class="form-orb">
+		</view>
+		<view class="form-card">
+			<text class="form-kicker">请假申请</text>
+			<text class="page-title">填写请假信息</text>
+			<text class="form-subtitle">请如实填写相关信息，便于老师审核</text>
+			<view class="field">
+				<text class="label">请假类型</text>
+				<picker :range="leaveTypes" @change="leaveTypeChange">
+					<view class="picker-value">{{leaveType}} <text>⌄</text>
+					</view>
+				</picker>
+			</view>
+			<view class="field">
+				<text class="label">开始日期</text>
+				<picker mode="date" :value="startDate" @change="startDateChange">
+					<view class="picker-value">{{startDate}}</view>
+				</picker>
+			</view>
+			<view class="field">
+				<text class="label">结束日期</text>
+				<picker mode="date" :value="endDate" @change="endDateChange">
+					<view class="picker-value">{{endDate}}</view>
+				</picker>
+			</view>
+			<view class="field">
+				<text class="label">请假时长</text>
+				<text class="duration">{{duration}}小时</text>
+			</view>
+			<view class="field">
+				<text class="label">影响课程</text>
+				<input class="input-value" v-model="course" maxlength="255" placeholder="选填" />
+			</view>
+			<view class="field">
+				<text class="label">是否离校</text>
+				<picker :range="leaveSchools" @change="schoolChange">
+					<view class="picker-value">{{leaveSchool}} <text>⌄</text>
+					</view>
+				</picker>
+			</view>
+			<view class="field">
+				<text class="label">请假理由</text>
+				<textarea class="input-value reason-input" v-model="reason" maxlength="255" placeholder="请输入请假理由" />
+			</view>
+			<view class="field">
+				<text class="label">出行方式</text>
+				<input class="input-value" v-model="travel" maxlength="255" placeholder="选填" />
+			</view>
+			<button class="submit" @click="submit">提交</button>
+		</view>
+	</view>
+</template>
+
+<script setup lang="uts">
+import { ref, computed } from 'vue'
+const leaveTypes = ['病假', '事假']
+const leaveSchools = ['否', '是']
+const leaveType = ref('病假')
+const leaveSchool = ref('否')
+const course = ref('')
+const reason = ref('')
+const travel = ref('')
+function twoDigits(value: number): string {
+	return value < 10 ? `0${value}` : `${value}`
+}
+
+const today = new Date()
+const iso = (d: Date) => `${d.getFullYear()}-${twoDigits(d.getMonth() + 1)}-${twoDigits(d.getDate())}`
+const startDate = ref(iso(today))
+const endDate = ref(iso(today))
+const duration = computed(() => Math.max(1, Math.ceil((new Date(endDate.value).getTime() - new Date(startDate.value).getTime()) / 86400000 * 24)))
+function leaveTypeChange(e: UniPickerChangeEvent) {
+	leaveType.value = leaveTypes[e.detail.value as number]
+}
+
+function schoolChange(e: UniPickerChangeEvent) {
+	leaveSchool.value = leaveSchools[e.detail.value as number]
+}
+
+function startDateChange(e: UniPickerChangeEvent) {
+	startDate.value = e.detail.value as string
+}
+
+function endDateChange(e: UniPickerChangeEvent) {
+	endDate.value = e.detail.value as string
+}
+
+function submit() {
+	if (!reason.value.trim()) {
+		uni.showToast({
+			title: '请填写请假理由',
+			icon: 'none'
+		})
+		return
+	}
+
+	const query = `?leaveType=${encodeURIComponent(leaveType.value)}&startDate=${startDate.value}&endDate=${endDate.value}&duration=${duration.value}&course=${encodeURIComponent(course.value)}&leaveSchool=${encodeURIComponent(leaveSchool.value)}&reason=${encodeURIComponent(reason.value)}&travel=${encodeURIComponent(travel.value)}`
+	uni.navigateTo({
+		url: `/pages/leave/detail${query}`
+	})
+}
+</script>
+
+<style>
+.page {
+	flex: 1;
+	background-color: #f6f7fb;
+	padding: 38rpx 32rpx;
+	position: relative;
+}
+.form-orb {
+	position:absolute;
+	right:30rpx;
+	top:34rpx;
+	width:70rpx;
+	height:70rpx;
+	border-radius:35rpx;
+	background-color:#eaf0ff
+}
+.form-card {
+	background-color:#ffffff;
+	border-radius:28rpx;
+	padding:38rpx 30rpx 34rpx;
+	box-shadow:0 10rpx 28rpx #dfe4ee
+}
+.form-kicker {
+	color:#6074a7;
+	font-size:21rpx;
+	font-weight:700
+}
+.page-title {
+	margin-top:14rpx;
+	font-size:42rpx;
+	font-weight:700;
+	color:#2e3a50
+}
+.form-subtitle {
+	margin-top:10rpx;
+	margin-bottom:24rpx;
+	color:#8791a3;
+	font-size:24rpx
+}
+.field {
+	min-height:108rpx;
+	border-bottom:1px solid #edf0f5;
+	display:flex;
+	align-items:center
+}
+.label {
+	width:166rpx;
+	margin-right:16rpx;
+	color:#657187;
+	font-size:26rpx;
+	font-weight:600
+}
+.input-value {
+	flex:1;
+	font-size:27rpx;
+	color:#354158
+}
+.reason-input {
+	height:112rpx;
+	padding-top:22rpx
+}
+.picker-value {
+	flex:1;
+	color:#354158;
+	font-size:27rpx
+}
+.duration {
+	padding:10rpx 18rpx;
+	background-color:#edf2fb;
+	border-radius:14rpx;
+	color:#5275cf;
+	font-size:25rpx;
+	font-weight:600
+}
+.submit {
+	margin-top:38rpx;
+	background-color:#5275cf;
+	color:#fff;
+	border-radius:16rpx;
+	font-size:31rpx;
+	font-weight:700;
+}
+</style>

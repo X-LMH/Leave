@@ -1,0 +1,532 @@
+<template>
+	<PageTransition ref="pageTransition" enter-direction="forward">
+	<view class="submit-page">
+		<view class="safe-top">
+		</view>
+		<view class="top-nav">
+			<view class="back-button" @click="goHome">
+				<view class="back-chevron">
+				</view>
+			</view>
+			<text class="nav-title">发起请假</text>
+			<view class="nav-placeholder">
+			</view>
+		</view>
+		<scroll-view class="form-scroll" scroll-y="true" :show-scrollbar="false">
+			<view class="form-content">
+				<view class="hero-copy">
+					<text class="hero-title">请填写请假信息</text>
+					<text class="hero-subtitle">请如实填写，以便审批</text>
+				</view>
+				<image class="hero-illustration" src="/static/leave/apply/2.png" mode="aspectFit"></image>
+				<view class="hero-orb hero-orb-small">
+				</view>
+				<view class="hero-orb hero-orb-large">
+				</view>
+				<view class="form-card single-card">
+					<picker class="field-picker picker-row" :range="leaveTypes" @change="leaveTypeChange">
+						<view class="field-row">
+							<view class="label-wrap">
+								<text class="field-label">请假类型</text>
+								<text class="required">*</text>
+							</view>
+							<view class="picker-content">
+								<text :class="leaveType == '' ? 'field-placeholder' : 'field-value'">{{ leaveType == '' ? '请选择请假类型     ' : leaveType }}</text>
+							</view>
+						</view>
+					</picker>
+				</view>
+				<view class="form-card time-card">
+					<picker class="field-picker picker-row time-picker-row" mode="date" :value="startPickerDate" @change="startDateChange">
+						<view class="field-row time-row">
+							<view class="label-wrap">
+								<text class="field-label">开始时间</text>
+								<text class="required">*</text>
+							</view>
+							<view class="date-content">
+								<view class="time-value-wrap">
+									<text :class="startDate == '' ? 'field-placeholder' : 'field-value'">{{ startDate == '' ? '请选择开始时间     ' : startDate }}</text>
+								</view>
+							</view>
+						</view>
+					</picker>
+					<view class="time-divider">
+					</view>
+					<picker class="field-picker picker-row time-picker-row" mode="date" :value="endPickerDate" @change="endDateChange">
+						<view class="field-row time-row">
+							<view class="label-wrap">
+								<text class="field-label">结束时间</text>
+								<text class="required">*</text>
+							</view>
+							<view class="date-content">
+								<view class="time-value-wrap">
+									<text :class="endDate == '' ? 'field-placeholder' : 'field-value'">{{ endDate == '' ? '请选择结束时间     ' : endDate }}</text>
+								</view>
+							</view>
+						</view>
+					</picker>
+					<view class="time-divider">
+					</view>
+					<view class="field-row duration-row">
+						<text class="field-label">请假时长</text>
+						<view class="duration-content">
+							<text :class="hasDuration ? 'duration-value' : 'field-placeholder'">{{ hasDuration ? durationHours + ' 小时' : " " }}</text>
+						</view>
+					</view>
+				</view>
+				<view class="form-card single-card">
+					<view class="field-row">
+						<text class="field-label">影响课程</text>
+						<view class="text-field">
+							<input class="line-input" v-model="course" maxlength="255" placeholder="请输入影响课程     " placeholder-class="course-placeholder" placeholder-style="text-align:right;color:#a6b6d6" />
+						</view>
+					</view>
+				</view>
+				<view class="form-card single-card">
+					<view class="field-row">
+						<view class="label-wrap">
+							<text class="field-label">是否离校</text>
+							<text class="required">*</text>
+						</view>
+						<view class="school-segment">
+							<view :class="leaveSchool == '是' ? 'school-option school-option-active' : 'school-option'" @click="setLeaveSchool('是')">
+								<text :class="leaveSchool == '是' ? 'school-text school-text-active' : 'school-text'">是</text>
+							</view>
+							<view :class="leaveSchool == '否' ? 'school-option school-option-active' : 'school-option'" @click="setLeaveSchool('否')">
+								<text :class="leaveSchool == '否' ? 'school-text school-text-active' : 'school-text'">否</text>
+							</view>
+						</view>
+					</view>
+				</view>
+				<view class="form-card reason-card">
+					<view class="label-wrap reason-label">
+						<text class="field-label">请假理由</text>
+						<text class="required">*</text>
+					</view>
+					<view class="reason-box">
+						<textarea class="reason-input" v-model="reason" maxlength="200" placeholder="请详细说明请假原因" placeholder-class="input-placeholder" />
+						<text class="word-count">{{ reason.length }}/200</text>
+					</view>
+				</view>
+				<view class="form-card single-card travel-card">
+					<view class="field-row">
+						<text class="field-label">出行方式</text>
+						<view class="text-field">
+							<input class="line-input" v-model="travel" maxlength="255" placeholder="请输入出行方式     " placeholder-class="input-placeholder" />
+						</view>
+					</view>
+				</view>
+				<view class="submit-button" @click="submit">
+					<text class="submit-text">提交申请</text>
+				</view>
+			</view>
+		</scroll-view>
+	</view>
+	</PageTransition>
+</template>
+
+<script setup lang="uts">
+import { computed, ref } from 'vue'
+import PageTransition from '@/components/PageTransition.uvue'
+
+
+const leaveTypes = ['病假-本科生', '事假-本科生']
+const leaveType = ref('')
+const leaveSchool = ref('是')
+const course = ref('')
+const reason = ref('')
+const travel = ref('')
+const startDate = ref('')
+const endDate = ref('')
+function twoDigits(value: number): string {
+	return value < 10 ? `0${value}` : `${value}`
+}
+function formatDateTime(date: Date): string {
+	return `${date.getFullYear()}-${twoDigits(date.getMonth() + 1)}-${twoDigits(date.getDate())} ${twoDigits(date.getHours())}:${twoDigits(date.getMinutes())}:${twoDigits(date.getSeconds())}`
+}
+function randomInteger(min: number, max: number): number {
+	return Math.floor(Math.random() * (max - min + 1)) + min
+}
+function createSubmitTime(startDateTime: string): string {
+	const startTime = new Date(startDateTime.replace(' ', 'T'))
+	const submitBase = new Date(startTime.getTime() - 24 * 60 * 60 * 1000)
+	const submitDayEnd = new Date(submitBase.getFullYear(), submitBase.getMonth(), submitBase.getDate(), 23, 59, 59)
+	const maxOffsetSeconds = Math.min(2 * 60 * 60, Math.floor((submitDayEnd.getTime() - submitBase.getTime()) / 1000))
+	const submitTime = new Date(submitBase.getTime() + randomInteger(0, maxOffsetSeconds) * 1000)
+	return formatDateTime(submitTime)
+}
+function createApprovalTime(submitTimeValue: string): string {
+	const submitTime = new Date(submitTimeValue.replace(' ', 'T'))
+	const approvalTime = new Date(submitTime.getTime() + randomInteger(10 * 60, 20 * 60) * 1000)
+	return formatDateTime(approvalTime)
+}
+function withCurrentTime(dateValue: string): string {
+	const now = new Date()
+	return `${dateValue} ${twoDigits(now.getHours())}:${twoDigits(now.getMinutes())}:${twoDigits(now.getSeconds())}`
+}
+const startPickerDate = computed((): string => startDate.value == '' ? '' : startDate.value.slice(0, 10))
+const endPickerDate = computed((): string => endDate.value == '' ? '' : endDate.value.slice(0, 10))
+const durationHours = computed((): number => {
+	if (startDate.value == '' || endDate.value == '') return 0
+	const difference = new Date(endDate.value.replace(' ', 'T')).getTime() - new Date(startDate.value.replace(' ', 'T')).getTime()
+	return difference <= 0 ? 0 : Math.ceil(difference / 3600000)
+})
+const hasDuration = computed((): boolean => durationHours.value > 0)
+function leaveTypeChange(e: UniPickerChangeEvent) {
+	leaveType.value = leaveTypes[e.detail.value as number]
+}
+
+function startDateChange(e: UniPickerChangeEvent) {
+	startDate.value = withCurrentTime(e.detail.value as string)
+}
+
+function endDateChange(e: UniPickerChangeEvent) {
+	endDate.value = withCurrentTime(e.detail.value as string)
+}
+
+function setLeaveSchool(value: string) {
+	leaveSchool.value = value
+}
+
+function goHome() {
+	uni.reLaunch({ url: '/pages/home/index' })
+}
+function submit() {
+	if (!leaveType.value) {
+		uni.showToast({ title: '请选择请假类型', icon: 'none' })
+		return
+	}
+	if (!startDate.value || !endDate.value) {
+		uni.showToast({ title: '请选择请假时间', icon: 'none' })
+		return
+	}
+	if (new Date(endDate.value).getTime() < new Date(startDate.value).getTime()) {
+		uni.showToast({ title: '结束时间不能早于开始时间', icon: 'none' })
+		return
+	}
+	if (!reason.value.trim()) {
+		uni.showToast({ title: '请填写请假理由', icon: 'none' })
+		return
+	}
+	const submitTime = createSubmitTime(startDate.value)
+	const approvalTime = createApprovalTime(submitTime)
+	const application = JSON.stringify({
+		leaveType: leaveType.value,
+		startDate: startDate.value,
+		endDate: endDate.value,
+		duration: durationHours.value,
+		course: course.value,
+		leaveSchool: leaveSchool.value,
+		reason: reason.value,
+		travel: travel.value,
+		submitTime: submitTime,
+		approvalTime: approvalTime
+	})
+	const query = `?application=${encodeURIComponent(application)}`
+	uni.navigateTo({ url: `/pages/leave/detail${query}` })
+}
+</script>
+
+<style>
+.submit-page {
+	flex: 1;
+	background-color: #f5f7ff;
+	background-image: linear-gradient(180deg, #f2f5ff 0%, #f7f9ff 36%, #f3f6ff 100%);
+}
+.safe-top {
+	height:var(--status-bar-height)
+}
+.top-nav {
+	height:96rpx;
+	padding:0 44rpx;
+	flex-direction:row;
+	align-items:center;
+	justify-content:space-between
+}
+.back-button {
+	width: 64rpx;
+	height: 72rpx;
+	justify-content: center;
+	align-items: flex-start;
+}
+.back-chevron {
+	position: relative;
+	left: 8rpx;
+	width: 25rpx;
+	height: 25rpx;
+	border-left-width: 5rpx;
+	border-bottom-width: 5rpx;
+	border-left-style: solid;
+	border-bottom-style: solid;
+	border-color: #193d78;
+	transform: rotate(45deg);
+}
+.nav-title {
+	color:#193d78;
+	font-size:40rpx;
+	font-weight:700;
+	letter-spacing:2rpx
+}
+.nav-placeholder {
+	width:64rpx;
+	height:72rpx
+}
+.form-scroll {
+	flex:1
+}
+.form-content {
+	position:relative;
+	padding:28rpx 50rpx 88rpx;
+	overflow:hidden
+}
+.hero-copy {
+	height:220rpx;
+	position:relative;
+	z-index:2
+}
+.hero-title {
+	color:#153970;
+	font-size:51rpx;
+	font-weight:700;
+	letter-spacing:2rpx
+}
+.hero-subtitle {
+	margin-top:20rpx;
+	color:#8296be;
+	font-size:29rpx
+}
+.hero-illustration {
+	position:absolute;
+	z-index:1;
+	top:2rpx;
+	right:48rpx;
+	width:213rpx;
+	height:213rpx;
+	transform:rotate(-8deg)
+}
+.hero-orb {
+	position:absolute;
+	border-radius:999rpx;
+	border-width:1rpx;
+	border-color:rgba(255,255,255,.75);
+	background-color:rgba(255,255,255,.44)
+}
+.hero-orb-small {
+	top:78rpx;
+	right:242rpx;
+	width:46rpx;
+	height:46rpx;
+	box-shadow:0 8rpx 22rpx rgba(123,150,222,.18)
+}
+.hero-orb-large {
+	top:78rpx;
+	right:-86rpx;
+	width:136rpx;
+	height:136rpx;
+	background-color:rgba(255,255,255,.32)
+}
+.form-card {
+	box-sizing:border-box;
+	margin-bottom:28rpx;
+	padding:0 34rpx;
+	border-radius:30rpx;
+	background-color:rgba(255,255,255,.84);
+	box-shadow:0 16rpx 38rpx rgba(101,126,189,.08)
+}
+.single-card {
+	height:144rpx
+}
+.field-row {
+	height:100%;
+	flex-direction:row;
+	align-items:center
+}
+.label-wrap {
+	flex-direction:row;
+	align-items:center;
+	flex-shrink:0
+}
+.field-label {
+	color:#173b75;
+	font-size:30rpx;
+	font-weight:700;
+	letter-spacing:1rpx
+}
+.required {
+	margin-left:10rpx;
+	color:#ff5a5f;
+	font-size:31rpx;
+	font-weight:700
+}
+.picker-control {
+	height:144rpx;
+	flex:1;
+	margin-left:28rpx
+}
+.time-picker-control {
+	height:108rpx;
+	margin-left:28rpx
+}
+.field-picker {
+	width:100%;
+	height:100%
+}
+.picker-content {
+	flex:1;
+	height:144rpx;
+	flex-direction:row;
+	align-items:center;
+	justify-content:flex-end
+}
+.field-placeholder {
+	color:#a6b6d6;
+	font-size:29rpx
+}
+.field-value {
+	color:#58729e;
+	font-size:29rpx
+}
+.time-card {
+	height:334rpx;
+	padding-left:34rpx;
+	padding-right:34rpx
+}
+.time-row {
+	height:108rpx
+}
+.time-divider {
+	height:1rpx;
+	margin-left:226rpx;
+	background-color:#e7ecf8
+}
+.date-content {
+	flex:1;
+	height:108rpx;
+	flex-direction:row;
+	align-items:center;
+	justify-content:flex-end
+}
+.time-value-wrap {
+	margin-left:auto
+}
+.duration-row {
+	height:116rpx
+}
+.duration-content {
+	flex:1;
+	flex-direction:row;
+	align-items:center;
+	justify-content:flex-end;
+	margin-left:73rpx
+}
+.duration-value {
+	color:#7990b7;
+	font-size:29rpx
+}
+.text-field {
+	height:144rpx;
+	flex:1;
+	flex-direction:row;
+	align-items:center;
+	margin-left:48rpx
+}
+.line-input {
+	flex:1;
+	height:100%;
+	color:#58729e;
+	font-size:29rpx;
+	text-align:right
+}
+.input-placeholder {
+	color:#a6b6d6
+}
+.course-placeholder {
+	color:#a6b6d6;
+	text-align:right
+}
+.picker-row {
+	width:100%;
+	height:144rpx
+}
+.time-picker-row {
+	height:108rpx
+}
+.school-segment {
+	flex:1;
+	flex-direction:row;
+	justify-content:flex-end
+}
+.school-option {
+	width:180rpx;
+	height:100rpx;
+	margin-left:14rpx;
+	border-radius:52rpx;
+	border-width:1rpx;
+	border-color:#e7ecf7;
+	align-items:center;
+	justify-content:center
+}
+.school-option-active {
+	border-color:#e3eaff;
+	background-color:#e8eeff
+}
+.school-text {
+	color:#9daccc;
+	font-size:29rpx;
+	font-weight:600
+}
+.school-text-active {
+	color:#4d7df4
+}
+.reason-card {
+	height:314rpx;
+	padding-top:32rpx;
+	padding-bottom:30rpx
+}
+.reason-label {
+	height:41rpx
+}
+.reason-box {
+	height:199rpx;
+	margin-top:18rpx;
+	padding:19rpx 18rpx;
+	box-sizing:border-box;
+	border-radius:18rpx;
+	border-width:1rpx;
+	border-color:#e6ebf8;
+	background-color:rgba(247,249,255,.7);
+	position:relative
+}
+.reason-input {
+	width:100%;
+	height:145rpx;
+	color:#58729e;
+	font-size:29rpx;
+	line-height:42rpx
+}
+.word-count {
+	position:absolute;
+	right:20rpx;
+	bottom:16rpx;
+	color:#91a4c8;
+	font-size:23rpx
+}
+.travel-card {
+	margin-bottom:50rpx
+}
+.submit-button {
+	height:110rpx;
+	border-radius:58rpx;
+	background-color:#5681f6;
+	background-image:linear-gradient(100deg,#6c95ff 0%,#5681f6 52%,#4b77ed 100%);
+	align-items:center;
+	justify-content:center;
+	box-shadow:0 14rpx 28rpx rgba(57,100,218,.25)
+}
+.submit-text {
+	color:#ffffff;
+	font-size:39rpx;
+	font-weight:700;
+	letter-spacing:3rpx
+}
+</style>

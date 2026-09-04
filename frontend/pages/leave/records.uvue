@@ -1,0 +1,72 @@
+<template>
+	<ProfilePageShell ref="pageShell" title="请假记录" subtitle="记录你的每一次请假" :scrollable="true">
+		<view class="records-list">
+			<view v-for="(item, index) in records" :key="index" class="record-card" @click="openDetail(index)">
+				<view class="record-main">
+					<view class="kind-icon">
+						<image v-if="item.kind == '病假'" class="record-kind-image" src="/static/leave/records/bingjia-copy.svg" mode="aspectFit"></image>
+						<image v-if="item.kind == '事假'" class="record-kind-image" src="/static/leave/records/shijia.svg" mode="aspectFit"></image>
+					</view>
+					<view class="record-copy"><text class="record-title">{{ item.kind }}</text><text class="record-reason">{{ item.reason }}</text></view>
+					<view class="right-arrow"></view>
+				</view>
+				<view class="record-divider"></view>
+				<view class="time-grid">
+					<view class="time-cell"><view class="time-label-row"><view class="calendar-icon"><view class="calendar-top"></view></view><text class="time-label">开始时间</text></view><text class="time-value">{{ item.start }}</text></view>
+					<view class="time-separator"></view>
+					<view class="time-cell"><view class="time-label-row"><view class="calendar-icon"><view class="calendar-top"></view></view><text class="time-label">结束时间</text></view><text class="time-value">{{ item.end }}</text></view>
+					<view class="time-separator"></view>
+					<view class="duration-cell"><view class="time-label-row"><view class="clock-icon"><view class="clock-hand"></view></view><text class="time-label">请假时长</text></view><text class="duration-value">{{ item.durationText }}</text></view>
+				</view>
+			</view>
+			<view class="list-end"><view class="end-line"></view><text class="end-text">没有更多了</text><view class="end-line"></view></view>
+		</view>
+	</ProfilePageShell>
+</template>
+
+<script setup lang="uts">
+import ProfilePageShell from '@/components/ProfilePageShell.uvue'
+const records = [
+	{ kind: '病假', reason: '身体不适，请假休息', start: '2024-11-12 08:00', end: '2024-11-12 18:00', durationText: '10小时', duration: 10 },
+	{ kind: '事假', reason: '个人事务处理', start: '2024-10-28 09:00', end: '2024-10-28 12:00', durationText: '3小时', duration: 3 },
+	{ kind: '病假', reason: '感冒发烧，请假休息', start: '2024-09-20 08:00', end: '2024-09-20 12:00', durationText: '4小时', duration: 4 },
+	{ kind: '事假', reason: '家庭事务', start: '2024-09-05 14:00', end: '2024-09-06 18:00', durationText: '1天4小时', duration: 28 }
+]
+
+function openDetail(index: number) {
+	const item = records[index]
+	const application = JSON.stringify({
+		leaveType: `${item.kind}-本科生`, startDate: `${item.start}:00`, endDate: `${item.end}:00`, duration: item.duration,
+		course: '', leaveSchool: '否', reason: item.reason, travel: '', submitTime: `${item.start}:00`, approvalTime: `${item.start}:00`
+	})
+	uni.navigateTo({ url: `/pages/leave/detail?application=${encodeURIComponent(application)}` })
+}
+</script>
+
+<style>
+.records-list { margin-top: 46rpx; }
+.record-card { margin-bottom: 28rpx; padding: 24rpx 26rpx 22rpx; border-radius: 30rpx; background-color: rgba(255,255,255,0.88); box-shadow: 0 12rpx 32rpx rgba(82,124,194,0.11); }
+.record-main { height: 92rpx; flex-direction: row; align-items: center; }
+.kind-icon { width: 76rpx; height: 76rpx; justify-content: center; align-items: center; }
+.record-kind-image { width: 42rpx; height: 42rpx; }
+.record-copy { flex: 1; margin-left: 24rpx; }
+.record-title { color: #102f68; font-size: 31rpx; font-weight: 700; line-height: 40rpx; }
+.record-reason { margin-top: 5rpx; color: #7187b2; font-size: 23rpx; line-height: 32rpx; }
+.right-arrow { width: 18rpx; height: 18rpx; margin-right: 10rpx; border-top-width: 4rpx; border-right-width: 4rpx; border-top-style: solid; border-right-style: solid; border-color: #7d91b9; transform: rotate(45deg); }
+.record-divider { height: 1rpx; margin-top: 12rpx; background-color: rgba(112,143,202,0.18); }
+.time-grid { height: 94rpx; padding-top: 18rpx; flex-direction: row; align-items: center; }
+.time-cell { flex: 1; }
+.duration-cell { width: 164rpx; }
+.time-label-row { flex-direction: row; align-items: center; }
+.time-label { margin-left: 10rpx; color: #7187b2; font-size: 20rpx; }
+.time-value { margin-top: 9rpx; margin-left: 34rpx; color: #173568; font-size: 20rpx; }
+.duration-value { margin-top: 9rpx; margin-left: 34rpx; color: #2875f1; font-size: 23rpx; font-weight: 700; }
+.time-separator { width: 1rpx; height: 64rpx; margin: 0 14rpx; background-color: rgba(112,143,202,0.18); }
+.calendar-icon { width: 24rpx; height: 22rpx; border-width: 3rpx; border-style: solid; border-color: #7b90ba; border-radius: 4rpx; }
+.calendar-top { height: 5rpx; margin-top: 4rpx; border-top-width: 3rpx; border-top-style: solid; border-color: #7b90ba; }
+.clock-icon { position: relative; width: 24rpx; height: 24rpx; border-width: 3rpx; border-style: solid; border-color: #7b90ba; border-radius: 15rpx; }
+.clock-hand { width: 3rpx; height: 8rpx; margin-top: 4rpx; margin-left: 9rpx; background-color: #7b90ba; transform: rotate(-18deg); }
+.list-end { height: 70rpx; flex-direction: row; justify-content: center; align-items: center; }
+.end-line { width: 36rpx; height: 1rpx; background-color: #8ea2c8; }
+.end-text { margin: 0 15rpx; color: #7b90b8; font-size: 22rpx; }
+</style>

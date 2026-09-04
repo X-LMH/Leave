@@ -1,0 +1,52 @@
+<template>
+	<view class="auth-field" :class="fieldClass">
+		<view class="auth-label-row">
+			<text class="auth-label">{{ label }}</text>
+			<text v-if="required" class="auth-required">*</text>
+		</view>
+		<view class="auth-input-box">
+			<image class="auth-input-icon" :src="icon" mode="aspectFit"></image>
+			<input class="auth-input" v-model="inputValue" :password="password && !passwordVisible" :maxlength="maxlength" :placeholder="placeholder" placeholder-class="auth-placeholder" />
+			<view v-if="password" class="auth-eye-button" @click="togglePassword">
+				<view class="auth-eye-outline"></view>
+				<view v-if="!passwordVisible" class="auth-eye-slash"></view>
+			</view>
+		</view>
+	</view>
+</template>
+
+<script setup lang="uts">
+import { ref } from 'vue'
+
+defineProps<{
+	label: string
+	placeholder: string
+	icon: string
+	password: boolean
+	required: boolean
+	maxlength: number
+	fieldClass: string
+}>()
+
+const inputValue = ref('')
+const passwordVisible = ref(false)
+
+function togglePassword() {
+	passwordVisible.value = !passwordVisible.value
+}
+</script>
+
+<style>
+.auth-field { width: 100%; }
+.auth-field-spaced { margin-top: 42rpx; }
+.auth-label-row { flex-direction: row; align-items: center; }
+.auth-label { color: #123b78; font-size: 27rpx; font-weight: 700; line-height: 38rpx; }
+.auth-required { margin-left: 13rpx; color: #f04f48; font-size: 27rpx; font-weight: 700; }
+.auth-input-box { height: 92rpx; margin-top: 22rpx; padding: 0 26rpx; border-width: 1rpx; border-style: solid; border-color: #d9e2f4; border-radius: 19rpx; background-color: rgba(247, 249, 255, 0.72); flex-direction: row; align-items: center; }
+.auth-input-icon { width: 38rpx; height: 38rpx; opacity: 0.72; }
+.auth-input { flex: 1; height: 76rpx; margin-left: 24rpx; color: #405f98; font-size: 25rpx; }
+.auth-placeholder { color: #879bc4; }
+.auth-eye-button { position: relative; width: 42rpx; height: 42rpx; margin-left: 12rpx; justify-content: center; align-items: center; }
+.auth-eye-outline { width: 29rpx; height: 18rpx; border-width: 3rpx; border-style: solid; border-color: #8b9ec7; border-radius: 18rpx; }
+.auth-eye-slash { position: absolute; top: 18rpx; left: 3rpx; width: 37rpx; height: 3rpx; border-radius: 2rpx; background-color: #8b9ec7; transform: rotate(45deg); }
+</style>

@@ -1,0 +1,70 @@
+{
+	"name": "Leave",
+	"appid": "__UNI__CAC4290",
+	"description": "",
+	"versionName": "0.0.1",
+	"versionCode": "1",
+	"uni-app-x": {
+		"styleIsolationVersion": "2"
+	},
+	/* 快应用特有相关 */
+	"quickapp": {},
+	/* 小程序特有相关 */
+	"mp-weixin": {
+		"appid": "",
+		"setting": {
+			"urlCheck": false
+		},
+		"usingComponents": true
+	},
+	"mp-alipay": {
+		"usingComponents": true
+	},
+	"mp-baidu": {
+		"usingComponents": true
+	},
+	"mp-toutiao": {
+		"usingComponents": true
+	},
+	"uniStatistics": {
+		"enable": false
+	},
+	"vueVersion": "3",
+	"app": {
+		"distribute": {
+			"icons": {
+				"android": {
+					"hdpi": "",
+					"xhdpi": "",
+					"xxhdpi": "",
+					"xxxhdpi": ""
+				}
+			}
+		}
+	},
+	"app-android": {
+		"distribute": {
+			"modules": {},
+			"icons": {
+				"hdpi": "ui/avatar.png",
+				"xhdpi": "ui/avatar.png",
+				"xxhdpi": "ui/avatar.png",
+				"xxxhdpi": "ui/avatar.png"
+			},
+			"splashScreens": {
+				"default": {
+					"xhdpi": "ui/avatar.png",
+					"xxhdpi": "ui/avatar.png",
+					"xxxhdpi": "ui/avatar.png"
+				}
+			}
+		}
+	},
+	"app-ios": {
+		"distribute": {
+			"modules": {},
+			"icons": {},
+			"splashScreens": {}
+		}
+	}
+}

@@ -1,0 +1,45 @@
+# 操作系统
+.DS_Store
+Thumbs.db
+
+# 编辑器和 IDE
+.idea/
+.vscode/
+*.iml
+*.swp
+*.swo
+*.tmp
+
+# 环境变量和本地配置
+.env
+.env.*
+!.env.example
+backend/config.yaml
+backend/config.local.yaml
+
+# Go 后端
+backend/tmp/
+backend/bin/
+backend/coverage.out
+backend/*.exe
+backend/*.test
+backend/main
+
+# 前端 / uni-app
+frontend/node_modules/
+frontend/unpackage/
+frontend/dist/
+frontend/.hbuilderx/
+frontend/.vite/
+frontend/.cache/
+frontend/coverage/
+
+# 日志和运行时文件
+*.log
+*.pid
+*.seed
+*.pid.lock
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
