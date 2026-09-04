@@ -2,7 +2,6 @@ package mysql
 
 import (
 	"backend/config"
-	"backend/models"
 	"fmt"
 
 	"gorm.io/driver/mysql"
@@ -26,10 +25,6 @@ func Init() (err error) {
 	fmt.Printf("user is: %s\n", config.Cfg.Mysql.User)
 	if err != nil {
 		return fmt.Errorf("mysql open failed, err:%v", err)
-	}
-	// 建表
-	if err = db.AutoMigrate(&models.User{}, &models.Profile{}, &models.Record{}); err != nil {
-		return fmt.Errorf("mysql migrate failed, err:%v", err)
 	}
 	return nil
 }

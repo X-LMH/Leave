@@ -20,7 +20,7 @@ type ParamProfile struct {
 	ParentName  string `json:"parent_name" gorm:"not null"`
 	ParentPhone string `json:"parent_phone" gorm:"not null"`
 	Apartment   string `json:"apartment" gorm:"not null"`
-	ApartmentID int    `json:"apartment_id" gorm:"not null"`
+	ApartmentID string `json:"apartment_id" gorm:"not null"`
 	TeacherName string `json:"teacher_name" gorm:"not null"`
 }
 
