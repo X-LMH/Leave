@@ -9,6 +9,8 @@
 			</view>
 			<view class="info-row"><text class="info-label">学号</text><text class="info-value">2023123456</text></view>
 			<view class="divider"></view>
+			<view class="info-row"><text class="info-label">班级</text><text class="info-value">计24-1</text></view>
+			<view class="divider"></view>
 			<view class="info-row"><text class="info-label">姓名</text><text class="info-value">刘明慧</text></view>
 			<view class="divider"></view>
 			<view class="info-row"><text class="info-label">手机号</text><text class="info-value">138 0013 8888</text></view>

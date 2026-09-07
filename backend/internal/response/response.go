@@ -10,7 +10,7 @@ import (
 type Response struct {
 	Code    Code   `json:"code"`
 	Message string `json:"message"`
-	Data    any    `json:"data,omitempty"`
+	Data    any    `json:"data"`
 }
 
 // Success 写出固定为 200 的成功响应。

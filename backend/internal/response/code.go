@@ -14,7 +14,6 @@ const (
 	CodeInvalidPassword  Code = 1003
 	CodeNeedLogin        Code = 1004
 	CodeInvalidToken     Code = 1005
-	CodeFinishData       Code = 1006
 	CodeNotRightPassword Code = 1007
 
 	// 通用请求类错误：2000-2999
@@ -49,9 +48,8 @@ var metaByCode = map[Code]codeMeta{
 	CodeUserExist:        {message: "用户已存在", httpStatus: http.StatusConflict},
 	CodeUserNotExist:     {message: "用户名不存在，请先注册", httpStatus: http.StatusNotFound},
 	CodeInvalidPassword:  {message: "用户名或密码错误", httpStatus: http.StatusUnauthorized},
-	CodeNeedLogin:        {message: "请先登录", httpStatus: http.StatusUnauthorized},
+	CodeNeedLogin:        {message: "用户未登录", httpStatus: http.StatusUnauthorized},
 	CodeInvalidToken:     {message: "无效的Token", httpStatus: http.StatusUnauthorized},
-	CodeFinishData:       {message: "完善信息失败", httpStatus: http.StatusInternalServerError},
 	CodeNotRightPassword: {message: "密码错误", httpStatus: http.StatusBadRequest},
 	CodeRecordNotExist:   {message: "记录不存在", httpStatus: http.StatusNotFound},
 	CodeServiceFix:       {message: "服务正在维护中...", httpStatus: http.StatusServiceUnavailable},

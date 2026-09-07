@@ -5,57 +5,54 @@ import (
 	"errors"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
-func CheckExist(studentID string) (exist bool, err error) {
-	var count int64
-	if err = db.
-		Model(&models.Profile{}).
-		Where("student_id = ?", studentID).
-		Count(&count).
-		Error; err != nil {
-		return false, err
-	}
-	return count > 0, nil
-}
-
-func FinishProfile(s *models.Profile) (err error) {
-	var exist bool
-	exist, err = CheckExist(s.StudentID)
-	if err != nil {
-		return
-	}
-	if exist {
-		err = db.Model(&models.Profile{}).Where("student_id = ?", s.StudentID).Updates(s).Error
-		return
-	}
-	if err = db.Create(s).Error; err != nil {
-		return ErrorFinishProfile
-	}
-	return nil
+func FinishProfile(s *models.Profile) error {
+	return db.Clauses(clause.OnConflict{
+		Columns: []clause.Column{{Name: "student_id"}},
+		DoUpdates: clause.Assignments(map[string]any{
+			"class_id":         s.ClassID,
+			"name":             s.Name,
+			"phone":            s.Phone,
+			"gender":           s.Gender,
+			"parent_name":      s.ParentName,
+			"parent_phone":     s.ParentPhone,
+			"apartment_id":     s.ApartmentID,
+			"dormitory_number": s.DormitoryNumber,
+			"teacher_name":     s.TeacherName,
+		}),
+	}).Create(s).Error
 }
 
 func GetProfileByStuID(studentID string) (data *models.Profile, err error) {
-	// 检查用户是否存在
-	err = db.Model(&models.User{}).Where("student_id = ?", studentID).Error
-	if err != nil {
-		return nil, ErrorUserNotExist
-	}
-	exist, err := CheckExist(studentID)
-	if err != nil {
-		return nil, ErrorUserNotExist
-	}
-	if !exist {
-		return data, nil
-	}
+	data = new(models.Profile)
 	if err = db.
-		Model(&models.Profile{}).
 		Where("student_id = ?", studentID).
-		First(&data).
+		First(data).
 		Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
 		return
 	}
 	return
+}
+
+func GetClassByID(classID uint) (*models.Class, error) {
+	class := new(models.Class)
+	if err := db.Where("id = ?", classID).First(class).Error; err != nil {
+		return nil, err
+	}
+	return class, nil
+}
+
+func GetApartmentByID(apartmentID uint) (*models.Apartment, error) {
+	apartment := new(models.Apartment)
+	if err := db.Where("id = ?", apartmentID).First(apartment).Error; err != nil {
+		return nil, err
+	}
+	return apartment, nil
 }
 
 func InsertRecord(p *models.Record) (err error) {

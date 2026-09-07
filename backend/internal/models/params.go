@@ -2,17 +2,6 @@ package models
 
 import "time"
 
-type ParamProfile struct {
-	Name        string `json:"name" gorm:"not null"`
-	Phone       string `json:"phone" gorm:"not null"`
-	Gender      string `json:"gender" gorm:"not null;co"`
-	ParentName  string `json:"parent_name" gorm:"not null"`
-	ParentPhone string `json:"parent_phone" gorm:"not null"`
-	Apartment   string `json:"apartment" gorm:"not null"`
-	ApartmentID string `json:"apartment_id" gorm:"not null"`
-	TeacherName string `json:"teacher_name" gorm:"not null"`
-}
-
 type ParamPassword struct {
 	Password    string `json:"password"`
 	NewPassword string `json:"new_password"`

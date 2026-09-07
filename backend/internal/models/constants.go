@@ -10,8 +10,8 @@ const (
 
 // profiles 表。
 const (
-	GenderMale   = "男"
-	GenderFemale = "女"
+	GenderMale   = "male"
+	GenderFemale = "female"
 )
 
 // leave_types 表。
