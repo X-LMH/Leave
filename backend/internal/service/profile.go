@@ -26,13 +26,8 @@ func Profile(p *dto.ProfileRequest, studentID string) (err error) {
 }
 
 func GetProfile(studentID string) (*dto.ProfileResponse, error) {
-	profile, err := mysql.GetProfileByStuID(studentID)
+	profile, class, err := getProfileAndClass(studentID)
 	if err != nil || profile == nil {
-		return nil, err
-	}
-
-	class, err := mysql.GetClassByID(profile.ClassID)
-	if err != nil {
 		return nil, err
 	}
 
@@ -45,6 +40,18 @@ func GetProfile(studentID string) (*dto.ProfileResponse, error) {
 	}
 
 	return toProfileResponse(profile, class, apartment), nil
+}
+
+func getProfileAndClass(studentID string) (*models.Profile, *models.Class, error) {
+	profile, err := mysql.GetProfileByStuID(studentID)
+	if err != nil || profile == nil {
+		return profile, nil, err
+	}
+	class, err := mysql.GetClassByID(profile.ClassID)
+	if err != nil {
+		return nil, nil, err
+	}
+	return profile, class, nil
 }
 
 // GetClasses returns class options for profile selectors.
@@ -109,22 +116,4 @@ func toProfileResponse(profile *models.Profile, class *models.Class, apartment *
 			DormitoryNumber: profile.DormitoryNumber,
 		},
 	}
-}
-
-// CreateRecord 待请假记录接口适配新版 Record 模型后实现。
-func CreateRecord(_ string, _ *models.ParamRecord) error {
-	return mysql.ErrorSubmitRecord
-}
-
-func GetRecord(recordID int) (*models.Record, error) {
-	return mysql.GetRecordByID(recordID)
-}
-
-// GetRecordsList 待请假记录列表响应适配新版 Record 模型后实现。
-func GetRecordsList(_ string) ([]*ResRecord, error) {
-	return nil, mysql.ErrorRecordNotExist
-}
-
-func DeleteRecord(recordID int) error {
-	return mysql.DeleteRecordByID(recordID)
 }

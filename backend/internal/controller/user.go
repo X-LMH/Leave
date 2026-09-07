@@ -4,6 +4,7 @@ import (
 	"backend/internal/config"
 	"backend/internal/dao/mysql"
 	"backend/internal/dto"
+	"backend/internal/request"
 	"backend/internal/response"
 	"backend/internal/service"
 	"errors"
@@ -97,7 +98,7 @@ func ChangePasswordHandler(c *gin.Context) {
 	}
 
 	// 业务处理
-	studentID, err := GetCurrentStuID(c)
+	studentID, err := request.GetCurrentStuID(c)
 	if err != nil {
 		response.Error(c, response.CodeNeedLogin)
 		return

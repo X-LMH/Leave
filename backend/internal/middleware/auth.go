@@ -1,8 +1,8 @@
 package middleware
 
 import (
-	"backend/internal/controller"
 	"backend/internal/dao/mysql"
+	"backend/internal/request"
 	"backend/internal/response"
 	"backend/internal/utils/jwt"
 	"strings"
@@ -46,7 +46,7 @@ func JWTAuthMiddleware() gin.HandlerFunc {
 		}
 
 		// 令牌验证通过，将用户信息存入上下文
-		c.Set(controller.CtxStuID, claims.StudentID) // 存储用户名，供后续处理函数使用
+		c.Set(request.CtxStuID, claims.StudentID) // 存储用户名，供后续处理函数使用
 
 		// 继续执行后续的处理函数（如业务逻辑）
 		c.Next()

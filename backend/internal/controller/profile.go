@@ -1,15 +1,13 @@
 package controller
 
 import (
-	"backend/internal/dao/mysql"
 	"backend/internal/dto"
 	"backend/internal/models"
+	"backend/internal/request"
 	"backend/internal/response"
 	"backend/internal/service"
 	"backend/internal/utils/validator"
 	"errors"
-	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -29,7 +27,7 @@ func ProfileHandler(c *gin.Context) {
 	}
 
 	// 业务处理
-	studentID, err := GetCurrentStuID(c)
+	studentID, err := request.GetCurrentStuID(c)
 	if err != nil {
 		response.Error(c, response.CodeNeedLogin)
 		return
@@ -43,7 +41,7 @@ func ProfileHandler(c *gin.Context) {
 }
 
 func GetProfileHandler(c *gin.Context) {
-	studentID, err := GetCurrentStuID(c)
+	studentID, err := request.GetCurrentStuID(c)
 	if err != nil {
 		response.Error(c, response.CodeNeedLogin)
 		return
@@ -97,95 +95,4 @@ func validateAndNormalizeProfile(p *dto.ProfileRequest) bool {
 		return false
 	}
 	return validator.IsMainlandMobile(p.Phone) && validator.IsMainlandMobile(p.ParentPhone)
-}
-
-// CreateRecordHandler 记录用户行为
-func CreateRecordHandler(c *gin.Context) {
-	p := new(models.ParamRecord)
-
-	if err := c.ShouldBindJSON(p); err != nil {
-		fmt.Println(p)
-		response.Error(c, response.CodeInvalidParam)
-		return
-	}
-
-	studentID, err := GetCurrentStuID(c)
-	if err != nil {
-		response.Error(c, response.CodeNeedLogin)
-		return
-	}
-
-	err = service.CreateRecord(studentID, p)
-	if err != nil {
-		switch {
-		case errors.Is(err, mysql.ErrorUserNotExist):
-			response.Error(c, response.CodeNeedLogin)
-			return
-		default:
-			response.Error(c, response.CodeServerBusy)
-			return
-		}
-	}
-	response.Success(c, nil)
-}
-
-func GetRecordHandler(c *gin.Context) {
-	req := c.Param("id")
-	recordID, err := strconv.Atoi(req)
-	if err != nil {
-		fmt.Println(req)
-		response.Error(c, response.CodeInvalidParam)
-		return
-	}
-
-	record, err := service.GetRecord(recordID)
-	if err != nil {
-		switch {
-		case errors.Is(err, mysql.ErrorRecordNotExist):
-			response.Error(c, response.CodeRecordNotExist)
-			return
-		default:
-			response.Error(c, response.CodeServerBusy)
-			return
-		}
-	}
-
-	response.Success(c, record)
-}
-
-func GetRecordsLIstHandler(c *gin.Context) {
-	studentID, err := GetCurrentStuID(c)
-	if err != nil {
-		response.Error(c, response.CodeNeedLogin)
-		return
-	}
-
-	res, err := service.GetRecordsList(studentID)
-	if err != nil {
-		response.Error(c, response.CodeServerBusy)
-		return
-	}
-	response.Success(c, res)
-}
-
-func DeleteRecordHandler(c *gin.Context) {
-	req := c.Param("id")
-	recordID, err := strconv.Atoi(req)
-	if err != nil {
-		response.Error(c, response.CodeInvalidParam)
-		return
-	}
-
-	err = service.DeleteRecord(recordID)
-	if err != nil {
-		switch {
-		case errors.Is(err, mysql.ErrorRecordNotExist):
-			response.Error(c, response.CodeRecordNotExist)
-			return
-		default:
-			response.Error(c, response.CodeServerBusy)
-			return
-		}
-	}
-	response.Success(c, nil)
 }

@@ -10,6 +10,10 @@ type Record struct {
 	StudentID      string         `gorm:"column:student_id"`
 	Name           string         `gorm:"column:name"`
 	LeaveTypeID    uint           `gorm:"column:leave_type_id"`
+	LeaveTypeName  string         `gorm:"column:leave_type_name"`
+	College        string         `gorm:"column:college"`
+	Major          string         `gorm:"column:major"`
+	ClassName      string         `gorm:"column:class_name"`
 	StartTime      time.Time      `gorm:"column:start_time"`
 	EndTime        time.Time      `gorm:"column:end_time"`
 	Duration       uint           `gorm:"column:duration"`

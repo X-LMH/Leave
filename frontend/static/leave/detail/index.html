@@ -12547,25 +12547,6 @@ if (hasSubmittedApplication) {
   pageData.approvalTime = applicationValue('approvalTime', '-');
 }
 
-function formatDateTime(date) {
-  const pad = function (number) { return String(number).padStart(2, '0'); };
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
-}
-
-function createDefaultLeaveTimes() {
-  const approval = new Date();
-  const start = new Date(approval.getTime() - 60 * 60 * 1000);
-  const end = new Date(start.getTime());
-  pageData.startTime = formatDateTime(start);
-  pageData.endTime = formatDateTime(end);
-  pageData.duration = '0';
-  pageData.durationText = '0小时';
-  pageData.submitTime = formatDateTime(start);
-  pageData.approvalTime = formatDateTime(approval);
-}
-
-if (!hasSubmittedApplication) createDefaultLeaveTimes();
-
 document.querySelectorAll('[data-field]').forEach(function (node) {
   const key = node.getAttribute('data-field');
   if (key && Object.prototype.hasOwnProperty.call(pageData, key)) {

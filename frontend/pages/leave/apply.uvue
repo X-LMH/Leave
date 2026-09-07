@@ -139,14 +139,10 @@ const travel = ref('')
 const startDate = ref('')
 const endDate = ref('')
 class ApplicationTimes {
-	startDate: string = ''
-	endDate: string = ''
 	submitTime: string = ''
 	approvalTime: string = ''
 
-	constructor(startDate: string, endDate: string, submitTime: string, approvalTime: string) {
-		this.startDate = startDate
-		this.endDate = endDate
+	constructor(submitTime: string, approvalTime: string) {
 		this.submitTime = submitTime
 		this.approvalTime = approvalTime
 	}
@@ -154,21 +150,23 @@ class ApplicationTimes {
 function twoDigits(value: number): string {
 	return value < 10 ? `0${value}` : `${value}`
 }
+function randomInteger(min: number, max: number): number {
+	return Math.floor(Math.random() * (max - min + 1)) + min
+}
 function formatTime(date: Date): string {
 	return `${twoDigits(date.getHours())}:${twoDigits(date.getMinutes())}:${twoDigits(date.getSeconds())}`
 }
 function withTime(dateValue: string, time: Date): string {
 	return `${dateValue} ${formatTime(time)}`
 }
+const advanceMilliseconds = randomInteger(60 * 60, 2 * 60 * 60) * 1000
 function createApplicationTimes(startDateValue: string, endDateValue: string): ApplicationTimes {
 	const approvalTime = new Date()
-	const oneHourEarlier = new Date(approvalTime.getTime() - 60 * 60 * 1000)
+	const earlierTime = new Date(approvalTime.getTime() - advanceMilliseconds)
 	const startDay = startDateValue.slice(0, 10)
 	const endDay = endDateValue.slice(0, 10)
 	return new ApplicationTimes(
-		withTime(startDay, oneHourEarlier),
-		withTime(endDay, oneHourEarlier),
-		withTime(startDay, oneHourEarlier),
+		withTime(startDay, earlierTime),
 		withTime(endDay, approvalTime)
 	)
 }
@@ -185,13 +183,13 @@ function leaveTypeChange(e: UniPickerChangeEvent) {
 }
 
 function startDateChange(e: UniPickerChangeEvent) {
-	const oneHourEarlier = new Date(Date.now() - 60 * 60 * 1000)
-	startDate.value = withTime(e.detail.value as string, oneHourEarlier)
+	const earlierTime = new Date(Date.now() - advanceMilliseconds)
+	startDate.value = withTime(e.detail.value as string, earlierTime)
 }
 
 function endDateChange(e: UniPickerChangeEvent) {
-	const oneHourEarlier = new Date(Date.now() - 60 * 60 * 1000)
-	endDate.value = withTime(e.detail.value as string, oneHourEarlier)
+	const earlierTime = new Date(Date.now() - advanceMilliseconds)
+	endDate.value = withTime(e.detail.value as string, earlierTime)
 }
 
 function setLeaveSchool(value: string) {
@@ -219,8 +217,6 @@ function submit() {
 		return
 	}
 	const applicationTimes = createApplicationTimes(startDate.value, endDate.value)
-	startDate.value = applicationTimes.startDate
-	endDate.value = applicationTimes.endDate
 	const application = JSON.stringify({
 		leaveType: leaveType.value,
 		startDate: startDate.value,
