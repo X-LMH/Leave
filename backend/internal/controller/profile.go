@@ -99,8 +99,8 @@ func validateAndNormalizeProfile(p *dto.ProfileRequest) bool {
 	return validator.IsMainlandMobile(p.Phone) && validator.IsMainlandMobile(p.ParentPhone)
 }
 
-// RecordHandler 记录用户行为
-func RecordHandler(c *gin.Context) {
+// CreateRecordHandler 记录用户行为
+func CreateRecordHandler(c *gin.Context) {
 	p := new(models.ParamRecord)
 
 	if err := c.ShouldBindJSON(p); err != nil {

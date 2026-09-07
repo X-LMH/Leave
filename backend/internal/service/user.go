@@ -50,6 +50,6 @@ func Login(req *dto.LoginRequest) (*dto.LoginResponse, error) {
 	return &dto.LoginResponse{Token: token, Name: name}, nil
 }
 
-func ChangePassword(p *models.ParamPassword, studentID string) error {
+func ChangePassword(p *dto.PasswordChangeRequest, studentID string) error {
 	return mysql.ChangePassword(p, studentID)
 }

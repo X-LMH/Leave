@@ -12547,34 +12547,24 @@ if (hasSubmittedApplication) {
   pageData.approvalTime = applicationValue('approvalTime', '-');
 }
 
-function randomInt(min, max) {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
-}
-
 function formatDateTime(date) {
   const pad = function (number) { return String(number).padStart(2, '0'); };
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
 }
 
 function createDefaultLeaveTimes() {
-  const start = new Date(Date.now() - 4 * 60 * 60 * 1000);
-  const end = new Date(start.getTime() + 24 * 60 * 60 * 1000 + randomInt(10, 20) * 1000);
+  const approval = new Date();
+  const start = new Date(approval.getTime() - 60 * 60 * 1000);
+  const end = new Date(start.getTime());
   pageData.startTime = formatDateTime(start);
   pageData.endTime = formatDateTime(end);
-}
-
-function randomApprovalTime(startTime, minMinutes, maxMinutes) {
-  const date = new Date(startTime.replace(' ', 'T'));
-  date.setMinutes(date.getMinutes() + randomInt(minMinutes, maxMinutes));
-  date.setSeconds(date.getSeconds() + randomInt(0, 59));
-  return formatDateTime(date);
+  pageData.duration = '0';
+  pageData.durationText = '0小时';
+  pageData.submitTime = formatDateTime(start);
+  pageData.approvalTime = formatDateTime(approval);
 }
 
 if (!hasSubmittedApplication) createDefaultLeaveTimes();
-if (!hasSubmittedApplication) {
-  pageData.submitTime = randomApprovalTime(pageData.startTime, 1, 2);
-  pageData.approvalTime = randomApprovalTime(pageData.startTime, 5, 10);
-}
 
 document.querySelectorAll('[data-field]').forEach(function (node) {
   const key = node.getAttribute('data-field');

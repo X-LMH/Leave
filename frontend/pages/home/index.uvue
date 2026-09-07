@@ -7,7 +7,7 @@
 					<view class="welcome-copy">
 						<view class="greeting-row">
 							<text class="greeting">下午好，</text>
-							<text class="greeting-name">张三</text>
+							<text class="greeting-name">{{ userName == '' ? '同学' : userName }}</text>
 							<text class="greeting-wave"> 👋</text>
 						</view>
 						<text class="greeting-subtitle">今天也要好好照顾自己哦</text>
@@ -57,8 +57,10 @@
 import BottomNavigation from '@/components/BottomNavigation.uvue'
 import PageTransition from '@/components/PageTransition.uvue'
 import { ref } from 'vue'
+import { getProfile, getStoredName } from '@/utils/api.uts'
 
 const isLeavePressed = ref(false)
+const userName = ref(getStoredName())
 
 function handleLeavePress() {
 	isLeavePressed.value = true
@@ -76,6 +78,19 @@ function handleCreateLeave() {
 function handleTabNavigation(url: string) {
 	uni.reLaunch({ url: url })
 }
+
+async function loadProfileName() {
+	try {
+		const profile = await getProfile()
+		if (profile != null) userName.value = profile.name
+	} catch (_) {
+		// 首页仍可在资料接口暂不可用时使用本地会话名称显示。
+	}
+}
+
+onShow(() => {
+	loadProfileName()
+})
 </script>
 
 <style>

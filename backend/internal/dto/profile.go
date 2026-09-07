@@ -35,6 +35,8 @@ type ProfileResponse struct {
 	ParentName    string               `json:"parent_name"`
 	ParentPhone   string               `json:"parent_phone"`
 	TeacherName   string               `json:"teacher_name"`
+	ClassID       uint                 `json:"class_id"`
+	ApartmentID   uint                 `json:"apartment_id"`
 	ClassInfo     ProfileClassInfo     `json:"class_info"`
 	ApartmentInfo ProfileApartmentInfo `json:"apartment_info"`
 }

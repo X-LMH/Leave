@@ -1,15 +1,57 @@
 <template>
-	<AuthPageShell ref="pageShell" enter-direction="forward" title="注册" subtitle="创建账号后即可使用请假申请系统" button-text="注册" switch-prefix="已有账号?" switch-text="立即登录" card-class="auth-register-card" @switch-page="goLogin">
-		<AuthInputField label="学号" placeholder="请输入学号" icon="/static/auth/icons/denglu.svg" :password="false" :required="true" :maxlength="30" field-class="" />
-		<AuthInputField label="密码" placeholder="请输入密码" icon="/static/auth/icons/mima.svg" :password="true" :required="true" :maxlength="30" field-class="auth-field-spaced" />
-		<AuthInputField label="确认密码" placeholder="请再次输入密码" icon="/static/auth/icons/mima.svg" :password="true" :required="true" :maxlength="30" field-class="auth-field-spaced" />
+	<AuthPageShell ref="pageShell" enter-direction="forward" title="注册" subtitle="创建账号后即可使用请假申请系统" button-text="注册" switch-prefix="已有账号?" switch-text="立即登录" card-class="auth-register-card" @submit="submit" @switch-page="goLogin">
+		<AuthInputField v-model="studentID" label="学号" placeholder="请输入学号" icon="/static/auth/icons/denglu.svg" :password="false" :required="true" :maxlength="12" field-class="" />
+		<AuthInputField v-model="password" label="密码" placeholder="请输入密码" icon="/static/auth/icons/mima.svg" :password="true" :required="true" :maxlength="30" field-class="auth-field-spaced" />
+		<AuthInputField v-model="rePassword" label="确认密码" placeholder="请再次输入密码" icon="/static/auth/icons/mima.svg" :password="true" :required="true" :maxlength="30" field-class="auth-field-spaced" />
 	</AuthPageShell>
 </template>
 
 <script setup lang="uts">
 import AuthPageShell from '@/components/AuthPageShell.uvue'
 import AuthInputField from '@/components/AuthInputField.uvue'
+import { ref } from 'vue'
+import { register } from '@/utils/api.uts'
+
+const studentID = ref('')
+const password = ref('')
+const rePassword = ref('')
+const submitting = ref(false)
+
 function goLogin() {
 	uni.navigateBack({})
+}
+
+function validStudentID(value: string): boolean {
+	return /^\d{12}$/.test(value.trim())
+}
+
+async function submit() {
+	if (submitting.value) return
+	if (!validStudentID(studentID.value)) {
+		uni.showToast({ title: '请输入 12 位学号', icon: 'none' })
+		return
+	}
+	if (password.value.length < 6 || password.value.length > 30) {
+		uni.showToast({ title: '密码长度应为 6 至 30 位', icon: 'none' })
+		return
+	}
+	if (password.value != rePassword.value) {
+		uni.showToast({ title: '两次输入的密码不一致', icon: 'none' })
+		return
+	}
+
+	submitting.value = true
+	try {
+		await register(studentID.value.trim(), password.value, rePassword.value)
+		uni.showToast({ title: '注册成功，请登录', icon: 'success' })
+		setTimeout(() => {
+			uni.navigateBack({})
+		}, 1200)
+	} catch (error) {
+		const message = (error as Error).message
+		uni.showToast({ title: message == null || message == '' ? '注册失败' : message, icon: 'none' })
+	} finally {
+		submitting.value = false
+	}
 }
 </script>

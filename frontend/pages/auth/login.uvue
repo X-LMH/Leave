@@ -1,7 +1,7 @@
 <template>
 	<AuthPageShell ref="pageShell" enter-direction="forward" title="登录" subtitle="欢迎使用请假申请系统" button-text="登录" switch-prefix="还没有账号?" switch-text="立即注册" card-class="auth-login-card" @submit="login" @switch-page="goRegister">
-		<AuthInputField label="学号" placeholder="请输入学号" icon="/static/auth/icons/denglu.svg" :password="false" :required="true" :maxlength="30" field-class="" />
-		<AuthInputField label="密码" placeholder="请输入密码" icon="/static/auth/icons/mima.svg" :password="true" :required="true" :maxlength="30" field-class="auth-field-spaced" />
+		<AuthInputField v-model="studentID" label="学号" placeholder="请输入学号" icon="/static/auth/icons/denglu.svg" :password="false" :required="true" :maxlength="12" field-class="" />
+		<AuthInputField v-model="password" label="密码" placeholder="请输入密码" icon="/static/auth/icons/mima.svg" :password="true" :required="true" :maxlength="30" field-class="auth-field-spaced" />
 		<template #card-footer>
 			<view class="register-link" @click="goRegister">
 				<text class="register-link-text">去注册</text>
@@ -14,12 +14,48 @@
 <script setup lang="uts">
 import AuthPageShell from '@/components/AuthPageShell.uvue'
 import AuthInputField from '@/components/AuthInputField.uvue'
+import { ref } from 'vue'
+import { getProfile, login as loginRequest, saveSession } from '@/utils/api.uts'
+
+const studentID = ref('202410201016')
+const password = ref('123123')
+const submitting = ref(false)
+
 function goRegister() {
 	uni.navigateTo({ url: '/pages/auth/register' })
 }
 
-function login() {
-	uni.reLaunch({ url: '/pages/home/index' })
+function validStudentID(value: string): boolean {
+	return /^\d{12}$/.test(value.trim())
+}
+
+async function login() {
+	if (submitting.value) return
+	if (!validStudentID(studentID.value)) {
+		uni.showToast({ title: '请输入 12 位学号', icon: 'none' })
+		return
+	}
+	if (password.value.length == 0) {
+		uni.showToast({ title: '请输入密码', icon: 'none' })
+		return
+	}
+
+	submitting.value = true
+	try {
+		const data = await loginRequest(studentID.value.trim(), password.value)
+		saveSession(studentID.value.trim(), data)
+		const profile = await getProfile()
+		if (profile == null) {
+			uni.reLaunch({ url: '/pages/profile/edit?first=1' })
+			return
+		}
+		uni.reLaunch({ url: '/pages/home/index' })
+	} catch (error) {
+		const message = (error as Error).message
+		uni.showToast({ title: message == null || message == '' ? '登录失败' : message, icon: 'none' })
+	} finally {
+		submitting.value = false
+	}
 }
 </script>
 

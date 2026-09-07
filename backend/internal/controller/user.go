@@ -4,7 +4,6 @@ import (
 	"backend/internal/config"
 	"backend/internal/dao/mysql"
 	"backend/internal/dto"
-	"backend/internal/models"
 	"backend/internal/response"
 	"backend/internal/service"
 	"errors"
@@ -78,10 +77,16 @@ func LoginHandler(c *gin.Context) {
 	response.Success(c, data)
 }
 
+// LogoutHandler 退出登录。
+// 当前使用无状态 JWT，客户端在收到成功响应后清除本地 Token。
+func LogoutHandler(c *gin.Context) {
+	response.Success(c, nil)
+}
+
 // ChangePasswordHandler 修改密码
 func ChangePasswordHandler(c *gin.Context) {
 	// 参数校验
-	p := new(models.ParamPassword)
+	p := new(dto.PasswordChangeRequest)
 	if err := c.ShouldBindJSON(p); err != nil {
 		response.Error(c, response.CodeInvalidParam)
 		return

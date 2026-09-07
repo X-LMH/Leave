@@ -1,6 +1,7 @@
 package mysql
 
 import (
+	"backend/internal/dto"
 	"backend/internal/models"
 	"errors"
 	"time"
@@ -50,7 +51,7 @@ func FindUserByStudentID(studentID string) (*models.User, error) {
 	return user, nil
 }
 
-func ChangePassword(p *models.ParamPassword, studentID string) (err error) {
+func ChangePassword(p *dto.PasswordChangeRequest, studentID string) (err error) {
 	var student = new(models.User)
 	// 查询用户
 	if err = db.Where("student_id = ?", studentID).First(&student).Error; err != nil {

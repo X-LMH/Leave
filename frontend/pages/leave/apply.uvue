@@ -138,31 +138,39 @@ const reason = ref('')
 const travel = ref('')
 const startDate = ref('')
 const endDate = ref('')
+class ApplicationTimes {
+	startDate: string = ''
+	endDate: string = ''
+	submitTime: string = ''
+	approvalTime: string = ''
+
+	constructor(startDate: string, endDate: string, submitTime: string, approvalTime: string) {
+		this.startDate = startDate
+		this.endDate = endDate
+		this.submitTime = submitTime
+		this.approvalTime = approvalTime
+	}
+}
 function twoDigits(value: number): string {
 	return value < 10 ? `0${value}` : `${value}`
 }
-function formatDateTime(date: Date): string {
-	return `${date.getFullYear()}-${twoDigits(date.getMonth() + 1)}-${twoDigits(date.getDate())} ${twoDigits(date.getHours())}:${twoDigits(date.getMinutes())}:${twoDigits(date.getSeconds())}`
+function formatTime(date: Date): string {
+	return `${twoDigits(date.getHours())}:${twoDigits(date.getMinutes())}:${twoDigits(date.getSeconds())}`
 }
-function randomInteger(min: number, max: number): number {
-	return Math.floor(Math.random() * (max - min + 1)) + min
+function withTime(dateValue: string, time: Date): string {
+	return `${dateValue} ${formatTime(time)}`
 }
-function createSubmitTime(startDateTime: string): string {
-	const startTime = new Date(startDateTime.replace(' ', 'T'))
-	const submitBase = new Date(startTime.getTime() - 24 * 60 * 60 * 1000)
-	const submitDayEnd = new Date(submitBase.getFullYear(), submitBase.getMonth(), submitBase.getDate(), 23, 59, 59)
-	const maxOffsetSeconds = Math.min(2 * 60 * 60, Math.floor((submitDayEnd.getTime() - submitBase.getTime()) / 1000))
-	const submitTime = new Date(submitBase.getTime() + randomInteger(0, maxOffsetSeconds) * 1000)
-	return formatDateTime(submitTime)
-}
-function createApprovalTime(submitTimeValue: string): string {
-	const submitTime = new Date(submitTimeValue.replace(' ', 'T'))
-	const approvalTime = new Date(submitTime.getTime() + randomInteger(10 * 60, 20 * 60) * 1000)
-	return formatDateTime(approvalTime)
-}
-function withCurrentTime(dateValue: string): string {
-	const now = new Date()
-	return `${dateValue} ${twoDigits(now.getHours())}:${twoDigits(now.getMinutes())}:${twoDigits(now.getSeconds())}`
+function createApplicationTimes(startDateValue: string, endDateValue: string): ApplicationTimes {
+	const approvalTime = new Date()
+	const oneHourEarlier = new Date(approvalTime.getTime() - 60 * 60 * 1000)
+	const startDay = startDateValue.slice(0, 10)
+	const endDay = endDateValue.slice(0, 10)
+	return new ApplicationTimes(
+		withTime(startDay, oneHourEarlier),
+		withTime(endDay, oneHourEarlier),
+		withTime(startDay, oneHourEarlier),
+		withTime(endDay, approvalTime)
+	)
 }
 const startPickerDate = computed((): string => startDate.value == '' ? '' : startDate.value.slice(0, 10))
 const endPickerDate = computed((): string => endDate.value == '' ? '' : endDate.value.slice(0, 10))
@@ -177,11 +185,13 @@ function leaveTypeChange(e: UniPickerChangeEvent) {
 }
 
 function startDateChange(e: UniPickerChangeEvent) {
-	startDate.value = withCurrentTime(e.detail.value as string)
+	const oneHourEarlier = new Date(Date.now() - 60 * 60 * 1000)
+	startDate.value = withTime(e.detail.value as string, oneHourEarlier)
 }
 
 function endDateChange(e: UniPickerChangeEvent) {
-	endDate.value = withCurrentTime(e.detail.value as string)
+	const oneHourEarlier = new Date(Date.now() - 60 * 60 * 1000)
+	endDate.value = withTime(e.detail.value as string, oneHourEarlier)
 }
 
 function setLeaveSchool(value: string) {
@@ -192,24 +202,25 @@ function goHome() {
 	uni.reLaunch({ url: '/pages/home/index' })
 }
 function submit() {
-	if (!leaveType.value) {
+	if (leaveType.value == '') {
 		uni.showToast({ title: '请选择请假类型', icon: 'none' })
 		return
 	}
-	if (!startDate.value || !endDate.value) {
+	if (startDate.value == '' || endDate.value == '') {
 		uni.showToast({ title: '请选择请假时间', icon: 'none' })
 		return
 	}
-	if (new Date(endDate.value).getTime() < new Date(startDate.value).getTime()) {
+	if (new Date(endDate.value.replace(' ', 'T')).getTime() < new Date(startDate.value.replace(' ', 'T')).getTime()) {
 		uni.showToast({ title: '结束时间不能早于开始时间', icon: 'none' })
 		return
 	}
-	if (!reason.value.trim()) {
+	if (reason.value.trim() == '') {
 		uni.showToast({ title: '请填写请假理由', icon: 'none' })
 		return
 	}
-	const submitTime = createSubmitTime(startDate.value)
-	const approvalTime = createApprovalTime(submitTime)
+	const applicationTimes = createApplicationTimes(startDate.value, endDate.value)
+	startDate.value = applicationTimes.startDate
+	endDate.value = applicationTimes.endDate
 	const application = JSON.stringify({
 		leaveType: leaveType.value,
 		startDate: startDate.value,
@@ -219,8 +230,8 @@ function submit() {
 		leaveSchool: leaveSchool.value,
 		reason: reason.value,
 		travel: travel.value,
-		submitTime: submitTime,
-		approvalTime: approvalTime
+		submitTime: applicationTimes.submitTime,
+		approvalTime: applicationTimes.approvalTime
 	})
 	const query = `?application=${encodeURIComponent(application)}`
 	uni.navigateTo({ url: `/pages/leave/detail${query}` })

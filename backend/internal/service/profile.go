@@ -97,6 +97,8 @@ func toProfileResponse(profile *models.Profile, class *models.Class, apartment *
 		ParentName:  profile.ParentName,
 		ParentPhone: profile.ParentPhone,
 		TeacherName: profile.TeacherName,
+		ClassID:     profile.ClassID,
+		ApartmentID: profile.ApartmentID,
 		ClassInfo: dto.ProfileClassInfo{
 			College:   class.College,
 			Major:     class.Major,

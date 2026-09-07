@@ -6,7 +6,7 @@
 		</view>
 		<view class="auth-input-box">
 			<image class="auth-input-icon" :src="icon" mode="aspectFit"></image>
-			<input class="auth-input" v-model="inputValue" :password="password && !passwordVisible" :maxlength="maxlength" :placeholder="placeholder" placeholder-class="auth-placeholder" />
+			<input class="auth-input" :value="modelValue" @input="updateValue" :password="password && !passwordVisible" :maxlength="maxlength" :placeholder="placeholder" placeholder-class="auth-placeholder" />
 			<view v-if="password" class="auth-eye-button" @click="togglePassword">
 				<view class="auth-eye-outline"></view>
 				<view v-if="!passwordVisible" class="auth-eye-slash"></view>
@@ -26,10 +26,15 @@ defineProps<{
 	required: boolean
 	maxlength: number
 	fieldClass: string
+	modelValue: string
 }>()
 
-const inputValue = ref('')
 const passwordVisible = ref(false)
+const emit = defineEmits(['update:modelValue'])
+
+function updateValue(event: UniInputEvent) {
+	emit('update:modelValue', event.detail.value)
+}
 
 function togglePassword() {
 	passwordVisible.value = !passwordVisible.value

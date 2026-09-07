@@ -1,0 +1,233 @@
+export const API_BASE_URL = 'http://192.168.0.86:8080/api/v1'
+
+export const STORAGE_TOKEN_KEY = 'leave_token'
+export const STORAGE_STUDENT_ID_KEY = 'leave_student_id'
+export const STORAGE_NAME_KEY = 'leave_name'
+
+export type ApiResponse<T> = {
+	code: number
+	message: string
+	data: T
+}
+
+export class LoginData {
+	token: string = ''
+	name: string = ''
+}
+
+export type ProfileClassInfo = {
+	college: string
+	major: string
+	class_name: string
+}
+
+export type ProfileApartmentInfo = {
+	apartment_name: string
+	dormitory_number: string
+}
+
+export type ProfileData = {
+	student_id: string
+	name: string
+	phone: string
+	gender: string
+	parent_name: string
+	parent_phone: string
+	teacher_name: string
+	class_id: number
+	apartment_id: number
+	class_info: ProfileClassInfo
+	apartment_info: ProfileApartmentInfo
+}
+
+export type ClassOption = {
+	id: number
+	college: string
+	major: string
+	class_name: string
+}
+
+export type ApartmentOption = {
+	id: number
+	name: string
+	gender: string
+}
+
+export type ProfilePayload = {
+	name: string
+	phone: string
+	gender: string
+	parent_name: string
+	parent_phone: string
+	class_id: number
+	apartment_id: number
+	dormitory_number: string
+	teacher_name: string
+}
+
+function clearSession() {
+	uni.removeStorageSync(STORAGE_TOKEN_KEY)
+	uni.removeStorageSync(STORAGE_STUDENT_ID_KEY)
+	uni.removeStorageSync(STORAGE_NAME_KEY)
+}
+
+export function getStoredName(): string {
+	const storedName = uni.getStorageSync(STORAGE_NAME_KEY)
+	return typeof storedName == 'string' ? storedName : ''
+}
+
+export function saveSession(studentID: string, data: LoginData) {
+	uni.setStorageSync(STORAGE_TOKEN_KEY, data.token)
+	uni.setStorageSync(STORAGE_STUDENT_ID_KEY, studentID)
+	uni.setStorageSync(STORAGE_NAME_KEY, data.name)
+}
+
+export function logout() {
+	clearSession()
+}
+
+export function logoutRequest(): Promise<void> {
+	return request<void>('/logout', 'POST', null, true)
+}
+
+export function changePassword(password: string, newPassword: string, rePassword: string): Promise<void> {
+	return request<void>('/password', 'POST', {
+		password: password,
+		new_password: newPassword,
+		re_password: rePassword
+	}, true)
+}
+
+function handleUnauthorized() {
+	clearSession()
+	uni.reLaunch({ url: '/pages/auth/login' })
+}
+
+export function request<T>(path: string, method: 'GET' | 'POST' = 'GET', data: object | null = null, requiresAuth: boolean = false): Promise<T> {
+	return new Promise((resolve, reject) => {
+		const header = { 'Content-Type': 'application/json' } as UTSJSONObject
+		if (requiresAuth) {
+			const storedToken = uni.getStorageSync(STORAGE_TOKEN_KEY)
+			const token = typeof storedToken == 'string' ? storedToken : ''
+			if (token == '') {
+				handleUnauthorized()
+				reject(new Error('请先登录'))
+				return
+			}
+			header['Authorization'] = 'Bearer ' + token
+		}
+
+		// uni.request 无法读取外层 request<T> 的动态泛型信息。
+		// 使用 ApiResponse<T> 会使原生 JSONObject 在运行时被强转为 T 而失败。
+		uni.request<UTSJSONObject>({
+			url: API_BASE_URL + path,
+			method: method,
+			data: data,
+			header: header,
+			success: (response) => {
+				const body = response.data
+				if (body == null) {
+					reject(new Error('服务器未返回有效数据'))
+					return
+				}
+				const code = body['code'] as number
+				const message = body['message'] as string
+				if (code == 0) {
+					resolve(body['data'] as T)
+					return
+				}
+				if (code == 1004 || code == 1005) {
+					handleUnauthorized()
+				}
+				reject(new Error(message == '' ? '请求失败' : message))
+			},
+			fail: (error) => {
+				const detail = error.errMsg
+				reject(new Error(detail == null || detail == '' ? '网络连接失败，请检查后端服务和局域网连接' : detail))
+			}
+		})
+	})
+}
+
+export function register(studentID: string, password: string, rePassword: string): Promise<void> {
+	return request<void>('/register', 'POST', {
+		student_id: studentID,
+		password: password,
+		re_password: rePassword
+	})
+}
+
+export async function login(studentID: string, password: string): Promise<LoginData> {
+	const data = await request<UTSJSONObject>('/login', 'POST', {
+		student_id: studentID,
+		password: password
+	})
+	const loginData = new LoginData()
+	loginData.token = data['token'] as string
+	loginData.name = data['name'] as string
+	return loginData
+}
+
+export async function getProfile(): Promise<ProfileData | null> {
+	const data = await request<UTSJSONObject | null>('/profile', 'GET', null, true)
+	if (data == null) return null
+	const profile = {
+		student_id: data['student_id'] as string,
+		name: data['name'] as string,
+		phone: data['phone'] as string,
+		gender: data['gender'] as string,
+		parent_name: data['parent_name'] as string,
+		parent_phone: data['parent_phone'] as string,
+		teacher_name: data['teacher_name'] as string,
+		class_id: data['class_id'] as number,
+		apartment_id: data['apartment_id'] as number,
+		class_info: {
+			college: '',
+			major: '',
+			class_name: ''
+		},
+		apartment_info: {
+			apartment_name: '',
+			dormitory_number: ''
+		}
+	} as ProfileData
+	const classInfo = data['class_info'] as UTSJSONObject
+	const apartmentInfo = data['apartment_info'] as UTSJSONObject
+	profile.class_info = {
+		college: classInfo['college'] as string,
+		major: classInfo['major'] as string,
+		class_name: classInfo['class_name'] as string
+	}
+	profile.apartment_info = {
+		apartment_name: apartmentInfo['apartment_name'] as string,
+		dormitory_number: apartmentInfo['dormitory_number'] as string
+	}
+	return profile
+}
+
+export function saveProfile(payload: ProfilePayload): Promise<void> {
+	return request<void>('/profile', 'POST', payload, true)
+}
+
+export async function getClasses(): Promise<ClassOption[]> {
+	const data = await request<UTSJSONObject[]>('/classes', 'GET', null, true)
+	return data.map((item): ClassOption => {
+		return {
+			id: item['id'] as number,
+			college: item['college'] as string,
+			major: item['major'] as string,
+			class_name: item['class_name'] as string
+		}
+	})
+}
+
+export async function getApartments(gender: string): Promise<ApartmentOption[]> {
+	const data = await request<UTSJSONObject[]>('/apartments?gender=' + gender, 'GET', null, true)
+	return data.map((item): ApartmentOption => {
+		return {
+			id: item['id'] as number,
+			name: item['name'] as string,
+			gender: item['gender'] as string
+		}
+	})
+}

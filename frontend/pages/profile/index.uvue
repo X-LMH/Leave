@@ -12,16 +12,16 @@
 						<image class="profile-avatar" src="/static/my/index/avatar.jpg" mode="aspectFill"></image>
 						<view class="profile-details">
 							<view class="profile-name-row">
-								<text class="profile-name">刘明慧</text>
+								<text class="profile-name">{{ profileName == '' ? '未完善资料' : profileName }}</text>
 								<image class="edit-icon" src="/static/my/index/icons/edit.png" mode="aspectFit" @click.stop="openEdit"></image>
 							</view>
 							<view class="profile-meta-row">
 								<image class="profile-meta-icon" src="/static/my/index/icons/user-badge.png" mode="aspectFit"></image>
-								<text class="profile-meta-text">学号：2023123456</text>
+								<text class="profile-meta-text">学号：{{ studentID }}</text>
 							</view>
 							<view class="profile-meta-row profile-school-row">
 								<image class="profile-meta-icon" src="/static/my/index/icons/school.png" mode="aspectFit"></image>
-								<text class="profile-meta-text">计算机科学与技术学院</text>
+								<text class="profile-meta-text">{{ className == '' ? '请完善个人资料' : className }}</text>
 							</view>
 						</view>
 						<image class="card-arrow" src="/static/my/index/icons/arrow-right.png" mode="aspectFit"></image>
@@ -57,7 +57,7 @@
 							<image class="service-arrow" src="/static/my/index/icons/arrow-right.png" mode="aspectFit"></image>
 						</view>
 					</view>
-					<view class="logout-card">
+					<view class="logout-card" @click="handleLogout">
 						<image class="logout-icon" src="/static/my/index/icons/power.png" mode="aspectFit"></image>
 						<text class="logout-text">退出登录</text>
 						<text class="logout-arrow">›</text>
@@ -75,6 +75,12 @@
 import BottomNavigation from '@/components/BottomNavigation.uvue'
 import PageTransition from '@/components/PageTransition.uvue'
 import { ref } from 'vue'
+import { getProfile, getStoredName, logout as clearSession, logoutRequest, ProfileData } from '@/utils/api.uts'
+
+const profileName = ref(getStoredName())
+const storedStudentID = uni.getStorageSync('leave_student_id')
+const studentID = ref(typeof storedStudentID == 'string' ? storedStudentID : '')
+const className = ref('')
 
 
 function handleTabNavigation(url: string) {
@@ -96,6 +102,35 @@ function openRecords() {
 function openPassword() {
 	uni.navigateTo({ url: '/pages/profile/password' })
 }
+
+async function handleLogout() {
+	try {
+		await logoutRequest()
+	} catch (error) {
+		const message = (error as Error).message
+		uni.showToast({ title: message == null || message == '' ? '退出登录失败' : message, icon: 'none' })
+	} finally {
+		clearSession()
+		uni.reLaunch({ url: '/pages/auth/login' })
+	}
+}
+
+async function loadProfile() {
+	try {
+		const profile: ProfileData | null = await getProfile()
+		if (profile == null) return
+		profileName.value = profile.name
+		studentID.value = profile.student_id
+		className.value = profile.class_info.class_name
+	} catch (error) {
+		const message = (error as Error).message
+		uni.showToast({ title: message == null || message == '' ? '个人资料加载失败' : message, icon: 'none' })
+	}
+}
+
+onShow(() => {
+	loadProfile()
+})
 </script>
 
 <style>

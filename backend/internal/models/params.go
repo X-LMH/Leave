@@ -2,12 +2,6 @@ package models
 
 import "time"
 
-type ParamPassword struct {
-	Password    string `json:"password"`
-	NewPassword string `json:"new_password"`
-	RePassword  string `json:"re_password"`
-}
-
 type ParamRecord struct {
 	Name        string    `json:"name"`
 	LeaveType   string    `json:"leave_type"`

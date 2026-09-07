@@ -19,3 +19,10 @@ type LoginResponse struct {
 	Token string `json:"token"`
 	Name  string `json:"name"`
 }
+
+// PasswordChangeRequest is the JSON body accepted by the password endpoint.
+type PasswordChangeRequest struct {
+	Password    string `json:"password"`
+	NewPassword string `json:"new_password"`
+	RePassword  string `json:"re_password"`
+}

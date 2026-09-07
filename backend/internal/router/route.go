@@ -27,6 +27,7 @@ func SetupRouter() *gin.Engine {
 	auth := api.Group("")
 	auth.Use(middleware.JWTAuthMiddleware())
 	{
+		auth.POST("/logout", controller.LogoutHandler)
 		auth.POST("/profile", controller.ProfileHandler)
 		auth.POST("/password", controller.ChangePasswordHandler)
 		auth.GET("/profile", controller.GetProfileHandler)
@@ -34,10 +35,10 @@ func SetupRouter() *gin.Engine {
 		auth.GET("/classes", controller.GetClassesHandler)
 		auth.GET("/apartments", controller.GetApartmentsHandler)
 		//
-		//auth.POST("/record", controller.RecordHandler)
-		//auth.GET("/record/:id", controller.GetRecordHandler)
-		//auth.GET("/records", controller.GetRecordsLIstHandler)
-		//auth.DELETE("/record/:id", controller.DeleteRecordHandler)
+		auth.POST("/record", controller.CreateRecordHandler)
+		auth.GET("/record/:id", controller.GetRecordHandler)
+		auth.GET("/records", controller.GetRecordsLIstHandler)
+		auth.DELETE("/record/:id", controller.DeleteRecordHandler)
 	}
 
 	return r
