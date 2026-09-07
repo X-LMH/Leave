@@ -14,3 +14,9 @@ type ApartmentOption struct {
 	Name   string `json:"name"`
 	Gender string `json:"gender"`
 }
+
+// LeaveTypeOption is an enabled leave type used by the leave application form.
+type LeaveTypeOption struct {
+	ID   uint   `json:"id"`
+	Name string `json:"name"`
+}

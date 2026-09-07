@@ -54,8 +54,8 @@ func GetProfileHandler(c *gin.Context) {
 	response.Success(c, data)
 }
 
-// GetClassesHandler returns classes for the profile form selector.
-func GetClassesHandler(c *gin.Context) {
+// GetClassOptionsHandler returns classes for the profile form selector.
+func GetClassOptionsHandler(c *gin.Context) {
 	data, err := service.GetClasses()
 	if err != nil {
 		response.Error(c, response.CodeServerBusy)
@@ -64,8 +64,8 @@ func GetClassesHandler(c *gin.Context) {
 	response.Success(c, data)
 }
 
-// GetApartmentsHandler returns enabled apartments for the profile form selector.
-func GetApartmentsHandler(c *gin.Context) {
+// GetApartmentOptionsHandler returns enabled apartments for the profile form selector.
+func GetApartmentOptionsHandler(c *gin.Context) {
 	data, err := service.GetApartments(c.Query("gender"))
 	if err != nil {
 		if errors.Is(err, service.ErrorInvalidApartmentGender) {

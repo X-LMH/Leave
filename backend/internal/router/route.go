@@ -32,9 +32,10 @@ func SetupRouter() *gin.Engine {
 		auth.POST("/password", controller.ChangePasswordHandler)
 		auth.GET("/profile", controller.GetProfileHandler)
 
-		auth.GET("/classes", controller.GetClassesHandler)
-		auth.GET("/apartments", controller.GetApartmentsHandler)
-		//
+		auth.GET("/classes", controller.GetClassOptionsHandler)
+		auth.GET("/apartments", controller.GetApartmentOptionsHandler)
+		auth.GET("/leave_types", controller.GetLeaveTypeOptionsHandler)
+
 		auth.POST("/record", controller.CreateRecordHandler)
 		auth.GET("/record/:id", controller.GetRecordHandler)
 		auth.GET("/records", controller.GetRecordsLIstHandler)

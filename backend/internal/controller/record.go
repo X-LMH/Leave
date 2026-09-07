@@ -94,6 +94,16 @@ func GetRecordsLIstHandler(c *gin.Context) {
 	response.Success(c, records)
 }
 
+// GetLeaveTypeOptionsHandler returns enabled leave types for the leave application form.
+func GetLeaveTypeOptionsHandler(c *gin.Context) {
+	data, err := service.GetLeaveTypeOptions()
+	if err != nil {
+		response.Error(c, response.CodeServerBusy)
+		return
+	}
+	response.Success(c, data)
+}
+
 func queryInt(c *gin.Context, key string, fallback int) int {
 	value := c.Query(key)
 	if value == "" {
