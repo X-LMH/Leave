@@ -24,6 +24,7 @@ backend/coverage.out
 backend/*.exe
 backend/*.test
 backend/main
+backend/local.air.toml
 
 # 前端 / uni-app
 frontend/node_modules/

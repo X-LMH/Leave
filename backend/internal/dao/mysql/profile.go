@@ -47,12 +47,30 @@ func GetClassByID(classID uint) (*models.Class, error) {
 	return class, nil
 }
 
+func GetClasses() ([]*models.Class, error) {
+	classes := make([]*models.Class, 0)
+	err := db.Select("id", "college", "major", "class_name").
+		Order("college ASC, major ASC, class_name ASC, id ASC").
+		Find(&classes).Error
+	return classes, err
+}
+
 func GetApartmentByID(apartmentID uint) (*models.Apartment, error) {
 	apartment := new(models.Apartment)
 	if err := db.Where("id = ?", apartmentID).First(apartment).Error; err != nil {
 		return nil, err
 	}
 	return apartment, nil
+}
+
+func GetApartments(gender string) ([]*models.Apartment, error) {
+	apartments := make([]*models.Apartment, 0)
+	query := db.Select("id", "name", "gender").Where("is_enabled = ?", 1)
+	if gender != "" {
+		query = query.Where("gender = ?", gender)
+	}
+	err := query.Order("sort_order ASC, id ASC").Find(&apartments).Error
+	return apartments, err
 }
 
 func InsertRecord(p *models.Record) (err error) {

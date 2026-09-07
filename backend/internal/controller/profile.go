@@ -56,6 +56,30 @@ func GetProfileHandler(c *gin.Context) {
 	response.Success(c, data)
 }
 
+// GetClassesHandler returns classes for the profile form selector.
+func GetClassesHandler(c *gin.Context) {
+	data, err := service.GetClasses()
+	if err != nil {
+		response.Error(c, response.CodeServerBusy)
+		return
+	}
+	response.Success(c, data)
+}
+
+// GetApartmentsHandler returns enabled apartments for the profile form selector.
+func GetApartmentsHandler(c *gin.Context) {
+	data, err := service.GetApartments(c.Query("gender"))
+	if err != nil {
+		if errors.Is(err, service.ErrorInvalidApartmentGender) {
+			response.Error(c, response.CodeInvalidParam)
+			return
+		}
+		response.Error(c, response.CodeServerBusy)
+		return
+	}
+	response.Success(c, data)
+}
+
 // validateAndNormalizeProfile 规范化并校验个人资料请求。
 func validateAndNormalizeProfile(p *dto.ProfileRequest) bool {
 	p.Name = strings.TrimSpace(p.Name)

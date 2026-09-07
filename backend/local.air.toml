@@ -3,8 +3,8 @@ tmp_dir = "tmp"
 
 [build]
 bin = "tmp/main"  # Linux下无需.exe后缀
-# Linux/WSL环境编译命令（移除.exe，指定GOOS=linux确保架构正确）
-cmd = "GOOS=linux GOARCH=amd64 go build -o ./tmp/main ."
+# macOS 本机编译命令
+cmd = "go build -o ./tmp/main ."
 delay = 1000
 exclude_dir = ["assets", "vendor", "docs", "frontend", "client",".idea"]
 exclude_file = []

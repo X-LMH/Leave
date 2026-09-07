@@ -2,7 +2,7 @@
 	<ProfilePageShell title="修改个人信息" subtitle="修改您的个人信息" :scrollable="true">
 		<view class="form-card">
 			<view class="form-row"><text class="field-label">学号</text><view class="field-box field-disabled"><text class="disabled-text">2023123456</text></view></view>
-			<view class="form-row"><text class="field-label">班级</text><view class="field-box"><input class="field-input" v-model="className" maxlength="50" /></view></view>
+			<view class="form-row"><text class="field-label">班级</text><picker class="field-picker" :range="classOptions" :value="classIndex" @change="classChange"><view class="field-box picker-box"><text :class="className == '' ? 'picker-placeholder' : 'picker-value'">{{ className == '' ? '请选择班级' : className }}</text><text class="picker-arrow">⌄</text></view></picker></view>
 			<view class="form-row"><view class="required-label"><text class="required-field-label">姓名</text><text class="required">*</text></view><view class="field-box"><input class="field-input" v-model="name" maxlength="20" /></view></view>
 			<view class="form-row"><view class="required-label"><text class="required-field-label">手机号</text><text class="required">*</text></view><view class="field-box"><input class="field-input" v-model="phone" type="number" maxlength="11" /></view></view>
 			<view class="form-row"><view class="required-label"><text class="required-field-label">性别</text><text class="required">*</text></view><view class="gender-group"><view :class="gender == '男' ? 'gender-item gender-active' : 'gender-item'" @click="setGender('男')"><text :class="gender == '男' ? 'gender-text gender-text-active' : 'gender-text'">男</text></view><view :class="gender == '女' ? 'gender-item gender-active' : 'gender-item'" @click="setGender('女')"><text :class="gender == '女' ? 'gender-text gender-text-active' : 'gender-text'">女</text></view></view></view>
@@ -20,6 +20,8 @@
 import { ref } from 'vue'
 import ProfilePageShell from '@/components/ProfilePageShell.uvue'
 const className = ref('计24-1')
+const classOptions = ['计24-1', '计24-2', '计24-3', '计23-1', '计23-2']
+const classIndex = ref(0)
 const name = ref('刘明慧')
 const phone = ref('13800138888')
 const gender = ref('女')
@@ -31,6 +33,10 @@ const apartmentIndex = ref(2)
 const dormNumber = ref('302')
 const counselor = ref('王老师')
 function setGender(value: string) { gender.value = value }
+function classChange(e: UniPickerChangeEvent) {
+	classIndex.value = e.detail.value as number
+	className.value = classOptions[classIndex.value]
+}
 function apartmentChange(e: UniPickerChangeEvent) {
 	apartmentIndex.value = e.detail.value as number
 	apartment.value = apartmentOptions[apartmentIndex.value]

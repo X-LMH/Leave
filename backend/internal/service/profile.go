@@ -4,7 +4,10 @@ import (
 	"backend/internal/dao/mysql"
 	"backend/internal/dto"
 	"backend/internal/models"
+	"errors"
 )
+
+var ErrorInvalidApartmentGender = errors.New("invalid apartment gender")
 
 func Profile(p *dto.ProfileRequest, studentID string) (err error) {
 	student := &models.Profile{
@@ -42,6 +45,42 @@ func GetProfile(studentID string) (*dto.ProfileResponse, error) {
 	}
 
 	return toProfileResponse(profile, class, apartment), nil
+}
+
+// GetClasses returns class options for profile selectors.
+func GetClasses() ([]*dto.ClassOption, error) {
+	classes, err := mysql.GetClasses()
+	if err != nil {
+		return nil, err
+	}
+
+	options := make([]*dto.ClassOption, 0, len(classes))
+	for _, class := range classes {
+		options = append(options, &dto.ClassOption{
+			ID: class.ID, College: class.College, Major: class.Major, ClassName: class.ClassName,
+		})
+	}
+	return options, nil
+}
+
+// GetApartments returns enabled apartment options for profile selectors.
+func GetApartments(gender string) ([]*dto.ApartmentOption, error) {
+	if gender != "" && gender != models.GenderMale && gender != models.GenderFemale {
+		return nil, ErrorInvalidApartmentGender
+	}
+
+	apartments, err := mysql.GetApartments(gender)
+	if err != nil {
+		return nil, err
+	}
+
+	options := make([]*dto.ApartmentOption, 0, len(apartments))
+	for _, apartment := range apartments {
+		options = append(options, &dto.ApartmentOption{
+			ID: apartment.ID, Name: apartment.Name, Gender: apartment.Gender,
+		})
+	}
+	return options, nil
 }
 
 func toProfileResponse(profile *models.Profile, class *models.Class, apartment *models.Apartment) *dto.ProfileResponse {
