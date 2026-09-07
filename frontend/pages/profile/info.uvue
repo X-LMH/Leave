@@ -29,7 +29,9 @@
 			<view class="divider"></view>
 			<view class="info-row"><text class="info-label">公寓名称</text><text class="info-value">北苑3号公寓</text></view>
 			<view class="divider"></view>
-			<view class="info-row"><text class="info-label">辅导员姓名</text><text class="info-value">王老师</text></view>
+			<view class="info-row"><text class="info-label">宿舍号</text><text class="info-value">302</text></view>
+			<view class="divider"></view>
+			<view class="info-row"><text class="info-label">导员姓名</text><text class="info-value">王老师</text></view>
 		</view>
 
 		<view class="primary-button" @click="editProfile"><text class="primary-button-text">修改个人信息</text></view>

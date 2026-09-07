@@ -1,4 +1,6 @@
-尽量不要`pages/compare/compare`页面呈现出来的样式
+## 注意
+- 尽量不要`frontend/pages/leave/detail.uvue`页面呈现出来的样式
+- 目前还处于前后端分别开发的阶段，不要擅自对接前后端
 
 ## uni-app x / uvue CSS 约束
 

@@ -7,8 +7,9 @@
 			<view class="form-row"><view class="required-label"><text class="required-field-label">性别</text><text class="required">*</text></view><view class="gender-group"><view :class="gender == '男' ? 'gender-item gender-active' : 'gender-item'" @click="setGender('男')"><text :class="gender == '男' ? 'gender-text gender-text-active' : 'gender-text'">男</text></view><view :class="gender == '女' ? 'gender-item gender-active' : 'gender-item'" @click="setGender('女')"><text :class="gender == '女' ? 'gender-text gender-text-active' : 'gender-text'">女</text></view></view></view>
 			<view class="form-row"><view class="required-label"><text class="required-field-label">家长姓名</text><text class="required">*</text></view><view class="field-box"><input class="field-input" v-model="parentName" maxlength="20" /></view></view>
 			<view class="form-row"><view class="required-label"><text class="required-field-label">家长电话</text><text class="required">*</text></view><view class="field-box"><input class="field-input" v-model="parentPhone" type="number" maxlength="11" /></view></view>
-			<view class="form-row"><view class="required-label"><text class="required-field-label">公寓名称</text><text class="required">*</text></view><view class="field-box"><input class="field-input" v-model="apartment" maxlength="30" /></view></view>
-			<view class="form-row"><text class="field-label">辅导员姓名</text><view class="field-box"><input class="field-input" v-model="counselor" maxlength="20" /></view></view>
+			<view class="form-row"><text class="field-label">公寓名称</text><picker class="field-picker" :range="apartmentOptions" :value="apartmentIndex" @change="apartmentChange"><view class="field-box picker-box"><text :class="apartment == '' ? 'picker-placeholder' : 'picker-value'">{{ apartment == '' ? '请选择公寓名称' : apartment }}</text><text class="picker-arrow">⌄</text></view></picker></view>
+			<view class="form-row"><text class="field-label">宿舍号</text><view class="field-box"><input class="field-input" v-model="dormNumber" maxlength="20" placeholder="请输入宿舍号" placeholder-class="input-placeholder" /></view></view>
+			<view class="form-row"><view class="required-label"><text class="required-field-label">导员姓名</text><text class="required">*</text></view><view class="field-box"><input class="field-input" v-model="counselor" maxlength="20" /></view></view>
 		</view>
 		<view class="primary-button" @click="save"><text class="primary-button-text">保存修改</text></view>
 	</ProfilePageShell>
@@ -22,11 +23,18 @@ const phone = ref('13800138888')
 const gender = ref('女')
 const parentName = ref('刘女士')
 const parentPhone = ref('13966778899')
+const apartmentOptions = ['北苑1号公寓', '北苑2号公寓', '北苑3号公寓', '南苑1号公寓']
 const apartment = ref('北苑3号公寓')
+const apartmentIndex = ref(2)
+const dormNumber = ref('302')
 const counselor = ref('王老师')
 function setGender(value: string) { gender.value = value }
+function apartmentChange(e: UniPickerChangeEvent) {
+	apartmentIndex.value = e.detail.value as number
+	apartment.value = apartmentOptions[apartmentIndex.value]
+}
 function save() {
-	if (name.value.trim() == '' || phone.value.trim() == '' || parentName.value.trim() == '' || parentPhone.value.trim() == '' || apartment.value.trim() == '') {
+	if (name.value.trim() == '' || phone.value.trim() == '' || parentName.value.trim() == '' || parentPhone.value.trim() == '' || counselor.value.trim() == '') {
 		uni.showToast({ title: '请完整填写必填信息', icon: 'none' })
 		return
 	}
@@ -42,6 +50,11 @@ function save() {
 .required-field-label { color: #123b78; font-size: 25rpx; font-weight: 600; }
 .required { margin-left: 8rpx; color: #f04f48; font-size: 26rpx; }
 .field-box { flex: 1; height: 68rpx; padding: 0 22rpx; border-width: 1rpx; border-style: solid; border-color: #d9e2f4; border-radius: 16rpx; justify-content: center; background-color: rgba(255,255,255,0.55); }
+.field-picker { flex: 1; }
+.picker-box { flex-direction: row; align-items: center; }
+.picker-arrow { margin-left: auto; color: #7188b5; font-size: 32rpx; line-height: 32rpx; }
+.picker-value { color: #506d9f; font-size: 25rpx; line-height: 68rpx; }
+.picker-placeholder, .input-placeholder { color: #9aabd0; font-size: 25rpx; line-height: 68rpx; }
 .field-disabled { background-color: rgba(236,240,248,0.75); }
 .disabled-text { color: #9aabd0; font-size: 25rpx; }
 .field-input { height: 66rpx; color: #506d9f; font-size: 25rpx; }

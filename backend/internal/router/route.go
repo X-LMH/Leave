@@ -24,18 +24,18 @@ func SetupRouter() *gin.Engine {
 		//api.GET("/update", controller.UpdateHandler)
 	}
 
-	//auth := api.Group("")
-	//auth.Use(middleware.JWTAuthMiddleware())
-	//{
-	//	auth.POST("/profile", controller.ProfileHandler)
-	//	auth.POST("/password", controller.ChangePasswordHandler)
-	//	auth.GET("/profile", controller.GetProfileHandler)
-	//
-	//	auth.POST("/record", controller.RecordHandler)
-	//	auth.GET("/record/:id", controller.GetRecordHandler)
-	//	auth.GET("/records", controller.GetRecordsLIstHandler)
-	//	auth.DELETE("/record/:id", controller.DeleteRecordHandler)
-	//}
+	auth := api.Group("")
+	auth.Use(middleware.JWTAuthMiddleware())
+	{
+		auth.POST("/profile", controller.ProfileHandler)
+		auth.POST("/password", controller.ChangePasswordHandler)
+		auth.GET("/profile", controller.GetProfileHandler)
+		//
+		//auth.POST("/record", controller.RecordHandler)
+		//auth.GET("/record/:id", controller.GetRecordHandler)
+		//auth.GET("/records", controller.GetRecordsLIstHandler)
+		//auth.DELETE("/record/:id", controller.DeleteRecordHandler)
+	}
 
 	return r
 }
