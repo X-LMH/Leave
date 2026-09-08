@@ -15,7 +15,8 @@
 import AuthPageShell from '@/components/AuthPageShell.uvue'
 import AuthInputField from '@/components/AuthInputField.uvue'
 import { ref } from 'vue'
-import { getProfile, login as loginRequest, saveSession } from '@/utils/api.uts'
+import { login as loginRequest, saveSession } from '@/utils/api.uts'
+import { getAppVersion, getDeviceName } from '@/utils/device.uts'
 
 const studentID = ref('202410201016')
 const password = ref('123123')
@@ -42,10 +43,11 @@ async function login() {
 
 	submitting.value = true
 	try {
-		const data = await loginRequest(studentID.value.trim(), password.value)
-		saveSession(studentID.value.trim(), data)
-		const profile = await getProfile()
-		if (profile == null) {
+		const deviceName = getDeviceName()
+		const appVersion = getAppVersion()
+		const data = await loginRequest(studentID.value.trim(), password.value, deviceName, appVersion)
+		saveSession(studentID.value.trim(), data, deviceName, appVersion)
+		if (!data.profile_completed) {
 			uni.reLaunch({ url: '/pages/profile/edit?first=1' })
 			return
 		}

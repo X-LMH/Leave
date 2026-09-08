@@ -3,6 +3,9 @@ export const API_BASE_URL = 'http://192.168.0.86:8080/api/v1'
 export const STORAGE_TOKEN_KEY = 'leave_token'
 export const STORAGE_STUDENT_ID_KEY = 'leave_student_id'
 export const STORAGE_NAME_KEY = 'leave_name'
+export const STORAGE_CLASS_NAME_KEY = 'leave_class_name'
+export const STORAGE_DEVICE_NAME_KEY = 'leave_device_name'
+export const STORAGE_APP_VERSION_KEY = 'leave_app_version'
 
 export type ApiResponse<T> = {
 	code: number
@@ -12,7 +15,18 @@ export type ApiResponse<T> = {
 
 export class LoginData {
 	token: string = ''
-	name: string = ''
+	user: CurrentUser = {
+		student_id: '',
+		name: '',
+		class_name: ''
+	}
+	profile_completed: boolean = false
+}
+
+export type CurrentUser = {
+	student_id: string
+	name: string
+	class_name: string
 }
 
 export type ProfileClassInfo = {
@@ -65,10 +79,57 @@ export type ProfilePayload = {
 	teacher_name: string
 }
 
+export type LeaveTypeOption = {
+	id: number
+	name: string
+}
+
+export type RecordCreatePayload = {
+	leave_type_id: number
+	start_time: string
+	end_time: string
+	duration: number
+	affected_course: string
+	is_leave_school: boolean
+	leave_reason: string
+	travel_way: string
+	applied_at: string
+	approved_at: string
+}
+
+export type RecordDetail = {
+	id: number
+	student_id: string
+	name: string
+	class_info: ProfileClassInfo
+	leave_type: string
+	start_time: string
+	end_time: string
+	duration: number
+	affected_course: string
+	is_leave_school: boolean
+	leave_reason: string
+	travel_way: string
+	applied_at: string
+	approved_at: string
+}
+
+export type RecordListItem = {
+	id: number
+	leave_type: string
+	leave_reason: string
+	start_time: string
+	end_time: string
+	duration: number
+}
+
 function clearSession() {
 	uni.removeStorageSync(STORAGE_TOKEN_KEY)
 	uni.removeStorageSync(STORAGE_STUDENT_ID_KEY)
 	uni.removeStorageSync(STORAGE_NAME_KEY)
+	uni.removeStorageSync(STORAGE_CLASS_NAME_KEY)
+	uni.removeStorageSync(STORAGE_DEVICE_NAME_KEY)
+	uni.removeStorageSync(STORAGE_APP_VERSION_KEY)
 }
 
 export function getStoredName(): string {
@@ -76,10 +137,41 @@ export function getStoredName(): string {
 	return typeof storedName == 'string' ? storedName : ''
 }
 
-export function saveSession(studentID: string, data: LoginData) {
+export function getCurrentUser(): CurrentUser {
+	const studentID = uni.getStorageSync(STORAGE_STUDENT_ID_KEY)
+	const name = uni.getStorageSync(STORAGE_NAME_KEY)
+	const className = uni.getStorageSync(STORAGE_CLASS_NAME_KEY)
+	return {
+		student_id: typeof studentID == 'string' ? studentID : '',
+		name: typeof name == 'string' ? name : '',
+		class_name: typeof className == 'string' ? className : ''
+	}
+}
+
+export function updateCurrentUser(user: CurrentUser) {
+	uni.setStorageSync(STORAGE_STUDENT_ID_KEY, user.student_id)
+	uni.setStorageSync(STORAGE_NAME_KEY, user.name)
+	uni.setStorageSync(STORAGE_CLASS_NAME_KEY, user.class_name)
+}
+
+export function getStoredDeviceName(): string {
+	const storedDeviceName = uni.getStorageSync(STORAGE_DEVICE_NAME_KEY)
+	return typeof storedDeviceName == 'string' ? storedDeviceName : ''
+}
+
+export function getStoredAppVersion(): string {
+	const storedAppVersion = uni.getStorageSync(STORAGE_APP_VERSION_KEY)
+	return typeof storedAppVersion == 'string' ? storedAppVersion : ''
+}
+
+export function saveSession(studentID: string, data: LoginData, deviceName: string = '', appVersion: string = '') {
 	uni.setStorageSync(STORAGE_TOKEN_KEY, data.token)
 	uni.setStorageSync(STORAGE_STUDENT_ID_KEY, studentID)
-	uni.setStorageSync(STORAGE_NAME_KEY, data.name)
+	uni.setStorageSync(STORAGE_STUDENT_ID_KEY, data.user.student_id)
+	uni.setStorageSync(STORAGE_NAME_KEY, data.user.name)
+	uni.setStorageSync(STORAGE_CLASS_NAME_KEY, data.user.class_name)
+	uni.setStorageSync(STORAGE_DEVICE_NAME_KEY, deviceName)
+	uni.setStorageSync(STORAGE_APP_VERSION_KEY, appVersion)
 }
 
 export function logout() {
@@ -103,7 +195,11 @@ function handleUnauthorized() {
 	uni.reLaunch({ url: '/pages/auth/login' })
 }
 
-export function request<T>(path: string, method: 'GET' | 'POST' = 'GET', data: object | null = null, requiresAuth: boolean = false): Promise<T> {
+function toRequestData(data: object): UTSJSONObject {
+	return JSON.parse<UTSJSONObject>(JSON.stringify(data))!
+}
+
+export function request<T>(path: string, method: 'GET' | 'POST' | 'DELETE' = 'GET', data: object | null = null, requiresAuth: boolean = false): Promise<T> {
 	return new Promise((resolve, reject) => {
 		const header = { 'Content-Type': 'application/json' } as UTSJSONObject
 		if (requiresAuth) {
@@ -122,7 +218,7 @@ export function request<T>(path: string, method: 'GET' | 'POST' = 'GET', data: o
 		uni.request<UTSJSONObject>({
 			url: API_BASE_URL + path,
 			method: method,
-			data: data,
+			data: data == null ? null : toRequestData(data),
 			header: header,
 			success: (response) => {
 				const body = response.data
@@ -157,14 +253,22 @@ export function register(studentID: string, password: string, rePassword: string
 	})
 }
 
-export async function login(studentID: string, password: string): Promise<LoginData> {
+export async function login(studentID: string, password: string, deviceName: string, appVersion: string): Promise<LoginData> {
 	const data = await request<UTSJSONObject>('/login', 'POST', {
 		student_id: studentID,
-		password: password
+		password: password,
+		device_name: deviceName,
+		app_version: appVersion
 	})
 	const loginData = new LoginData()
 	loginData.token = data['token'] as string
-	loginData.name = data['name'] as string
+	const userData = data['user'] as UTSJSONObject
+	loginData.user = {
+		student_id: userData['student_id'] as string,
+		name: userData['name'] as string,
+		class_name: userData['class_name'] as string
+	}
+	loginData.profile_completed = data['profile_completed'] as boolean
 	return loginData
 }
 
@@ -230,4 +334,65 @@ export async function getApartments(gender: string): Promise<ApartmentOption[]> 
 			gender: item['gender'] as string
 		}
 	})
+}
+
+export async function getLeaveTypes(): Promise<LeaveTypeOption[]> {
+	const data = await request<UTSJSONObject[]>('/leave_types', 'GET', null, true)
+	return data.map((item): LeaveTypeOption => {
+		return {
+			id: item['id'] as number,
+			name: item['name'] as string
+		}
+	})
+}
+
+export async function createRecord(payload: RecordCreatePayload): Promise<RecordDetail> {
+	return recordDetailFromJSON(await request<UTSJSONObject>('/record', 'POST', payload, true))
+}
+
+export async function getRecord(id: number): Promise<RecordDetail> {
+	return recordDetailFromJSON(await request<UTSJSONObject>('/record/' + id, 'GET', null, true))
+}
+
+export async function getRecords(page: number, pageSize: number): Promise<RecordListItem[]> {
+	const path = '/records?page=' + page + '&page_size=' + pageSize
+	const data = await request<UTSJSONObject[]>(path, 'GET', null, true)
+	return data.map((item): RecordListItem => {
+		return {
+			id: item['id'] as number,
+			leave_type: item['leave_type'] as string,
+			leave_reason: item['leave_reason'] as string,
+			start_time: item['start_time'] as string,
+			end_time: item['end_time'] as string,
+			duration: item['duration'] as number
+		}
+	})
+}
+
+export function deleteRecord(id: number): Promise<void> {
+	return request<void>('/record/' + id, 'DELETE', null, true)
+}
+
+function recordDetailFromJSON(data: UTSJSONObject): RecordDetail {
+	const classInfo = data['class_info'] as UTSJSONObject
+	return {
+		id: data['id'] as number,
+		student_id: data['student_id'] as string,
+		name: data['name'] as string,
+		class_info: {
+			college: classInfo['college'] as string,
+			major: classInfo['major'] as string,
+			class_name: classInfo['class_name'] as string
+		},
+		leave_type: data['leave_type'] as string,
+		start_time: data['start_time'] as string,
+		end_time: data['end_time'] as string,
+		duration: data['duration'] as number,
+		affected_course: data['affected_course'] as string,
+		is_leave_school: data['is_leave_school'] as boolean,
+		leave_reason: data['leave_reason'] as string,
+		travel_way: data['travel_way'] as string,
+		applied_at: data['applied_at'] as string,
+		approved_at: data['approved_at'] as string
+	}
 }

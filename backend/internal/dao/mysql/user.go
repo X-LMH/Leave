@@ -34,9 +34,13 @@ func EnsureUserActive(studentID string) error {
 	return nil
 }
 
-// UpdateLastLoginAt 记录账号最近一次成功登录的时间。
-func UpdateLastLoginAt(studentID string) error {
-	return db.Model(&models.User{}).Where("student_id = ?", studentID).Update("last_login_at", time.Now()).Error
+// UpdateLoginInfo 记录账号最近一次成功登录的时间、设备名称和应用版本。
+func UpdateLoginInfo(studentID string, deviceName string, appVersion string) error {
+	return db.Model(&models.User{}).Where("student_id = ?", studentID).Updates(map[string]interface{}{
+		"last_login_at":          time.Now(),
+		"last_login_device":      deviceName,
+		"last_login_app_version": appVersion,
+	}).Error
 }
 
 func FindUserByStudentID(studentID string) (*models.User, error) {

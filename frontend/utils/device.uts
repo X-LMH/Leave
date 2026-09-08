@@ -1,0 +1,30 @@
+/**
+ * 返回可用于展示和记录的设备名称，优先使用系统提供的设备型号。
+ */
+export function getDeviceName(): string {
+	const deviceInfo = uni.getDeviceInfo()
+	const deviceModel = deviceInfo.deviceModel
+	if (deviceModel != null && deviceModel.trim() != '') {
+		return deviceModel.trim()
+	}
+
+	const deviceBrand = deviceInfo.deviceBrand
+	if (deviceBrand != null && deviceBrand.trim() != '') {
+		return deviceBrand.trim()
+	}
+
+	return '未知设备'
+}
+
+/**
+ * 返回当前客户端应用的版本号。
+ */
+export function getAppVersion(): string {
+	const appBaseInfo = uni.getAppBaseInfo()
+	const appVersion = appBaseInfo.appVersion
+	if (appVersion != null && appVersion.trim() != '') {
+		return appVersion.trim()
+	}
+
+	return '未知版本'
+}

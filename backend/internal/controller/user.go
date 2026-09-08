@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/gin-gonic/gin"
 )
@@ -56,7 +57,12 @@ func LoginHandler(c *gin.Context) {
 		response.Error(c, response.CodeInvalidParam)
 		return
 	}
-	if !validStudentID(p.StudentID) || len(p.Password) == 0 {
+	if !validStudentID(p.StudentID) ||
+		len(p.Password) == 0 ||
+		utf8.RuneCountInString(strings.TrimSpace(p.DeviceName)) > 255 ||
+		len(p.AppVersion) > 64 {
+
+		// 参数错误
 		response.Error(c, response.CodeInvalidParam)
 		return
 	}

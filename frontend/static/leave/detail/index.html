@@ -12497,7 +12497,7 @@ body {
 }
 </style>
 <script>
-// 本地文字数据。后续接后端时，将 pageData 替换为接口返回的数据即可。
+// 页面由 uvue 容器加载记录详情后，将展示数据作为 application 参数传入。
 const pageData = {
   studentName: '武佳鑫',
   studentId: '202410201016',
@@ -12534,15 +12534,20 @@ const applicationValue = function (key, fallback) {
 };
 const hasSubmittedApplication = submittedApplication !== null;
 if (hasSubmittedApplication) {
+  pageData.studentName = applicationValue('studentName', '-');
+  pageData.studentId = applicationValue('studentId', '-');
+  pageData.classInfo = applicationValue('classInfo', '-');
   pageData.leaveType = applicationValue('leaveType', '-');
   pageData.startTime = applicationValue('startDate', '-');
   pageData.endTime = applicationValue('endDate', '-');
   pageData.duration = applicationValue('duration', '0');
   pageData.durationText = `${pageData.duration}小时`;
+  pageData.leaveStatus = applicationValue('leaveStatus', '-');
   pageData.reason = applicationValue('reason', '-');
   pageData.course = applicationValue('course', '-');
   pageData.leaveSchool = applicationValue('leaveSchool', '-');
   pageData.travel = applicationValue('travel', '-');
+  pageData.destination = applicationValue('destination', '-');
   pageData.submitTime = applicationValue('submitTime', '-');
   pageData.approvalTime = applicationValue('approvalTime', '-');
 }

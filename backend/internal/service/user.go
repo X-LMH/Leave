@@ -21,33 +21,65 @@ func Register(req *dto.RegisterRequest) (err error) {
 
 func Login(req *dto.LoginRequest) (*dto.LoginResponse, error) {
 	studentID := strings.TrimSpace(req.StudentID)
+
 	user, err := mysql.FindUserByStudentID(studentID)
 	if err != nil {
 		return nil, err
 	}
-	if req.Password != user.Password {
+
+	if req.Password != user.Password || user.Status != models.UserStatusActive {
 		return nil, mysql.ErrorInvalidPassword
 	}
-	if user.Status != models.UserStatusActive {
-		return nil, mysql.ErrorInvalidPassword
-	}
-	if err := mysql.UpdateLastLoginAt(user.StudentID); err != nil {
+
+	if err := mysql.UpdateLoginInfo(
+		user.StudentID,
+		strings.TrimSpace(req.DeviceName),
+		strings.TrimSpace(req.AppVersion),
+	); err != nil {
 		return nil, err
 	}
+
 	token, err := jwt.GenerateToken(user.StudentID, user.Role)
 	if err != nil {
 		return nil, err
 	}
 
-	profile, err := mysql.GetProfileByStuID(user.StudentID)
+	loginUser, profileCompleted, err := buildLoginUser(user.StudentID)
 	if err != nil {
 		return nil, err
 	}
-	name := ""
-	if profile != nil {
-		name = profile.Name
+
+	return &dto.LoginResponse{
+		Token:            token,
+		User:             loginUser,
+		ProfileCompleted: profileCompleted,
+	}, nil
+}
+
+func buildLoginUser(studentID string) (dto.User, bool, error) {
+	loginUser := dto.User{
+		StudentID: studentID,
 	}
-	return &dto.LoginResponse{Token: token, Name: name}, nil
+
+	profile, err := mysql.GetProfileByStuID(studentID)
+	if err != nil {
+		return dto.User{}, false, err
+	}
+	if profile == nil {
+		return loginUser, false, nil
+	}
+
+	loginUser.Name = profile.Name
+
+	class, err := mysql.GetClassByID(profile.ClassID)
+	if err != nil {
+		return dto.User{}, false, err
+	}
+	if class != nil {
+		loginUser.ClassName = class.ClassName
+	}
+
+	return loginUser, true, nil
 }
 
 func ChangePassword(p *dto.PasswordChangeRequest, studentID string) error {

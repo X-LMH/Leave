@@ -48,6 +48,10 @@ func GetProfileHandler(c *gin.Context) {
 	}
 	data, err := service.GetProfile(studentID)
 	if err != nil {
+		if errors.Is(err, service.ErrorProfileIncomplete) {
+			response.Error(c, response.CodeProfileIncomplete)
+			return
+		}
 		response.Error(c, response.CodeServerBusy)
 		return
 	}

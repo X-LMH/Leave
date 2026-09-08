@@ -24,7 +24,7 @@
 				<view class="hero-orb hero-orb-large">
 				</view>
 				<view class="form-card single-card">
-					<picker class="field-picker picker-row" :range="leaveTypes" @change="leaveTypeChange">
+					<picker class="field-picker picker-row" :range="leaveTypeNames" @change="leaveTypeChange">
 						<view class="field-row">
 							<view class="label-wrap">
 								<text class="field-label">请假类型</text>
@@ -128,25 +128,18 @@
 <script setup lang="uts">
 import { computed, ref } from 'vue'
 import PageTransition from '@/components/PageTransition.uvue'
+import { createRecord, getLeaveTypes, LeaveTypeOption } from '@/utils/api.uts'
 
-
-const leaveTypes = ['病假-本科生', '事假-本科生']
+const leaveTypes = ref<LeaveTypeOption[]>([])
 const leaveType = ref('')
+const leaveTypeID = ref(0)
 const leaveSchool = ref('是')
 const course = ref('')
 const reason = ref('')
 const travel = ref('')
 const startDate = ref('')
 const endDate = ref('')
-class ApplicationTimes {
-	submitTime: string = ''
-	approvalTime: string = ''
-
-	constructor(submitTime: string, approvalTime: string) {
-		this.submitTime = submitTime
-		this.approvalTime = approvalTime
-	}
-}
+const isSubmitting = ref(false)
 function twoDigits(value: number): string {
 	return value < 10 ? `0${value}` : `${value}`
 }
@@ -160,18 +153,9 @@ function withTime(dateValue: string, time: Date): string {
 	return `${dateValue} ${formatTime(time)}`
 }
 const advanceMilliseconds = randomInteger(60 * 60, 2 * 60 * 60) * 1000
-function createApplicationTimes(startDateValue: string, endDateValue: string): ApplicationTimes {
-	const approvalTime = new Date()
-	const earlierTime = new Date(approvalTime.getTime() - advanceMilliseconds)
-	const startDay = startDateValue.slice(0, 10)
-	const endDay = endDateValue.slice(0, 10)
-	return new ApplicationTimes(
-		withTime(startDay, earlierTime),
-		withTime(endDay, approvalTime)
-	)
-}
 const startPickerDate = computed((): string => startDate.value == '' ? '' : startDate.value.slice(0, 10))
 const endPickerDate = computed((): string => endDate.value == '' ? '' : endDate.value.slice(0, 10))
+const leaveTypeNames = computed((): string[] => leaveTypes.value.map((item): string => item.name))
 const durationHours = computed((): number => {
 	if (startDate.value == '' || endDate.value == '') return 0
 	const difference = new Date(endDate.value.replace(' ', 'T')).getTime() - new Date(startDate.value.replace(' ', 'T')).getTime()
@@ -179,7 +163,10 @@ const durationHours = computed((): number => {
 })
 const hasDuration = computed((): boolean => durationHours.value > 0)
 function leaveTypeChange(e: UniPickerChangeEvent) {
-	leaveType.value = leaveTypes[e.detail.value as number]
+	const selected = leaveTypes.value[e.detail.value as number]
+	if (selected == null) return
+	leaveType.value = selected.name
+	leaveTypeID.value = selected.id
 }
 
 function startDateChange(e: UniPickerChangeEvent) {
@@ -199,8 +186,25 @@ function setLeaveSchool(value: string) {
 function goHome() {
 	uni.reLaunch({ url: '/pages/home/index' })
 }
-function submit() {
-	if (leaveType.value == '') {
+function toRFC3339(value: string): string {
+	return new Date(value.replace(' ', 'T')).toISOString()
+}
+
+async function loadLeaveTypes() {
+	try {
+		leaveTypes.value = await getLeaveTypes()
+		if (leaveTypes.value.length == 0) {
+			uni.showToast({ title: '暂无可用请假类型', icon: 'none' })
+		}
+	} catch (error) {
+		const message = (error as Error).message
+		uni.showToast({ title: message == null || message == '' ? '请假类型加载失败' : message, icon: 'none' })
+	}
+}
+
+async function submit() {
+	if (isSubmitting.value) return
+	if (leaveType.value == '' || leaveTypeID.value == 0) {
 		uni.showToast({ title: '请选择请假类型', icon: 'none' })
 		return
 	}
@@ -208,30 +212,41 @@ function submit() {
 		uni.showToast({ title: '请选择请假时间', icon: 'none' })
 		return
 	}
-	if (new Date(endDate.value.replace(' ', 'T')).getTime() < new Date(startDate.value.replace(' ', 'T')).getTime()) {
-		uni.showToast({ title: '结束时间不能早于开始时间', icon: 'none' })
+	if (new Date(endDate.value.replace(' ', 'T')).getTime() <= new Date(startDate.value.replace(' ', 'T')).getTime()) {
+		uni.showToast({ title: '结束时间必须晚于开始时间', icon: 'none' })
 		return
 	}
 	if (reason.value.trim() == '') {
 		uni.showToast({ title: '请填写请假理由', icon: 'none' })
 		return
 	}
-	const applicationTimes = createApplicationTimes(startDate.value, endDate.value)
-	const application = JSON.stringify({
-		leaveType: leaveType.value,
-		startDate: startDate.value,
-		endDate: endDate.value,
-		duration: durationHours.value,
-		course: course.value,
-		leaveSchool: leaveSchool.value,
-		reason: reason.value,
-		travel: travel.value,
-		submitTime: applicationTimes.submitTime,
-		approvalTime: applicationTimes.approvalTime
-	})
-	const query = `?application=${encodeURIComponent(application)}`
-	uni.navigateTo({ url: `/pages/leave/detail${query}` })
+	isSubmitting.value = true
+	try {
+		const now = new Date().toISOString()
+		const record = await createRecord({
+			leave_type_id: leaveTypeID.value,
+			start_time: toRFC3339(startDate.value),
+			end_time: toRFC3339(endDate.value),
+			duration: durationHours.value,
+			affected_course: course.value,
+			is_leave_school: leaveSchool.value == '是',
+			leave_reason: reason.value,
+			travel_way: travel.value,
+			applied_at: now,
+			approved_at: now
+		})
+		uni.navigateTo({ url: `/pages/leave/detail?id=${record.id}` })
+	} catch (error) {
+		const message = (error as Error).message
+		uni.showToast({ title: message == null || message == '' ? '提交申请失败' : message, icon: 'none' })
+	} finally {
+		isSubmitting.value = false
+	}
 }
+
+onLoad(() => {
+	loadLeaveTypes()
+})
 </script>
 
 <style>

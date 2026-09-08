@@ -57,10 +57,10 @@
 import BottomNavigation from '@/components/BottomNavigation.uvue'
 import PageTransition from '@/components/PageTransition.uvue'
 import { ref } from 'vue'
-import { getProfile, getStoredName } from '@/utils/api.uts'
+import { getCurrentUser } from '@/utils/api.uts'
 
 const isLeavePressed = ref(false)
-const userName = ref(getStoredName())
+const userName = ref(getCurrentUser().name)
 
 function handleLeavePress() {
 	isLeavePressed.value = true
@@ -79,17 +79,8 @@ function handleTabNavigation(url: string) {
 	uni.reLaunch({ url: url })
 }
 
-async function loadProfileName() {
-	try {
-		const profile = await getProfile()
-		if (profile != null) userName.value = profile.name
-	} catch (_) {
-		// 首页仍可在资料接口暂不可用时使用本地会话名称显示。
-	}
-}
-
 onShow(() => {
-	loadProfileName()
+	userName.value = getCurrentUser().name
 })
 </script>
 
@@ -250,7 +241,7 @@ onShow(() => {
 	position:relative;
 	z-index:1;
 	height:184rpx;
-	margin-top:72rpx;
+	margin-top:48rpx;
 	padding:0 20rpx;
 	border-radius:36rpx;
 	background:rgba(255,255,255,.72);

@@ -8,7 +8,7 @@
 				<view class="top-back-hit" @click="goHome">
 				</view>
 			</view>
-			<web-view class="compare-web-view" :src="webSrc"></web-view>
+			<web-view v-if="webSrc != ''" class="compare-web-view" :src="webSrc"></web-view>
 		</view>
 	</PageTransition>
 </template>
@@ -16,13 +16,72 @@
 <script setup lang="uts">
 import { ref } from 'vue'
 import PageTransition from '@/components/PageTransition.uvue'
-const webSrc = ref('/static/leave/detail/index.html')
-onLoad((options) => {
-	if (options != null) {
-		webSrc.value = `/static/leave/detail/index.html?application=${encodeURIComponent(options.application ?? '')}`
+import { getRecord, RecordDetail } from '@/utils/api.uts'
+
+const webSrc = ref('')
+const fromRecords = ref(false)
+
+function twoDigits(value: number): string {
+	return value < 10 ? `0${value}` : `${value}`
+}
+
+function formatTime(value: string): string {
+	const date = new Date(value)
+	if (isNaN(date.getTime())) return '-'
+	return `${date.getFullYear()}-${twoDigits(date.getMonth() + 1)}-${twoDigits(date.getDate())} ${twoDigits(date.getHours())}:${twoDigits(date.getMinutes())}:${twoDigits(date.getSeconds())}`
+}
+
+function detailApplication(record: RecordDetail): string {
+	return JSON.stringify({
+		studentName: record.name,
+		studentId: record.student_id,
+		classInfo: `${record.class_info.college} · ${record.class_info.major} · ${record.class_info.class_name}`,
+		leaveType: record.leave_type,
+		startDate: formatTime(record.start_time),
+		endDate: formatTime(record.end_time),
+		duration: record.duration,
+		leaveStatus: '已通过',
+		course: record.affected_course,
+		leaveSchool: record.is_leave_school ? '是' : '否',
+		reason: record.leave_reason,
+		travel: record.travel_way,
+		destination: '内蒙古自治区,呼和浩特市,土默特左旗',
+		submitTime: formatTime(record.applied_at),
+		approvalTime: formatTime(record.approved_at)
+	})
+}
+
+function returnToPreviousPage() {
+	uni.navigateBack({})
+}
+
+async function loadRecord(id: number) {
+	try {
+		const record = await getRecord(id)
+		webSrc.value = `/static/leave/detail/index.html?application=${encodeURIComponent(detailApplication(record))}`
+	} catch (error) {
+		const message = (error as Error).message
+		uni.showToast({ title: message == null || message == '' ? '请假记录加载失败' : message, icon: 'none' })
+		setTimeout(returnToPreviousPage, 1200)
 	}
+}
+
+onLoad((options) => {
+	fromRecords.value = options?.source == 'records'
+	const idText = options?.id ?? '0'
+	const id = parseInt(idText, 10)
+	if (id <= 0 || Math.floor(id) != id) {
+		uni.showToast({ title: '请假记录不存在', icon: 'none' })
+		setTimeout(returnToPreviousPage, 1200)
+		return
+	}
+	loadRecord(id)
 })
 function goHome() {
+	if (fromRecords.value) {
+		uni.navigateBack({})
+		return
+	}
 	uni.reLaunch({ url: '/pages/home/index' })
 }
 </script>

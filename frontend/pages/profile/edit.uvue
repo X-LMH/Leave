@@ -1,8 +1,8 @@
 <template>
-	<ProfilePageShell title="修改个人信息" subtitle="修改您的个人信息" :scrollable="true">
+	<ProfilePageShell :title="firstProfile ? '完善个人信息' : '修改个人信息'" :subtitle="firstProfile ? '请先完善您的个人信息' : '修改您的个人信息'" :scrollable="true">
 		<view class="form-card">
-			<view class="form-row"><text class="field-label">学号</text><view class="field-box field-disabled"><text class="disabled-text">{{ studentID }}</text></view></view>
-			<view class="form-row"><view class="required-label"><text class="required-field-label">班级</text><text class="required">*</text></view><picker class="field-picker" :range="classLabels" :value="classIndex" @change="classChange"><view class="field-box picker-box"><text :class="className == '' ? 'picker-placeholder' : 'picker-value'">{{ className == '' ? '请选择班级' : className }}</text><text class="picker-arrow">⌄</text></view></picker></view>
+			<view class="form-row"><view class="required-label"><text class="required-field-label">学号</text><text class="required">*</text></view><view class="field-box field-disabled"><text class="disabled-text">{{ studentID }}</text></view></view>
+			<view class="form-row"><view class="required-label"><text class="required-field-label">班级</text><text class="required">*</text></view><picker class="field-picker" :range="classLabels" :value="pickerClassIndex" @change="classChange"><view class="field-box picker-box"><text :class="className == '' ? 'picker-placeholder' : 'picker-value'">{{ className == '' ? '请选择班级' : className }}</text><text class="picker-arrow">⌄</text></view></picker></view>
 			<view class="form-row"><view class="required-label"><text class="required-field-label">姓名</text><text class="required">*</text></view><view class="field-box"><input class="field-input" v-model="name" maxlength="20" /></view></view>
 			<view class="form-row"><view class="required-label"><text class="required-field-label">手机号</text><text class="required">*</text></view><view class="field-box"><input class="field-input" v-model="phone" type="number" maxlength="11" /></view></view>
 			<view class="form-row"><view class="required-label"><text class="required-field-label">性别</text><text class="required">*</text></view><view class="gender-group"><view :class="gender == '男' ? 'gender-item gender-active' : 'gender-item'" @click="setGender('男')"><text :class="gender == '男' ? 'gender-text gender-text-active' : 'gender-text'">男</text></view><view :class="gender == '女' ? 'gender-item gender-active' : 'gender-item'" @click="setGender('女')"><text :class="gender == '女' ? 'gender-text gender-text-active' : 'gender-text'">女</text></view></view></view>
@@ -12,14 +12,14 @@
 			<view class="form-row"><text class="field-label">宿舍号</text><view class="field-box"><input class="field-input" v-model="dormNumber" maxlength="20" placeholder="请输入宿舍号" placeholder-class="input-placeholder" /></view></view>
 			<view class="form-row"><view class="required-label"><text class="required-field-label">导员姓名</text><text class="required">*</text></view><view class="field-box"><input class="field-input" v-model="counselor" maxlength="20" /></view></view>
 		</view>
-		<view class="primary-button" @click="save"><text class="primary-button-text">保存修改</text></view>
+		<view class="primary-button" @click="save"><text class="primary-button-text">{{ firstProfile ? '完成并保存' : '保存修改' }}</text></view>
 	</ProfilePageShell>
 </template>
 
 <script setup lang="uts">
 import { computed, ref } from 'vue'
 import ProfilePageShell from '@/components/ProfilePageShell.uvue'
-import { ApartmentOption, ClassOption, getApartments, getClasses, getProfile, ProfileData, saveProfile } from '@/utils/api.uts'
+import { ApartmentOption, ClassOption, getApartments, getClasses, getCurrentUser, getProfile, ProfileData, saveProfile, updateCurrentUser } from '@/utils/api.uts'
 
 const studentID = ref('')
 const classOptions = ref<ClassOption[]>([])
@@ -42,6 +42,7 @@ function formatClass(item: ClassOption): string {
 
 const classLabels = computed((): string[] => classOptions.value.map((item) => formatClass(item)))
 const apartmentLabels = computed((): string[] => apartmentOptions.value.map((item) => item.name))
+const pickerClassIndex = computed((): number => classIndex.value >= 0 ? classIndex.value : 0)
 const className = computed((): string => classIndex.value >= 0 && classIndex.value < classLabels.value.length ? classLabels.value[classIndex.value] : '')
 const apartment = computed((): string => apartmentIndex.value >= 0 && apartmentIndex.value < apartmentLabels.value.length ? apartmentLabels.value[apartmentIndex.value] : '')
 
@@ -53,7 +54,8 @@ async function loadApartments(selectedID: number = 0) {
 	if (gender.value == '') return
 	try {
 		apartmentOptions.value = await getApartments(genderCode())
-		apartmentIndex.value = apartmentOptions.value.findIndex((item) => item.id.toString() == selectedID.toString())
+		const selectedIndex = apartmentOptions.value.findIndex((item) => item.id.toString() == selectedID.toString())
+		apartmentIndex.value = selectedIndex >= 0 ? selectedIndex : apartmentOptions.value.length == 1 ? 0 : -1
 	} catch (error) {
 		const message = (error as Error).message
 		uni.showToast({ title: message == null || message == '' ? '公寓列表加载失败' : message, icon: 'none' })
@@ -67,11 +69,21 @@ function setGender(value: string) {
 	loadApartments()
 }
 
+function pickerIndex(value: any): number {
+	if (typeof value == 'number') return value
+	if (typeof value == 'string') return parseInt(value, 10)
+	return -1
+}
+
 function classChange(e: UniPickerChangeEvent) {
-	classIndex.value = e.detail.value as number
+	const index = pickerIndex(e.detail.value)
+	if (index < 0 || index >= classOptions.value.length) return
+	classIndex.value = index
 }
 function apartmentChange(e: UniPickerChangeEvent) {
-	apartmentIndex.value = e.detail.value as number
+	const index = pickerIndex(e.detail.value)
+	if (index < 0 || index >= apartmentOptions.value.length) return
+	apartmentIndex.value = index
 }
 
 function phoneIsValid(value: string): boolean {
@@ -99,8 +111,7 @@ async function loadPage() {
 			fillProfile(profile)
 			return
 		}
-		const storedStudentID = uni.getStorageSync('leave_student_id')
-		studentID.value = typeof storedStudentID == 'string' ? storedStudentID : ''
+		studentID.value = getCurrentUser().student_id
 	} catch (error) {
 		const message = (error as Error).message
 		uni.showToast({ title: message == null || message == '' ? '个人资料加载失败' : message, icon: 'none' })
@@ -131,7 +142,12 @@ async function save() {
 			dormitory_number: dormNumber.value.trim(),
 			teacher_name: counselor.value.trim()
 		})
-		uni.setStorageSync('leave_name', name.value.trim())
+		const currentUser = getCurrentUser()
+		updateCurrentUser({
+			student_id: currentUser.student_id,
+			name: name.value.trim(),
+			class_name: classOptions.value[classIndex.value].class_name
+		})
 		uni.showToast({ title: '保存成功', icon: 'success' })
 		setTimeout(() => {
 			if (firstProfile.value) uni.reLaunch({ url: '/pages/home/index' })
@@ -147,6 +163,7 @@ async function save() {
 
 onLoad((options) => {
 	firstProfile.value = options?.first == '1'
+	studentID.value = getCurrentUser().student_id
 	loadPage()
 })
 </script>

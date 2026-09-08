@@ -68,6 +68,10 @@ async function loadProfile() {
 		profile.value = data
 	} catch (error) {
 		const message = (error as Error).message
+		if (message == '请先完善个人信息') {
+			uni.reLaunch({ url: '/pages/profile/edit?first=1' })
+			return
+		}
 		uni.showToast({ title: message == null || message == '' ? '个人资料加载失败' : message, icon: 'none' })
 	}
 }

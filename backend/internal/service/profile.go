@@ -27,8 +27,11 @@ func Profile(p *dto.ProfileRequest, studentID string) (err error) {
 
 func GetProfile(studentID string) (*dto.ProfileResponse, error) {
 	profile, class, err := getProfileAndClass(studentID)
-	if err != nil || profile == nil {
+	if err != nil {
 		return nil, err
+	}
+	if profile == nil {
+		return nil, ErrorProfileIncomplete
 	}
 
 	var apartment *models.Apartment

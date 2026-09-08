@@ -75,12 +75,11 @@
 import BottomNavigation from '@/components/BottomNavigation.uvue'
 import PageTransition from '@/components/PageTransition.uvue'
 import { ref } from 'vue'
-import { getProfile, getStoredName, logout as clearSession, logoutRequest, ProfileData } from '@/utils/api.uts'
+import { getCurrentUser, logout as clearSession, logoutRequest } from '@/utils/api.uts'
 
-const profileName = ref(getStoredName())
-const storedStudentID = uni.getStorageSync('leave_student_id')
-const studentID = ref(typeof storedStudentID == 'string' ? storedStudentID : '')
-const className = ref('')
+const profileName = ref(getCurrentUser().name)
+const studentID = ref(getCurrentUser().student_id)
+const className = ref(getCurrentUser().class_name)
 
 
 function handleTabNavigation(url: string) {
@@ -115,21 +114,11 @@ async function handleLogout() {
 	}
 }
 
-async function loadProfile() {
-	try {
-		const profile: ProfileData | null = await getProfile()
-		if (profile == null) return
-		profileName.value = profile.name
-		studentID.value = profile.student_id
-		className.value = profile.class_info.class_name
-	} catch (error) {
-		const message = (error as Error).message
-		uni.showToast({ title: message == null || message == '' ? '个人资料加载失败' : message, icon: 'none' })
-	}
-}
-
 onShow(() => {
-	loadProfile()
+	const user = getCurrentUser()
+	profileName.value = user.name
+	studentID.value = user.student_id
+	className.value = user.class_name
 })
 </script>
 

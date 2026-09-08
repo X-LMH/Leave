@@ -32,10 +32,10 @@
 import PageTransition from '@/components/PageTransition.uvue'
 
 const props = defineProps<{
-	title: string
-	subtitle: string
-	scrollable: boolean
-}>()
+		title: string
+		subtitle: string
+		scrollable: boolean
+	}>()
 
 function goBack() {
 	uni.navigateBack({})

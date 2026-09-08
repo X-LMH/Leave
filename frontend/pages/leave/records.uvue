@@ -1,11 +1,38 @@
 <template>
 	<ProfilePageShell ref="pageShell" title="请假记录" subtitle="记录你的每一次请假" :scrollable="true">
 		<view class="records-list">
-			<view v-for="(item, index) in records" :key="index" class="record-card" @click="openDetail(index)">
-				<view class="record-main">
-					<view class="kind-icon">
-						<image v-if="item.kind == '病假'" class="record-kind-image" src="/static/leave/records/bingjia-copy.svg" mode="aspectFit"></image>
-						<image v-if="item.kind == '事假'" class="record-kind-image" src="/static/leave/records/shijia.svg" mode="aspectFit"></image>
+			<view v-if="isLoading" class="list-state">
+				<text class="state-text">正在加载请假记录...</text>
+			</view>
+			<view v-else-if="loadError != ''" class="list-state" @click="loadRecords">
+				<text class="state-text">{{ loadError }}，点击重试</text>
+			</view>
+			<view v-else-if="records.length == 0" class="list-state">
+				<text class="state-text">暂无请假记录</text>
+			</view>
+			<view
+				v-for="item in records"
+				:key="item.id"
+				:class="removingRecordID == item.id ? 'record-item record-item-removing' : 'record-item'"
+			>
+				<view
+					:class="isCardDragging(item.id) ? 'record-card record-card-dragging' : 'record-card'"
+					:style="{
+						transform: 'translateX(' + cardSwipeOffset(item.id) + 'px)',
+						opacity: cardSwipeOpacity(item.id)
+					}"
+					@touchstart="recordTouchStart(item.id, $event)"
+					@touchmove="recordTouchMove(item.id, $event)"
+					@touchend="recordTouchEnd(item.id, $event)"
+					@touchcancel="recordTouchCancel"
+					@click="openDetail(item.id)"
+				>
+					<view class="record-main">
+						<view :class="item.kind == '病假' ? 'kind-icon kind-icon-sick' : 'kind-icon kind-icon-personal'">
+							<view :class="item.kind == '病假' ? 'kind-icon-halo kind-icon-halo-sick-outer' : 'kind-icon-halo kind-icon-halo-personal-outer'"></view>
+							<view :class="item.kind == '病假' ? 'kind-icon-halo kind-icon-halo-sick-inner' : 'kind-icon-halo kind-icon-halo-personal-inner'"></view>
+							<image v-if="item.kind == '病假'" class="record-kind-image" src="/static/leave/records/bingjia-copy.svg" mode="aspectFit"></image>
+							<image v-if="item.kind == '事假'" class="record-kind-image" src="/static/leave/records/shijia.svg" mode="aspectFit"></image>
 					</view>
 					<view class="record-copy"><text class="record-title">{{ item.kind }}</text><text class="record-reason">{{ item.reason }}</text></view>
 					<view class="right-arrow"></view>
@@ -19,36 +46,246 @@
 					<view class="duration-cell"><view class="time-label-row"><view class="clock-icon"><view class="clock-hand"></view></view><text class="time-label">请假时长</text></view><text class="duration-value">{{ item.durationText }}</text></view>
 				</view>
 			</view>
-			<view class="list-end"><view class="end-line"></view><text class="end-text">没有更多了</text><view class="end-line"></view></view>
+			</view>
+			<view v-if="!isLoading && loadError == '' && records.length > 0" class="list-end">
+				<view class="end-line"></view>
+				<text class="end-text">没有更多了</text>
+				<view class="end-line"></view>
+			</view>
 		</view>
 	</ProfilePageShell>
 </template>
 
 <script setup lang="uts">
 import ProfilePageShell from '@/components/ProfilePageShell.uvue'
-const records = [
-	{ kind: '病假', reason: '身体不适，请假休息', start: '2024-11-12 08:00', end: '2024-11-12 18:00', durationText: '10小时', duration: 10 },
-	{ kind: '事假', reason: '个人事务处理', start: '2024-10-28 09:00', end: '2024-10-28 12:00', durationText: '3小时', duration: 3 },
-	{ kind: '病假', reason: '感冒发烧，请假休息', start: '2024-09-20 08:00', end: '2024-09-20 12:00', durationText: '4小时', duration: 4 },
-	{ kind: '事假', reason: '家庭事务', start: '2024-09-05 14:00', end: '2024-09-06 18:00', durationText: '1天4小时', duration: 28 }
-]
+import { ref } from 'vue'
+import { deleteRecord, getRecords, RecordListItem } from '@/utils/api.uts'
 
-function openDetail(index: number) {
-	const item = records[index]
-	const application = JSON.stringify({
-		leaveType: `${item.kind}-本科生`, startDate: `${item.start}:00`, endDate: `${item.end}:00`, duration: item.duration,
-		course: '', leaveSchool: '否', reason: item.reason, travel: '', submitTime: `${item.start}:00`, approvalTime: `${item.start}:00`
-	})
-	uni.navigateTo({ url: `/pages/leave/detail?application=${encodeURIComponent(application)}` })
+type RecordCard = {
+	id: number
+	kind: string
+	reason: string
+	start: string
+	end: string
+	durationText: string
 }
+
+const records = ref<RecordCard[]>([])
+const isLoading = ref(false)
+const loadError = ref('')
+const isDeletePending = ref(false)
+const swipeOffset = ref(0)
+const pendingDeleteID = ref(0)
+const removingRecordID = ref(0)
+let touchStartX = 0
+let touchStartY = 0
+const touchRecordID = ref(0)
+let suppressDetailID = 0
+
+const swipeDeleteThreshold = uni.getSystemInfoSync().windowWidth * 80 / 750
+const maxSwipeDistance = uni.getSystemInfoSync().windowWidth * 260 / 750
+
+function displayLeaveType(value: string): string {
+	return value.replace('-本科生', '')
+}
+
+function formatTime(value: string): string {
+	const date = new Date(value)
+	if (isNaN(date.getTime())) return value
+	const twoDigits = (number: number): string => number < 10 ? '0' + number : '' + number
+	return `${date.getFullYear()}-${twoDigits(date.getMonth() + 1)}-${twoDigits(date.getDate())} ${twoDigits(date.getHours())}:${twoDigits(date.getMinutes())}`
+}
+
+function formatDuration(hours: number): string {
+	if (hours < 24) return `${hours}小时`
+	const days = Math.floor(hours / 24)
+	const remainingHours = hours % 24
+	return remainingHours == 0 ? `${days}天` : `${days}天${remainingHours}小时`
+}
+
+function toRecordCard(item: RecordListItem): RecordCard {
+	return {
+		id: item.id,
+		kind: displayLeaveType(item.leave_type),
+		reason: item.leave_reason,
+		start: formatTime(item.start_time),
+		end: formatTime(item.end_time),
+		durationText: formatDuration(item.duration)
+	}
+}
+
+async function loadRecords() {
+	if (isLoading.value) return
+	isLoading.value = true
+	loadError.value = ''
+	records.value = []
+	try {
+		const data = await getRecords(1, 100)
+		records.value = data.map((item): RecordCard => toRecordCard(item))
+	} catch (error) {
+		const message = (error as Error).message
+		loadError.value = message == null || message == '' ? '请假记录加载失败' : message
+	} finally {
+		isLoading.value = false
+	}
+}
+
+function openDetail(id: number) {
+	if (suppressDetailID == id) {
+		suppressDetailID = 0
+		return
+	}
+	uni.navigateTo({ url: `/pages/leave/detail?id=${id}&source=records` })
+}
+
+function cardSwipeOffset(id: number): number {
+	return touchRecordID.value == id ? swipeOffset.value : 0
+}
+
+function isCardDragging(id: number): boolean {
+	return touchRecordID.value == id && pendingDeleteID.value != id
+}
+
+function cardSwipeOpacity(id: number): number {
+	if (pendingDeleteID.value == id) return 0
+	const progress = cardSwipeOffset(id) / maxSwipeDistance
+	return Math.max(0, 1 - progress)
+}
+
+function resetSwipe() {
+	touchRecordID.value = 0
+	swipeOffset.value = 0
+}
+
+function restorePendingCard() {
+	pendingDeleteID.value = 0
+	resetSwipe()
+}
+
+async function deleteSelectedRecord(id: number) {
+	try {
+		await deleteRecord(id)
+		removingRecordID.value = id
+		setTimeout(() => {
+			records.value = records.value.filter((item): boolean => item.id != id)
+			removingRecordID.value = 0
+			restorePendingCard()
+			isDeletePending.value = false
+			uni.showToast({ title: '删除成功', icon: 'success' })
+		}, 320)
+	} catch (error) {
+		const message = (error as Error).message
+		uni.showToast({ title: message == null || message == '' ? '删除失败' : message, icon: 'none' })
+		restorePendingCard()
+		isDeletePending.value = false
+	}
+}
+
+function confirmDelete(id: number) {
+	if (isDeletePending.value) return
+	isDeletePending.value = true
+	uni.showModal({
+		title: '删除请假记录',
+		content: '删除后无法恢复，确定要删除吗？',
+		cancelText: '取消',
+		confirmText: '删除',
+		success: (result) => {
+			if (!result.confirm) {
+				restorePendingCard()
+				isDeletePending.value = false
+				return
+			}
+			deleteSelectedRecord(id)
+		},
+		fail: () => {
+			restorePendingCard()
+			isDeletePending.value = false
+		}
+	})
+}
+
+function recordTouchStart(id: number, event: any) {
+	if (isDeletePending.value) return
+	const touchEvent = event as UniTouchEvent
+	const touch = touchEvent.touches[0]
+	if (touch == null) return
+	touchStartX = touch.pageX
+	touchStartY = touch.pageY
+	touchRecordID.value = id
+	swipeOffset.value = 0
+}
+
+function recordTouchMove(id: number, event: any) {
+	if (isDeletePending.value || touchRecordID.value != id) return
+	const touchEvent = event as UniTouchEvent
+	const touch = touchEvent.touches[0]
+	if (touch == null) return
+
+	const horizontalDistance = touch.pageX - touchStartX
+	const verticalDistance = Math.abs(touch.pageY - touchStartY)
+	if (horizontalDistance <= 0 || horizontalDistance <= verticalDistance) {
+		swipeOffset.value = 0
+		return
+	}
+	touchEvent.preventDefault()
+	swipeOffset.value = Math.min(horizontalDistance, maxSwipeDistance)
+}
+
+function recordTouchEnd(id: number, event: any) {
+	if (isDeletePending.value || touchRecordID.value != id) {
+		resetSwipe()
+		return
+	}
+	const touchEvent = event as UniTouchEvent
+	const touch = touchEvent.changedTouches[0]
+	if (touch == null) {
+		resetSwipe()
+		return
+	}
+	const horizontalDistance = touch.pageX - touchStartX
+	const verticalDistance = Math.abs(touch.pageY - touchStartY)
+	const shouldDelete = horizontalDistance >= swipeDeleteThreshold && horizontalDistance > verticalDistance
+	if (!shouldDelete) {
+		resetSwipe()
+		return
+	}
+
+	suppressDetailID = id
+	setTimeout(() => {
+		if (suppressDetailID == id) suppressDetailID = 0
+	}, 250)
+	pendingDeleteID.value = id
+	swipeOffset.value = maxSwipeDistance
+	confirmDelete(id)
+}
+
+function recordTouchCancel() {
+	resetSwipe()
+}
+
+onShow(() => {
+	loadRecords()
+})
 </script>
 
 <style>
 .records-list { margin-top: 46rpx; }
-.record-card { margin-bottom: 28rpx; padding: 24rpx 26rpx 22rpx; border-radius: 30rpx; background-color: rgba(255,255,255,0.88); box-shadow: 0 12rpx 32rpx rgba(82,124,194,0.11); }
+.record-item { height: 291rpx; overflow: visible; transition-property: height,opacity; transition-duration: 320ms; transition-timing-function: ease-out; }
+.record-item-removing { height: 0; overflow: hidden; opacity: 0; }
+.record-card { margin-bottom: 0; padding: 24rpx 26rpx 22rpx; border-radius: 30rpx; background-color: rgba(255,255,255,0.88); box-shadow: 0 12rpx 32rpx rgba(82,124,194,0.11); transition-property: transform,opacity; transition-duration: 220ms; transition-timing-function: ease-out; }
+.record-card-dragging { transition-duration: 0ms; }
 .record-main { height: 92rpx; flex-direction: row; align-items: center; }
-.kind-icon { width: 76rpx; height: 76rpx; justify-content: center; align-items: center; }
-.record-kind-image { width: 42rpx; height: 42rpx; }
+.kind-icon { position: relative; width: 76rpx; height: 76rpx; border-radius: 38rpx; justify-content: center; align-items: center; }
+.kind-icon-sick { background-color: rgba(81, 139, 255, 0.14); }
+.kind-icon-personal { background-color: rgba(255, 174, 70, 0.16); }
+.kind-icon-halo { position: absolute; border-radius: 50%; }
+.kind-icon-halo-outer { width: 68rpx; height: 68rpx; }
+.kind-icon-halo-inner { width: 56rpx; height: 56rpx; }
+.kind-icon-halo-sick-outer { width: 68rpx; height: 68rpx; background-color: rgba(81, 139, 255, 0.12); }
+.kind-icon-halo-sick-inner { width: 56rpx; height: 56rpx; background-color: rgba(81, 139, 255, 0.16); }
+.kind-icon-halo-personal-outer { width: 68rpx; height: 68rpx; background-color: rgba(255, 174, 70, 0.14); }
+.kind-icon-halo-personal-inner { width: 56rpx; height: 56rpx; background-color: rgba(255, 174, 70, 0.2); }
+.record-kind-image { position: relative; z-index: 1; width: 42rpx; height: 42rpx; }
 .record-copy { flex: 1; margin-left: 24rpx; }
 .record-title { color: #102f68; font-size: 31rpx; font-weight: 700; line-height: 40rpx; }
 .record-reason { margin-top: 5rpx; color: #7187b2; font-size: 23rpx; line-height: 32rpx; }
@@ -59,7 +296,7 @@ function openDetail(index: number) {
 .duration-cell { width: 164rpx; }
 .time-label-row { flex-direction: row; align-items: center; }
 .time-label { margin-left: 10rpx; color: #7187b2; font-size: 20rpx; }
-.time-value { margin-top: 9rpx; margin-left: 34rpx; color: #173568; font-size: 20rpx; }
+.time-value { width: 100%; margin-top: 9rpx; color: #173568; font-size: 20rpx; text-align: center; white-space: nowrap; }
 .duration-value { margin-top: 9rpx; margin-left: 34rpx; color: #2875f1; font-size: 23rpx; font-weight: 700; }
 .time-separator { width: 1rpx; height: 64rpx; margin: 0 14rpx; background-color: rgba(112,143,202,0.18); }
 .calendar-icon { width: 24rpx; height: 22rpx; border-width: 3rpx; border-style: solid; border-color: #7b90ba; border-radius: 4rpx; }
@@ -69,4 +306,6 @@ function openDetail(index: number) {
 .list-end { height: 70rpx; flex-direction: row; justify-content: center; align-items: center; }
 .end-line { width: 36rpx; height: 1rpx; background-color: #8ea2c8; }
 .end-text { margin: 0 15rpx; color: #7b90b8; font-size: 22rpx; }
+.list-state { min-height: 180rpx; justify-content: center; align-items: center; }
+.state-text { color: #7b90b8; font-size: 25rpx; }
 </style>

@@ -7,6 +7,8 @@ CREATE TABLE `users`
     `role`          VARCHAR(20)      NOT NULL DEFAULT 'student' COMMENT '角色：student=学生，admin=管理员',
     `status`        TINYINT UNSIGNED NOT NULL DEFAULT 1 COMMENT '账号状态：1=正常，0=停用',
     `last_login_at` DATETIME         NULL     DEFAULT NULL COMMENT '最近登录时间',
+    `last_login_device` VARCHAR(255) NOT NULL DEFAULT '' COMMENT '最近登录设备名称',
+    `last_login_app_version` VARCHAR(64) NOT NULL DEFAULT '' COMMENT '最近登录应用版本',
     `created_at`    DATETIME         NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `updated_at`    DATETIME         NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted_at`    DATETIME         NULL     DEFAULT NULL COMMENT '软删除时间，NULL表示未删除',
