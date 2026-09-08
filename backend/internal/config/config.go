@@ -1,7 +1,6 @@
 package config
 
 import (
-	"backend/internal/models"
 	"fmt"
 	"strings"
 
@@ -13,12 +12,6 @@ type Config struct {
 	JWT struct {
 		Secret string `yaml:"secret"`
 	} `yaml:"jwt"`
-	Version struct {
-		Latest      string   `yaml:"latest"`
-		DownloadURL string   `yaml:"downloadURL"`
-		UpdateLog   []string `yaml:"updateLog"`
-	} `yaml:"version"`
-
 	Mysql struct {
 		Host     string `yaml:"host"`
 		Port     int    `yaml:"port"`
@@ -55,11 +48,3 @@ func Init() error {
 
 // JWTSecret 返回初始化后用于 JWT 签名与验签的密钥。
 func JWTSecret() []byte { return []byte(Cfg.JWT.Secret) }
-
-func GetVersionInfo() models.VersionInfo {
-	return models.VersionInfo{
-		Latest:      Cfg.Version.Latest,
-		DownloadURL: Cfg.Version.DownloadURL,
-		UpdateLog:   Cfg.Version.UpdateLog,
-	}
-}

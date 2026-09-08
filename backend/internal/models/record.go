@@ -5,6 +5,11 @@ import (
 	"time"
 )
 
+const (
+	LeaveSchoolNo  = false
+	LeaveSchoolYes = true
+)
+
 type Record struct {
 	ID             uint           `gorm:"column:id;primaryKey;autoIncrement"`
 	StudentID      string         `gorm:"column:student_id"`

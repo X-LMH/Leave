@@ -16,12 +16,14 @@ func SetupRouter() *gin.Engine {
 	// API v1
 	api := r.Group("/api/v1")
 
+	// 版本接口必须不受版本校验保护，旧客户端才能获取更新信息。
+	api.GET("/app-version", controller.GetCurrentAppVersionHandler)
+	api.Use(middleware.AppVersionMiddleware())
+
 	// 公共接口
 	{
 		api.POST("/register", controller.RegisterHandler)
 		api.POST("/login", controller.LoginHandler)
-		//api.GET("/version", controller.VersionHandler)
-		//api.GET("/update", controller.UpdateHandler)
 	}
 
 	auth := api.Group("")

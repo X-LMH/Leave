@@ -6,6 +6,13 @@ import (
 	"gorm.io/gorm"
 )
 
+const (
+	RoleStudent              = "student"
+	RoleAdmin                = "admin"
+	UserStatusDisabled uint8 = 0
+	UserStatusActive   uint8 = 1
+)
+
 type User struct {
 	ID                  uint           `gorm:"column:id;primaryKey;autoIncrement"`
 	StudentID           string         `gorm:"column:student_id"`

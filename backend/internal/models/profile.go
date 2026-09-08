@@ -6,6 +6,11 @@ import (
 	"gorm.io/gorm"
 )
 
+const (
+	GenderMale   = "male"
+	GenderFemale = "female"
+)
+
 type Profile struct {
 	ID              uint           `gorm:"column:id;primaryKey;autoIncrement"`
 	StudentID       string         `gorm:"column:student_id"`

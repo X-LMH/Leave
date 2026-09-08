@@ -1,15 +1,12 @@
 package controller
 
 import (
-	"backend/internal/config"
 	"backend/internal/dao/mysql"
 	"backend/internal/dto"
 	"backend/internal/request"
 	"backend/internal/response"
 	"backend/internal/service"
 	"errors"
-	"os"
-	"path/filepath"
 	"strings"
 	"unicode/utf8"
 
@@ -134,33 +131,4 @@ func validStudentID(studentID string) bool {
 		}
 	}
 	return true
-}
-
-func VersionHandler(c *gin.Context) {
-	version := config.GetVersionInfo()
-	response.Success(c, version)
-}
-
-// UpdateHandler 处理APK文件下载请求（从程序同级目录读取）
-func UpdateHandler(c *gin.Context) {
-	// 获取当前工作目录（程序运行的同级目录）
-	workDir, err := os.Getwd()
-	if err != nil {
-		response.Error(c, response.CodeServerBusy)
-		return
-	}
-
-	// 拼接APK文件路径（同级目录下的Leave.apk）
-	apkPath := filepath.Join(workDir, "Leave.apk")
-
-	// 检查文件是否存在
-	if _, err := os.Stat(apkPath); os.IsNotExist(err) {
-		response.Error(c, response.CodeFileNotFound)
-		return
-	}
-
-	// 设置响应头，触发文件下载
-	c.Header("Content-Type", "application/vnd.android.package-archive")
-	c.Header("Content-Disposition", "attachment; filename=Leave.apk")
-	c.File(apkPath)
 }

@@ -29,7 +29,8 @@ const (
 	CodeFileNotFound Code = 4001
 
 	// 系统维护类错误：5000-5999
-	CodeServiceFix Code = 5001
+	CodeServiceFix  Code = 5001
+	CodeForceUpdate Code = 5002
 
 	// 服务异常类错误：9000-9999
 	CodeServerBusy Code = 9001
@@ -55,6 +56,7 @@ var metaByCode = map[Code]codeMeta{
 	CodeRecordNotExist:    {message: "记录不存在", httpStatus: http.StatusNotFound},
 	CodeProfileIncomplete: {message: "请先完善个人信息", httpStatus: http.StatusBadRequest},
 	CodeServiceFix:        {message: "服务正在维护中...", httpStatus: http.StatusServiceUnavailable},
+	CodeForceUpdate:       {message: "当前应用版本已停止服务，请更新后继续使用", httpStatus: http.StatusUpgradeRequired},
 	CodeFileNotFound:      {message: "文件未找到", httpStatus: http.StatusNotFound},
 }
 

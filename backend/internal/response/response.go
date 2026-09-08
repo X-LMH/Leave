@@ -34,3 +34,17 @@ func Error(c *gin.Context, code Code) {
 		Message: meta.message,
 	})
 }
+
+// ErrorWithData 写出携带附加信息的错误响应。
+func ErrorWithData(c *gin.Context, code Code, data any) {
+	meta, ok := metaByCode[code]
+	if !ok {
+		code = CodeServerBusy
+		meta = metaByCode[CodeServerBusy]
+	}
+	c.JSON(meta.httpStatus, Response{
+		Code:    code,
+		Message: meta.message,
+		Data:    data,
+	})
+}

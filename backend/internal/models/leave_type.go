@@ -5,6 +5,11 @@ import (
 	"time"
 )
 
+const (
+	LeaveTypeDisabled = false
+	LeaveTypeEnabled  = true
+)
+
 type LeaveType struct {
 	ID        uint           `gorm:"column:id;primaryKey;autoIncrement"`
 	Name      string         `gorm:"column:name"`
