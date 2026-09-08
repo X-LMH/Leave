@@ -5,8 +5,11 @@ import (
 	"backend/internal/dto"
 	"backend/internal/models"
 	"encoding/json"
+	"errors"
 	"strings"
 )
+
+var ErrAppVersionNotFound = errors.New("未找到已发布的应用版本")
 
 // GetCurrentAppVersion returns the currently usable version for a platform.
 func GetCurrentAppVersion(platform string) (*dto.AppVersionResponse, error) {
@@ -20,7 +23,11 @@ func GetCurrentAppVersion(platform string) (*dto.AppVersionResponse, error) {
 // GetCurrentAppPackage returns the current version record used to serve its package.
 func GetCurrentAppPackage(platform string) (*models.AppVersion, error) {
 	platform = strings.ToLower(strings.TrimSpace(platform))
-	return mysql.GetCurrentAppVersion(platform)
+	version, err := mysql.GetCurrentAppVersion(platform)
+	if errors.Is(err, mysql.ErrorAppVersionNotFound) {
+		return nil, ErrAppVersionNotFound
+	}
+	return version, err
 }
 
 // IsCurrentAppVersion reports whether a client is running the current published version.

@@ -1,6 +1,6 @@
 import { getAppVersionCode } from '@/utils/device.uts'
 
-export const API_BASE_URL = 'http://192.168.0.86:8080/api/v1'
+export const API_BASE_URL = 'http://39.104.89.165:8080/api/v1'
 
 export const STORAGE_TOKEN_KEY = 'leave_token'
 export const STORAGE_STUDENT_ID_KEY = 'leave_student_id'
@@ -172,7 +172,6 @@ export function getStoredDeviceName(): string {
 
 export function saveSession(studentID: string, data: LoginData, deviceName: string = '') {
 	uni.setStorageSync(STORAGE_TOKEN_KEY, data.token)
-	uni.setStorageSync(STORAGE_STUDENT_ID_KEY, studentID)
 	uni.setStorageSync(STORAGE_STUDENT_ID_KEY, data.user.student_id)
 	uni.setStorageSync(STORAGE_NAME_KEY, data.user.name)
 	uni.setStorageSync(STORAGE_CLASS_NAME_KEY, data.user.class_name)

@@ -8,7 +8,7 @@
 					<image class="shell-back-icon" src="/static/my/password/back.png" mode="aspectFit"></image>
 				</view>
 			</view>
-			<scroll-view v-if="scrollable" class="shell-scroll" scroll-y="true" :show-scrollbar="false">
+			<scroll-view v-if="scrollable" class="shell-scroll" scroll-y="true" :show-scrollbar="false" @scrolltolower="emit('scrolltolower')">
 				<view class="shell-content">
 					<view class="shell-heading">
 						<text class="shell-title">{{ title }}</text>
@@ -36,6 +36,8 @@ const props = defineProps<{
 		subtitle: string
 		scrollable: boolean
 	}>()
+
+const emit = defineEmits(['scrolltolower'])
 
 function goBack() {
 	uni.navigateBack({})

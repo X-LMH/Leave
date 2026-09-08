@@ -32,9 +32,10 @@ func Init() error {
 	// 设置viper参数
 	viper.SetConfigName("config")   // 配置文件名（无后缀）
 	viper.SetConfigType("yaml")     // 配置文件类型
-	viper.AddConfigPath("./config") // 配置文件所在路径
+	viper.AddConfigPath("./config") // 当前推荐的配置文件目录
+	viper.AddConfigPath(".")        // 兼容已有部署中的 config.yaml
 	viper.BindEnv("jwt.secret", "JWT_SECRET")
-	viper.SetDefault("app.package_dir", "../releases")
+	viper.SetDefault("app.package_dir", "/www/wwwroot/Leave/releases")
 
 	// 读取配置文件
 	if err := viper.ReadInConfig(); err != nil {

@@ -16,6 +16,9 @@ func SetupRouter() *gin.Engine {
 	// API v1
 	api := r.Group("/api/v1")
 
+	// 健康检查接口
+	api.GET("/health", controller.HealthHandler)
+
 	// 版本接口必须不受版本校验保护，旧客户端才能获取更新信息。
 	api.GET("/app-version", controller.GetCurrentAppVersionHandler)
 	api.GET("/app-download", controller.DownloadCurrentAppHandler)

@@ -2,7 +2,6 @@ package controller
 
 import (
 	"backend/internal/config"
-	"backend/internal/dao/mysql"
 	"backend/internal/response"
 	"backend/internal/service"
 	"errors"
@@ -42,7 +41,7 @@ func DownloadCurrentAppHandler(c *gin.Context) {
 
 	version, err := service.GetCurrentAppPackage(platform)
 	if err != nil {
-		if errors.Is(err, mysql.ErrorAppVersionNotFound) {
+		if errors.Is(err, service.ErrAppVersionNotFound) {
 			response.Error(c, response.CodeFileNotFound)
 			return
 		}

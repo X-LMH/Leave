@@ -1,5 +1,5 @@
 <template>
-	<ProfilePageShell ref="pageShell" title="请假记录" subtitle="记录你的每一次请假" :scrollable="true">
+	<ProfilePageShell ref="pageShell" title="请假记录" subtitle="记录你的每一次请假" :scrollable="true" @scrolltolower="loadMoreRecords">
 		<view class="records-list">
 			<view v-if="isLoading" class="list-state">
 				<text class="state-text">正在加载请假记录...</text>
@@ -47,7 +47,13 @@
 				</view>
 			</view>
 			</view>
-			<view v-if="!isLoading && loadError == '' && records.length > 0" class="list-end">
+			<view v-if="isLoadingMore" class="list-end">
+				<text class="end-text">正在加载更多...</text>
+			</view>
+			<view v-else-if="loadMoreError != ''" class="list-end" @click="loadMoreRecords">
+				<text class="end-text">{{ loadMoreError }}，点击重试</text>
+			</view>
+			<view v-else-if="!isLoading && loadError == '' && records.length > 0 && !hasMore" class="list-end">
 				<view class="end-line"></view>
 				<text class="end-text">没有更多了</text>
 				<view class="end-line"></view>
@@ -72,7 +78,11 @@ type RecordCard = {
 
 const records = ref<RecordCard[]>([])
 const isLoading = ref(false)
+const isLoadingMore = ref(false)
 const loadError = ref('')
+const loadMoreError = ref('')
+const hasMore = ref(true)
+const currentPage = ref(0)
 const isDeletePending = ref(false)
 const swipeOffset = ref(0)
 const pendingDeleteID = ref(0)
@@ -81,6 +91,8 @@ let touchStartX = 0
 let touchStartY = 0
 const touchRecordID = ref(0)
 let suppressDetailID = 0
+
+const recordPageSize = 20
 
 const swipeDeleteThreshold = uni.getSystemInfoSync().windowWidth * 80 / 750
 const maxSwipeDistance = uni.getSystemInfoSync().windowWidth * 260 / 750
@@ -118,15 +130,39 @@ async function loadRecords() {
 	if (isLoading.value) return
 	isLoading.value = true
 	loadError.value = ''
+	loadMoreError.value = ''
 	records.value = []
+	currentPage.value = 0
+	hasMore.value = true
 	try {
-		const data = await getRecords(1, 20)
+		const data = await getRecords(1, recordPageSize)
 		records.value = data.map((item): RecordCard => toRecordCard(item))
+		currentPage.value = 1
+		hasMore.value = data.length == recordPageSize
 	} catch (error) {
 		const message = (error as Error).message
 		loadError.value = message == null || message == '' ? '请假记录加载失败' : message
 	} finally {
 		isLoading.value = false
+	}
+}
+
+async function loadMoreRecords() {
+	if (isLoading.value || isLoadingMore.value || !hasMore.value) return
+
+	isLoadingMore.value = true
+	loadMoreError.value = ''
+	const nextPage = currentPage.value + 1
+	try {
+		const data = await getRecords(nextPage, recordPageSize)
+		records.value = records.value.concat(data.map((item): RecordCard => toRecordCard(item)))
+		currentPage.value = nextPage
+		hasMore.value = data.length == recordPageSize
+	} catch (error) {
+		const message = (error as Error).message
+		loadMoreError.value = message == null || message == '' ? '请假记录加载失败' : message
+	} finally {
+		isLoadingMore.value = false
 	}
 }
 

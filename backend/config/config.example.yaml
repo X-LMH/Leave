@@ -11,5 +11,5 @@ jwt:
 
 # APK 不应部署在 Web 服务器的静态目录；此路径可为相对 backend 工作目录的路径。
 app:
-  # 相对于 backend 进程的工作目录，安装包位于 backend 同级的 releases 目录。
-  package_dir: "../releases"
+  # 服务器上用于存放已发布 APK 的绝对目录。
+  package_dir: "/www/wwwroot/Leave/releases"

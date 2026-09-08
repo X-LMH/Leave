@@ -23,7 +23,7 @@ func main() {
 	// 启动路由
 	r := router.SetupRouter()
 	// 启动
-	if err := r.Run("0.0.0.0:8080"); err != nil {
+	if err := r.Run(":8080"); err != nil {
 		fmt.Printf("Run mysql failed, err:%v\n", err)
 		return
 	}

@@ -19,7 +19,7 @@ backend/config/config.local.yaml
 
 # Go 后端
 backend/tmp/
-backend/bin/
+bin/
 backend/coverage.out
 backend/*.exe
 backend/*.test
