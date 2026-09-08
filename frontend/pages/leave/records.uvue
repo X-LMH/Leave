@@ -120,7 +120,7 @@ async function loadRecords() {
 	loadError.value = ''
 	records.value = []
 	try {
-		const data = await getRecords(1, 100)
+		const data = await getRecords(1, 20)
 		records.value = data.map((item): RecordCard => toRecordCard(item))
 	} catch (error) {
 		const message = (error as Error).message

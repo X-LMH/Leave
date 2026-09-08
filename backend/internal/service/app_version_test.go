@@ -11,8 +11,7 @@ func TestAppVersionResponse(t *testing.T) {
 		Platform:     "android",
 		VersionCode:  2,
 		VersionName:  "0.0.2",
-		DownloadURL:  "https://download.example.com/Leave-0.0.2.apk",
-		APKSHA256:    "checksum",
+		PackageFile:  "leave-android-2-0.0.2.apk",
 		ReleaseNotes: `["修复登录问题","优化请假流程"]`,
 	}
 

@@ -10,6 +10,16 @@
 			}
 		},
 		{
+			"path": "pages/update/index",
+			"style": {
+				"navigationStyle": "custom",
+				"disableScroll": true,
+				"backgroundColor": "#F4F7FF",
+				"backgroundColorContent": "#F4F7FF",
+				"swipeBackAsBackPress": false
+			}
+		},
+		{
 			"path": "pages/auth/login",
 			"style": {
 				"navigationStyle": "custom",

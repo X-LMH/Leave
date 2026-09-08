@@ -14,8 +14,8 @@ Thumbs.db
 .env
 .env.*
 !.env.example
-backend/config.yaml
-backend/config.local.yaml
+backend/config/config.yaml
+backend/config/config.local.yaml
 
 # Go 后端
 backend/tmp/
@@ -44,3 +44,4 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+releases/

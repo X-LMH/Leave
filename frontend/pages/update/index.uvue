@@ -1,0 +1,297 @@
+<template>
+	<view class="update-page">
+		<view class="update-content">
+			<view class="update-main">
+				<image class="update-illustration" src="/static/update/version-update.svg" mode="aspectFit" />
+				<text class="update-title">发现新版本</text>
+				<text class="update-subtitle">请更新后继续使用请假申请系统</text>
+
+				<view v-if="loadingVersion" class="loading-panel">
+					<text class="panel-message">正在获取版本信息</text>
+				</view>
+				<view v-else-if="loadError != ''" class="loading-panel">
+					<text class="panel-message">{{ loadError }}</text>
+					<button class="retry-button" @click="loadVersion">重试</button>
+				</view>
+				<view v-else class="version-card">
+					<view class="version-row">
+						<text class="version-label">当前版本</text>
+						<text class="version-value">{{ currentVersionName }}</text>
+					</view>
+					<view class="version-row">
+						<text class="version-label">最新版本</text>
+						<text class="version-value version-value-highlight">{{ latestVersionName }}</text>
+					</view>
+					<view class="notes-section">
+						<text class="notes-title">本次更新</text>
+						<view v-if="releaseNotes.length == 0" class="note-row">
+							<view class="note-dot"></view>
+							<text class="note-text">修复已知问题并提升使用体验</text>
+						</view>
+						<view v-for="(note, index) in releaseNotes" :key="index" class="note-row">
+							<view class="note-dot"></view>
+							<text class="note-text">{{ note }}</text>
+						</view>
+					</view>
+				</view>
+
+				<view v-if="downloading" class="progress-wrap">
+					<view class="progress-track">
+						<view class="progress-value" :style="{ width: downloadProgress + '%' }"></view>
+					</view>
+					<text class="progress-text">正在下载 {{ downloadProgressDisplay }}%</text>
+				</view>
+			</view>
+
+			<button v-if="!loadingVersion && loadError == ''" class="update-button" :disabled="downloading || installing" @click="downloadAndInstall">
+				{{ actionText }}
+			</button>
+			<text v-if="actionError != ''" class="action-error">{{ actionError }}</text>
+		</view>
+	</view>
+</template>
+
+<script setup lang="uts">
+import { computed, ref } from 'vue'
+import { AppVersionInfo, getAppDownloadURL, getCurrentAppVersion, getStoredUpdateInfo, saveUpdateInfo } from '@/utils/api.uts'
+import { getAppVersion } from '@/utils/device.uts'
+
+const latestVersion = ref<AppVersionInfo | null>(getStoredUpdateInfo())
+const loadingVersion = ref(latestVersion.value == null)
+const loadError = ref('')
+const downloading = ref(false)
+const installing = ref(false)
+const downloadProgress = ref(0)
+const downloadProgressDisplay = computed((): number => Math.floor(downloadProgress.value))
+const actionError = ref('')
+
+const currentVersionName = computed((): string => getAppVersion())
+const latestVersionName = computed((): string => latestVersion.value == null ? '' : latestVersion.value.version_name)
+const releaseNotes = computed((): string[] => latestVersion.value == null ? [] : latestVersion.value.release_notes)
+const actionText = computed((): string => {
+	if (downloading.value) return '正在下载'
+	if (installing.value) return '正在调起安装'
+	return '下载并安装'
+})
+
+async function loadVersion() {
+	loadingVersion.value = true
+	loadError.value = ''
+	try {
+		const version = await getCurrentAppVersion()
+		latestVersion.value = version
+		saveUpdateInfo(version)
+	} catch (error) {
+		const message = (error as Error).message
+		loadError.value = message == null || message == '' ? '无法获取版本信息，请检查网络后重试' : message
+	} finally {
+		loadingVersion.value = false
+	}
+}
+
+function downloadFailed(message: string) {
+	downloading.value = false
+	actionError.value = message
+}
+
+function installDownloadedApk(filePath: string) {
+	installing.value = true
+	uni.installApk({
+		filePath: filePath,
+		fail: (error) => {
+			const detail = error.errMsg
+			actionError.value = detail == null || detail == '' ? '无法调起安装，请重试' : detail
+		},
+		complete: () => {
+			installing.value = false
+		}
+	})
+}
+
+function downloadAndInstall() {
+	if (downloading.value || installing.value) return
+
+	downloadProgress.value = 0
+	actionError.value = ''
+	downloading.value = true
+	const downloadTask = uni.downloadFile({
+		url: getAppDownloadURL(),
+		success: (result) => {
+			if (result.statusCode < 200 || result.statusCode >= 300) {
+				downloadFailed('安装包下载失败，请重试')
+				return
+			}
+			downloading.value = false
+			installDownloadedApk(result.tempFilePath)
+		},
+		fail: (error) => {
+			const detail = error.errMsg
+			downloadFailed(detail == null || detail == '' ? '安装包下载失败，请重试' : detail)
+		}
+	})
+
+	downloadTask.onProgressUpdate((progress) => {
+		downloadProgress.value = progress.progress
+	})
+}
+
+onLoad(() => {
+	if (latestVersion.value == null) {
+		loadVersion()
+	}
+})
+
+onBackPress((): boolean => true)
+</script>
+
+<style>
+.update-page {
+	flex: 1;
+	background-color: #F5F7FC;
+}
+.update-content {
+	flex: 1;
+	padding: 0 56rpx 76rpx;
+	align-items: center;
+}
+.update-main {
+	flex: 1;
+	width: 100%;
+	justify-content: center;
+	align-items: center;
+	padding: 40rpx 0;
+}
+.update-illustration {
+	width: 240rpx;
+	height: 240rpx;
+}
+.update-title {
+	margin-top: 28rpx;
+	color: #253453;
+	font-size: 46rpx;
+	font-weight: 700;
+	text-align: center;
+}
+.update-subtitle {
+	margin-top: 16rpx;
+	color: #8994AA;
+	font-size: 28rpx;
+	text-align: center;
+}
+.version-card {
+	width: 100%;
+	margin-top: 44rpx;
+	padding: 32rpx;
+	box-sizing: border-box;
+	border-radius: 32rpx;
+	background-color: #FFFFFF;
+	box-shadow: 0 12rpx 36rpx rgba(37, 52, 83, 0.04);
+}
+.version-row {
+	flex-direction: row;
+	justify-content: space-between;
+	align-items: center;
+	padding: 12rpx 0;
+}
+.version-label {
+	color: #8994AA;
+	font-size: 27rpx;
+}
+.version-value {
+	color: #52627C;
+	font-size: 28rpx;
+	font-weight: 600;
+}
+.version-value-highlight {
+	padding: 6rpx 16rpx;
+	border-radius: 12rpx;
+	background-color: #EDF1FF;
+	color: #5874D8;
+}
+.notes-section {
+	margin-top: 28rpx;
+	padding-top: 26rpx;
+	border-top-width: 1rpx;
+	border-top-style: solid;
+	border-top-color: #E8EDF8;
+}
+.notes-title {
+	margin-bottom: 14rpx;
+	color: #253453;
+	font-size: 28rpx;
+	font-weight: 700;
+}
+.note-row {
+	flex-direction: row;
+	margin-top: 10rpx;
+}
+.note-dot {
+	width: 8rpx;
+	height: 8rpx;
+	margin-top: 15rpx;
+	margin-right: 16rpx;
+	border-radius: 4rpx;
+	background-color: #A7B7E8;
+}
+.note-text {
+	flex: 1;
+	color: #62738E;
+	font-size: 26rpx;
+	line-height: 38rpx;
+}
+.loading-panel {
+	width: 100%;
+	margin-top: 44rpx;
+	align-items: center;
+}
+.panel-message {
+	color: #8994AA;
+	font-size: 28rpx;
+	text-align: center;
+}
+.retry-button {
+	width: 260rpx;
+	margin-top: 34rpx;
+	border-radius: 999rpx;
+	background-color: #5874D8;
+	color: #FFFFFF;
+	font-size: 28rpx;
+}
+.progress-wrap {
+	width: 100%;
+	margin-top: 44rpx;
+}
+.progress-track {
+	width: 100%;
+	height: 12rpx;
+	overflow: hidden;
+	border-radius: 6rpx;
+	background-color: #DDE5F7;
+}
+.progress-value {
+	height: 12rpx;
+	border-radius: 6rpx;
+	background-color: #5874D8;
+}
+.progress-text {
+	margin-top: 16rpx;
+	color: #8994AA;
+	font-size: 25rpx;
+	text-align: center;
+}
+.update-button {
+	width: 100%;
+	margin-top: auto;
+	border-radius: 999rpx;
+	background-color: #5874D8;
+	color: #FFFFFF;
+	font-size: 32rpx;
+	font-weight: 600;
+}
+.action-error {
+	margin-top: 22rpx;
+	color: #D95B5B;
+	font-size: 25rpx;
+	text-align: center;
+}
+</style>

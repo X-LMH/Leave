@@ -10,12 +10,17 @@ import (
 
 // GetCurrentAppVersion returns the currently usable version for a platform.
 func GetCurrentAppVersion(platform string) (*dto.AppVersionResponse, error) {
-	platform = strings.ToLower(strings.TrimSpace(platform))
-	version, err := mysql.GetCurrentAppVersion(platform)
+	version, err := GetCurrentAppPackage(platform)
 	if err != nil {
 		return nil, err
 	}
 	return appVersionResponse(version), nil
+}
+
+// GetCurrentAppPackage returns the current version record used to serve its package.
+func GetCurrentAppPackage(platform string) (*models.AppVersion, error) {
+	platform = strings.ToLower(strings.TrimSpace(platform))
+	return mysql.GetCurrentAppVersion(platform)
 }
 
 // IsCurrentAppVersion reports whether a client is running the current published version.
@@ -36,8 +41,6 @@ func appVersionResponse(version *models.AppVersion) *dto.AppVersionResponse {
 		Platform:     version.Platform,
 		VersionCode:  version.VersionCode,
 		VersionName:  version.VersionName,
-		DownloadURL:  version.DownloadURL,
-		APKSHA256:    version.APKSHA256,
 		ReleaseNotes: releaseNotes,
 	}
 }

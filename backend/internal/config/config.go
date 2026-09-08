@@ -19,6 +19,9 @@ type Config struct {
 		User     string `yaml:"user"`
 		Password string `yaml:"password"`
 	} `yaml:"mysql"`
+	App struct {
+		PackageDir string `yaml:"package_dir"`
+	} `yaml:"app"`
 }
 
 // Cfg 全局配置实例，供外部调用
@@ -27,10 +30,11 @@ var Cfg Config
 // Init 初始化配置（读取并解析yaml）
 func Init() error {
 	// 设置viper参数
-	viper.SetConfigName("config") // 配置文件名（无后缀）
-	viper.SetConfigType("yaml")   // 配置文件类型
-	viper.AddConfigPath(".")      // 配置文件所在路径（当前根目录）
+	viper.SetConfigName("config")   // 配置文件名（无后缀）
+	viper.SetConfigType("yaml")     // 配置文件类型
+	viper.AddConfigPath("./config") // 配置文件所在路径
 	viper.BindEnv("jwt.secret", "JWT_SECRET")
+	viper.SetDefault("app.package_dir", "../releases")
 
 	// 读取配置文件
 	if err := viper.ReadInConfig(); err != nil {
@@ -42,6 +46,7 @@ func Init() error {
 		return fmt.Errorf("解析配置失败: %w", err)
 	}
 	Cfg.JWT.Secret = strings.TrimSpace(viper.GetString("jwt.secret"))
+	Cfg.App.PackageDir = strings.TrimSpace(viper.GetString("app.package_dir"))
 
 	return nil
 }

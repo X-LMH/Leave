@@ -28,3 +28,15 @@ export function getAppVersion(): string {
 
 	return '未知版本'
 }
+
+/**
+ * 返回当前客户端构建版本号，用于服务端版本校验。
+ */
+export function getAppVersionCode(): number {
+	const appBaseInfo = uni.getAppBaseInfo()
+	const versionCode = appBaseInfo.appVersionCode
+	if (versionCode == null) return 0
+
+	const parsedVersionCode = parseInt(versionCode, 10)
+	return parsedVersionCode > 0 ? parsedVersionCode : 0
+}

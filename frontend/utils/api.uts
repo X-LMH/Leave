@@ -1,3 +1,5 @@
+import { getAppVersionCode } from '@/utils/device.uts'
+
 export const API_BASE_URL = 'http://192.168.0.86:8080/api/v1'
 
 export const STORAGE_TOKEN_KEY = 'leave_token'
@@ -5,13 +7,23 @@ export const STORAGE_STUDENT_ID_KEY = 'leave_student_id'
 export const STORAGE_NAME_KEY = 'leave_name'
 export const STORAGE_CLASS_NAME_KEY = 'leave_class_name'
 export const STORAGE_DEVICE_NAME_KEY = 'leave_device_name'
-export const STORAGE_APP_VERSION_KEY = 'leave_app_version'
+export const STORAGE_UPDATE_INFO_KEY = 'leave_update_info'
+export const APP_PLATFORM = 'android'
 
 export type ApiResponse<T> = {
 	code: number
 	message: string
 	data: T
 }
+
+export type AppVersionInfo = {
+	platform: string
+	version_code: number
+	version_name: string
+	release_notes: string[]
+}
+
+let isRedirectingToUpdate = false
 
 export class LoginData {
 	token: string = ''
@@ -129,7 +141,6 @@ function clearSession() {
 	uni.removeStorageSync(STORAGE_NAME_KEY)
 	uni.removeStorageSync(STORAGE_CLASS_NAME_KEY)
 	uni.removeStorageSync(STORAGE_DEVICE_NAME_KEY)
-	uni.removeStorageSync(STORAGE_APP_VERSION_KEY)
 }
 
 export function getStoredName(): string {
@@ -159,19 +170,13 @@ export function getStoredDeviceName(): string {
 	return typeof storedDeviceName == 'string' ? storedDeviceName : ''
 }
 
-export function getStoredAppVersion(): string {
-	const storedAppVersion = uni.getStorageSync(STORAGE_APP_VERSION_KEY)
-	return typeof storedAppVersion == 'string' ? storedAppVersion : ''
-}
-
-export function saveSession(studentID: string, data: LoginData, deviceName: string = '', appVersion: string = '') {
+export function saveSession(studentID: string, data: LoginData, deviceName: string = '') {
 	uni.setStorageSync(STORAGE_TOKEN_KEY, data.token)
 	uni.setStorageSync(STORAGE_STUDENT_ID_KEY, studentID)
 	uni.setStorageSync(STORAGE_STUDENT_ID_KEY, data.user.student_id)
 	uni.setStorageSync(STORAGE_NAME_KEY, data.user.name)
 	uni.setStorageSync(STORAGE_CLASS_NAME_KEY, data.user.class_name)
 	uni.setStorageSync(STORAGE_DEVICE_NAME_KEY, deviceName)
-	uni.setStorageSync(STORAGE_APP_VERSION_KEY, appVersion)
 }
 
 export function logout() {
@@ -195,13 +200,84 @@ function handleUnauthorized() {
 	uni.reLaunch({ url: '/pages/auth/login' })
 }
 
+function appVersionInfoFromJSON(data: UTSJSONObject): AppVersionInfo {
+	const notes = data['release_notes'] as string[] | null
+	return {
+		platform: data['platform'] as string,
+		version_code: data['version_code'] as number,
+		version_name: data['version_name'] as string,
+		release_notes: notes == null ? [] : notes
+	}
+}
+
+export function saveUpdateInfo(version: AppVersionInfo) {
+	uni.setStorageSync(STORAGE_UPDATE_INFO_KEY, JSON.stringify(version))
+}
+
+export function getStoredUpdateInfo(): AppVersionInfo | null {
+	const storedValue = uni.getStorageSync(STORAGE_UPDATE_INFO_KEY)
+	if (typeof storedValue != 'string' || storedValue == '') return null
+
+	try {
+		const data = JSON.parse<UTSJSONObject>(storedValue)
+		if (data == null) return null
+		return appVersionInfoFromJSON(data)
+	} catch (_) {
+		return null
+	}
+}
+
+function handleForceUpdate(data: UTSJSONObject | null) {
+	if (data != null) {
+		saveUpdateInfo(appVersionInfoFromJSON(data))
+	}
+	if (isRedirectingToUpdate) return
+
+	isRedirectingToUpdate = true
+	uni.reLaunch({
+		url: '/pages/update/index',
+		complete: () => {
+			isRedirectingToUpdate = false
+		}
+	})
+}
+
 function toRequestData(data: object): UTSJSONObject {
 	return JSON.parse<UTSJSONObject>(JSON.stringify(data))!
+}
+
+export function getCurrentAppVersion(): Promise<AppVersionInfo> {
+	return new Promise((resolve, reject) => {
+		uni.request<UTSJSONObject>({
+			url: API_BASE_URL + '/app-version?platform=' + APP_PLATFORM,
+			method: 'GET',
+			success: (response) => {
+				const body = response.data
+				const code = body == null ? -1 : body['code'] as number
+				if (body == null || code != 0) {
+					const message = body == null ? '' : body['message'] as string
+					reject(new Error(message == '' ? '无法获取最新版本信息' : message))
+					return
+				}
+				resolve(appVersionInfoFromJSON(body['data'] as UTSJSONObject))
+			},
+			fail: (error) => {
+				const detail = error.errMsg
+				reject(new Error(detail == null || detail == '' ? '网络连接失败，请检查网络后重试' : detail))
+			}
+		})
+	})
+}
+
+export function getAppDownloadURL(): string {
+	return API_BASE_URL + '/app-download?platform=' + APP_PLATFORM
 }
 
 export function request<T>(path: string, method: 'GET' | 'POST' | 'DELETE' = 'GET', data: object | null = null, requiresAuth: boolean = false): Promise<T> {
 	return new Promise((resolve, reject) => {
 		const header = { 'Content-Type': 'application/json' } as UTSJSONObject
+		header['X-App-Platform'] = APP_PLATFORM
+		header['X-App-Version-Code'] = getAppVersionCode().toString()
 		if (requiresAuth) {
 			const storedToken = uni.getStorageSync(STORAGE_TOKEN_KEY)
 			const token = typeof storedToken == 'string' ? storedToken : ''
@@ -234,6 +310,9 @@ export function request<T>(path: string, method: 'GET' | 'POST' | 'DELETE' = 'GE
 				}
 				if (code == 1004 || code == 1005) {
 					handleUnauthorized()
+				}
+				if (code == 5002) {
+					handleForceUpdate(body['data'] as UTSJSONObject | null)
 				}
 				reject(new Error(message == '' ? '请求失败' : message))
 			},

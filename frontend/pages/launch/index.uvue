@@ -1,16 +1,50 @@
 <template>
-	<view class="launch-page"></view>
+	<view class="launch-page">
+		<view v-if="checking" class="launch-content">
+			<text class="launch-title">正在检查版本</text>
+			<text class="launch-message">请稍候</text>
+		</view>
+		<view v-else class="launch-content">
+			<text class="launch-title">无法检查版本</text>
+			<text class="launch-message">{{ errorMessage }}</text>
+			<button class="retry-button" @click="checkVersion">重试</button>
+		</view>
+	</view>
 </template>
 
 <script setup lang="uts">
-import { STORAGE_TOKEN_KEY } from '@/utils/api.uts'
+import { ref } from 'vue'
+import { getCurrentAppVersion, saveUpdateInfo, STORAGE_TOKEN_KEY } from '@/utils/api.uts'
+import { getAppVersionCode } from '@/utils/device.uts'
+
+const checking = ref(true)
+const errorMessage = ref('')
+
+async function checkVersion() {
+	checking.value = true
+	errorMessage.value = ''
+	try {
+		const latestVersion = await getCurrentAppVersion()
+		if (latestVersion.version_code != getAppVersionCode()) {
+			saveUpdateInfo(latestVersion)
+			uni.reLaunch({ url: '/pages/update/index' })
+			return
+		}
+
+		const storedToken = uni.getStorageSync(STORAGE_TOKEN_KEY)
+		const token = typeof storedToken == 'string' ? storedToken : ''
+		uni.reLaunch({
+			url: token == '' ? '/pages/auth/login' : '/pages/home/index'
+		})
+	} catch (error) {
+		const message = (error as Error).message
+		errorMessage.value = message == null || message == '' ? '请检查网络后重试' : message
+		checking.value = false
+	}
+}
 
 onLoad(() => {
-	const storedToken = uni.getStorageSync(STORAGE_TOKEN_KEY)
-	const token = typeof storedToken == 'string' ? storedToken : ''
-	uni.reLaunch({
-		url: token == '' ? '/pages/auth/login' : '/pages/home/index'
-	})
+	checkVersion()
 })
 </script>
 
@@ -18,5 +52,30 @@ onLoad(() => {
 .launch-page {
 	flex: 1;
 	background-color: #F4F7FF;
+}
+.launch-content {
+	flex: 1;
+	padding: 0 72rpx;
+	align-items: center;
+	justify-content: center;
+}
+.launch-title {
+	color: #173766;
+	font-size: 42rpx;
+	font-weight: 700;
+}
+.launch-message {
+	margin-top: 22rpx;
+	color: #7d90b3;
+	font-size: 28rpx;
+	text-align: center;
+}
+.retry-button {
+	width: 300rpx;
+	margin-top: 56rpx;
+	border-radius: 999rpx;
+	background-color: #5475d8;
+	color: #ffffff;
+	font-size: 30rpx;
 }
 </style>

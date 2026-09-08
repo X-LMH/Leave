@@ -9,7 +9,7 @@
 						<text class="page-subtitle">管理个人信息与请假记录</text>
 					</view>
 					<view class="profile-card" @click="openInfo">
-						<image class="profile-avatar" src="/static/my/index/avatar.jpg" mode="aspectFill"></image>
+						<image class="profile-avatar" src="/static/common/avatar.png" mode="aspectFill"></image>
 						<view class="profile-details">
 							<view class="profile-name-row">
 								<text class="profile-name">{{ profileName == '' ? '未完善资料' : profileName }}</text>

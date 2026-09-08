@@ -18,6 +18,8 @@ func SetupRouter() *gin.Engine {
 
 	// 版本接口必须不受版本校验保护，旧客户端才能获取更新信息。
 	api.GET("/app-version", controller.GetCurrentAppVersionHandler)
+	api.GET("/app-download", controller.DownloadCurrentAppHandler)
+	api.HEAD("/app-download", controller.DownloadCurrentAppHandler)
 	api.Use(middleware.AppVersionMiddleware())
 
 	// 公共接口

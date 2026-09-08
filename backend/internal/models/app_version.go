@@ -14,8 +14,7 @@ type AppVersion struct {
 	Platform     string    `gorm:"column:platform"`
 	VersionCode  int       `gorm:"column:version_code"`
 	VersionName  string    `gorm:"column:version_name"`
-	DownloadURL  string    `gorm:"column:download_url"`
-	APKSHA256    string    `gorm:"column:apk_sha256"`
+	PackageFile  string    `gorm:"column:package_file"`
 	ReleaseNotes string    `gorm:"column:release_notes"`
 	Status       string    `gorm:"column:status"`
 	PublishedAt  time.Time `gorm:"column:published_at"`
