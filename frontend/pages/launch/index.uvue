@@ -1,0 +1,22 @@
+<template>
+	<view class="launch-page"></view>
+</template>
+
+<script setup lang="uts">
+import { STORAGE_TOKEN_KEY } from '@/utils/api.uts'
+
+onLoad(() => {
+	const storedToken = uni.getStorageSync(STORAGE_TOKEN_KEY)
+	const token = typeof storedToken == 'string' ? storedToken : ''
+	uni.reLaunch({
+		url: token == '' ? '/pages/auth/login' : '/pages/home/index'
+	})
+})
+</script>
+
+<style>
+.launch-page {
+	flex: 1;
+	background-color: #F4F7FF;
+}
+</style>

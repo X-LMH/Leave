@@ -1,6 +1,15 @@
 {
 	"pages": [
 		{
+			"path": "pages/launch/index",
+			"style": {
+				"navigationStyle": "custom",
+				"disableScroll": true,
+				"backgroundColor": "#F4F7FF",
+				"backgroundColorContent": "#F4F7FF"
+			}
+		},
+		{
 			"path": "pages/auth/login",
 			"style": {
 				"navigationStyle": "custom",
