@@ -144,4 +144,4 @@ INSERT INTO `leave_types` (`name`, `sort_order`) VALUES
 INSERT INTO `app_versions`
     (`platform`, `version_code`, `version_name`, `package_file`, `release_notes`, `status`)
 VALUES
-    ('android', 2, '0.0.2', 'leave-android-2-0.0.2.apk', JSON_ARRAY('正式发行版'), 'published');
+    ('android', 1, '0.0.1', 'leave-android-1-0.0.1.apk', JSON_ARRAY('正式发行版'), 'published');
