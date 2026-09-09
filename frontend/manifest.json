@@ -46,18 +46,19 @@
 		"distribute": {
 			"modules": {},
 			"icons": {
-				"hdpi": "ui/avatar.png",
-				"xhdpi": "ui/avatar.png",
-				"xxhdpi": "ui/avatar.png",
-				"xxxhdpi": "ui/avatar.png"
+				"hdpi": "static/manifest/app.png",
+				"xhdpi": "static/manifest/app.png",
+				"xxhdpi": "static/manifest/app.png",
+				"xxxhdpi": "static/manifest/app.png"
 			},
 			"splashScreens": {
 				"default": {
-					"xhdpi": "ui/avatar.png",
-					"xxhdpi": "ui/avatar.png",
-					"xxxhdpi": "ui/avatar.png"
+					"xhdpi": "static/manifest/splash-xhdpi.png",
+					"xxhdpi": "static/manifest/splash-xxhdpi.png",
+					"xxxhdpi": "static/manifest/splash-xxxhdpi.png"
 				}
-			}
+			},
+			"abiFilters": []
 		}
 	},
 	"app-ios": {
@@ -65,6 +66,11 @@
 			"modules": {},
 			"icons": {},
 			"splashScreens": {}
+		}
+	},
+	"web": {
+		"router": {
+			"mode": ""
 		}
 	}
 }
