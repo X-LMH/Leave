@@ -14,6 +14,8 @@ type Record struct {
 	ID             uint           `gorm:"column:id;primaryKey;autoIncrement"`
 	StudentID      string         `gorm:"column:student_id"`
 	Name           string         `gorm:"column:name"`
+	ParentName     string         `gorm:"column:parent_name"`
+	ParentPhone    string         `gorm:"column:parent_phone"`
 	LeaveTypeID    uint           `gorm:"column:leave_type_id"`
 	LeaveTypeName  string         `gorm:"column:leave_type_name"`
 	College        string         `gorm:"column:college"`

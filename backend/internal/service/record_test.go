@@ -50,11 +50,11 @@ func TestValidateAndNormalizeRecordRequest(t *testing.T) {
 func TestToRecordResponse(t *testing.T) {
 	approvedAt := time.Date(2026, time.September, 7, 9, 0, 0, 0, time.UTC)
 	record := &models.Record{
-		ID: 7, StudentID: "20260001", Name: "张三", LeaveTypeID: 2, LeaveTypeName: "病假-本科生", College: "计算机学院", Major: "软件工程", ClassName: "软工 1 班", Duration: 3,
+		ID: 7, StudentID: "20260001", Name: "张三", ParentName: "张父", ParentPhone: "13900139000", LeaveTypeID: 2, LeaveTypeName: "病假-本科生", College: "计算机学院", Major: "软件工程", ClassName: "软工 1 班", Duration: 3,
 		LeaveReason: "就医", ApprovedAt: &approvedAt,
 	}
 	response := toRecordResponse(record)
-	if response.ID != record.ID || response.StudentID != record.StudentID || response.Name != record.Name || response.ClassInfo.ClassName != record.ClassName || response.LeaveType != record.LeaveTypeName || response.ApprovedAt != approvedAt {
+	if response.ID != record.ID || response.StudentID != record.StudentID || response.Name != record.Name || response.ParentName != record.ParentName || response.ParentPhone != record.ParentPhone || response.ClassInfo.ClassName != record.ClassName || response.LeaveType != record.LeaveTypeName || response.ApprovedAt != approvedAt {
 		t.Fatalf("record response does not preserve detail data: %#v", response)
 	}
 }

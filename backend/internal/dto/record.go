@@ -22,6 +22,8 @@ type RecordResponse struct {
 	ID             uint             `json:"id"`
 	StudentID      string           `json:"student_id"`
 	Name           string           `json:"name"`
+	ParentName     string           `json:"parent_name"`
+	ParentPhone    string           `json:"parent_phone"`
 	ClassInfo      ProfileClassInfo `json:"class_info"`
 	LeaveType      string           `json:"leave_type"`
 	StartTime      time.Time        `json:"start_time"`

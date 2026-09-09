@@ -1,6 +1,8 @@
 import { getAppVersionCode } from '@/utils/device.uts'
 
-export const API_BASE_URL = 'http://39.104.89.165:8080/api/v1'
+// export const API_BASE_URL = 'http://39.104.89.165:8080/api/v1'
+export const API_BASE_URL = 'http://localhost:8080/api/v1'
+
 
 export const STORAGE_TOKEN_KEY = 'leave_token'
 export const STORAGE_STUDENT_ID_KEY = 'leave_student_id'
@@ -113,6 +115,8 @@ export type RecordDetail = {
 	id: number
 	student_id: string
 	name: string
+	parent_name: string
+	parent_phone: string
 	class_info: ProfileClassInfo
 	leave_type: string
 	start_time: string
@@ -457,6 +461,8 @@ function recordDetailFromJSON(data: UTSJSONObject): RecordDetail {
 		id: data['id'] as number,
 		student_id: data['student_id'] as string,
 		name: data['name'] as string,
+		parent_name: data['parent_name'] as string,
+		parent_phone: data['parent_phone'] as string,
 		class_info: {
 			college: classInfo['college'] as string,
 			major: classInfo['major'] as string,

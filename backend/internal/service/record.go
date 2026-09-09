@@ -40,6 +40,8 @@ func CreateRecord(studentID string, request *dto.RecordCreateRequest) (*dto.Reco
 	record := &models.Record{
 		StudentID:      studentID,
 		Name:           profile.Name,
+		ParentName:     profile.ParentName,
+		ParentPhone:    profile.ParentPhone,
 		LeaveTypeID:    request.LeaveTypeID,
 		LeaveTypeName:  leaveType.Name,
 		College:        class.College,
@@ -128,9 +130,11 @@ func validateAndNormalizeRecordRequest(request *dto.RecordCreateRequest) bool {
 
 func toRecordResponse(record *models.Record) *dto.RecordResponse {
 	response := &dto.RecordResponse{
-		ID:        record.ID,
-		StudentID: record.StudentID,
-		Name:      record.Name,
+		ID:          record.ID,
+		StudentID:   record.StudentID,
+		Name:        record.Name,
+		ParentName:  record.ParentName,
+		ParentPhone: record.ParentPhone,
 		ClassInfo: dto.ProfileClassInfo{
 			College:   record.College,
 			Major:     record.Major,
