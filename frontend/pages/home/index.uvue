@@ -6,11 +6,11 @@
 				<view class="welcome-row">
 					<view class="welcome-copy">
 						<view class="greeting-row">
-							<text class="greeting">下午好，</text>
+							<text class="greeting">{{ timeGreeting }}，</text>
 							<text class="greeting-name">{{ userName == '' ? '同学' : userName }}</text>
 							<text class="greeting-wave"> 👋</text>
 						</view>
-						<text class="greeting-subtitle">今天也要好好照顾自己哦</text>
+						<text class="greeting-subtitle">{{ greetingSubtitle }}</text>
 					</view>
 				</view>
 				<view class="hero">
@@ -61,6 +61,26 @@ import { getCurrentUser } from '@/utils/api.uts'
 
 const isLeavePressed = ref(false)
 const userName = ref(getCurrentUser().name)
+function getTimeGreeting(date: Date): string {
+	const hour = date.getHours()
+	if (hour >= 5 && hour < 11) return '早上好'
+	if (hour >= 11 && hour < 13) return '中午好'
+	if (hour >= 13 && hour < 18) return '下午好'
+	return '晚上好'
+}
+
+const timeGreeting = ref(getTimeGreeting(new Date()))
+const greetingSubtitles = [
+	'今天也要好好照顾自己哦',
+	'愿你今天也有好心情',
+	'累了就休息一下吧',
+	'照顾好自己，再出发',
+	'愿每一天都轻松一点'
+]
+const greetingIndexStorageKey = 'home_greeting_index'
+const storedGreetingIndex = uni.getStorageSync(greetingIndexStorageKey)
+let greetingIndex = typeof storedGreetingIndex == 'number' ? storedGreetingIndex as number : 0
+const greetingSubtitle = ref(greetingSubtitles[0])
 
 function handleLeavePress() {
 	isLeavePressed.value = true
@@ -81,6 +101,10 @@ function handleTabNavigation(url: string) {
 
 onShow(() => {
 	userName.value = getCurrentUser().name
+	timeGreeting.value = getTimeGreeting(new Date())
+	greetingSubtitle.value = greetingSubtitles[greetingIndex]
+	greetingIndex = (greetingIndex + 1) % greetingSubtitles.length
+	uni.setStorageSync(greetingIndexStorageKey, greetingIndex)
 })
 </script>
 

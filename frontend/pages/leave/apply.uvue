@@ -140,6 +140,7 @@ const travel = ref('')
 const startDate = ref('')
 const endDate = ref('')
 const isSubmitting = ref(false)
+const appliedAt = ref('')
 function twoDigits(value: number): string {
 	return value < 10 ? `0${value}` : `${value}`
 }
@@ -232,7 +233,7 @@ async function submit() {
 			is_leave_school: leaveSchool.value == '是',
 			leave_reason: reason.value,
 			travel_way: travel.value,
-			applied_at: now,
+			applied_at: appliedAt.value,
 			approved_at: now
 		})
 		uni.navigateTo({ url: `/pages/leave/detail?id=${record.id}` })
@@ -245,6 +246,7 @@ async function submit() {
 }
 
 onLoad(() => {
+	appliedAt.value = new Date(Date.now() - advanceMilliseconds).toISOString()
 	loadLeaveTypes()
 })
 </script>
