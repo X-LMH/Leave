@@ -1,5 +1,5 @@
 <template>
-	<ProfilePageShell :title="firstProfile ? '完善个人信息' : '修改个人信息'" :subtitle="firstProfile ? '请先完善您的个人信息' : '修改您的个人信息'" :scrollable="true">
+	<ProfilePageShell :title="firstProfile ? '完善个人信息' : '修改个人信息'" :subtitle="firstProfile ? '请先完善您的个人信息' : '修改您的个人信息'" :scrollable="true" :logout-on-back="firstProfile">
 		<view class="form-card">
 			<view class="form-row"><view class="required-label"><text class="required-field-label">学号</text><text class="required">*</text></view><view class="field-box field-disabled"><text class="disabled-text">{{ studentID }}</text></view></view>
 			<view class="form-row"><view class="required-label"><text class="required-field-label">班级</text><text class="required">*</text></view><picker class="field-picker" :range="classLabels" :value="pickerClassIndex" @change="classChange"><view class="field-box picker-box"><text :class="className == '' ? 'picker-placeholder' : 'picker-value'">{{ className == '' ? '请选择班级' : className }}</text><text class="picker-arrow">⌄</text></view></picker></view>

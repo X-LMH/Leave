@@ -1,5 +1,5 @@
 <template>
-	<ProfilePageShell ref="pageShell" title="个人信息" subtitle="查看您的个人资料" :scrollable="true">
+	<ProfilePageShell ref="pageShell" title="个人信息" subtitle="查看您的个人资料" :scrollable="true" :logout-on-back="false">
 		<view class="info-card first-card">
 			<view class="card-title-row">
 				<view class="title-icon-wrap">

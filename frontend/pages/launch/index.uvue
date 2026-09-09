@@ -14,7 +14,7 @@
 
 <script setup lang="uts">
 import { ref } from 'vue'
-import { getCurrentAppVersion, saveUpdateInfo, STORAGE_TOKEN_KEY } from '@/utils/api.uts'
+import { getCurrentAppVersion, getProfile, saveUpdateInfo, STORAGE_TOKEN_KEY } from '@/utils/api.uts'
 import { getAppVersionCode } from '@/utils/device.uts'
 
 const checking = ref(true)
@@ -33,6 +33,18 @@ async function checkVersion() {
 
 		const storedToken = uni.getStorageSync(STORAGE_TOKEN_KEY)
 		const token = typeof storedToken == 'string' ? storedToken : ''
+		if (token != '') {
+			try {
+				await getProfile()
+			} catch (error) {
+				const profileError = (error as Error).message
+				if (profileError == '请先完善个人信息') {
+					uni.reLaunch({ url: '/pages/profile/edit?first=1' })
+					return
+				}
+				throw error
+			}
+		}
 		uni.reLaunch({
 			url: token == '' ? '/pages/auth/login' : '/pages/home/index'
 		})

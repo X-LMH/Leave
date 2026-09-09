@@ -30,16 +30,23 @@
 
 <script setup lang="uts">
 import PageTransition from '@/components/PageTransition.uvue'
+import { logout } from '@/utils/api.uts'
 
 const props = defineProps<{
 		title: string
 		subtitle: string
 		scrollable: boolean
+		logoutOnBack: boolean
 	}>()
 
 const emit = defineEmits(['scrolltolower'])
 
 function goBack() {
+	if (props.logoutOnBack) {
+		logout()
+		uni.reLaunch({ url: '/pages/auth/login' })
+		return
+	}
 	uni.navigateBack({})
 }
 
