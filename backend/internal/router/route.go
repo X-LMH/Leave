@@ -42,12 +42,14 @@ func SetupRouter() *gin.Engine {
 
 		auth.GET("/classes", controller.GetClassOptionsHandler)
 		auth.GET("/apartments", controller.GetApartmentOptionsHandler)
-		auth.GET("/leave_types", controller.GetLeaveTypeOptionsHandler)
+		auth.GET("/leave-types", controller.GetLeaveTypeOptionsHandler)
 
 		auth.POST("/record", controller.CreateRecordHandler)
 		auth.GET("/record/:id", controller.GetRecordHandler)
 		auth.GET("/records", controller.GetRecordsLIstHandler)
 		auth.DELETE("/record/:id", controller.DeleteRecordHandler)
+
+		auth.POST("/feedback", controller.CreateFeedbackHandler)
 	}
 
 	return r

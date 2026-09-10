@@ -107,6 +107,15 @@
 			}
 		},
 		{
+			"path": "pages/profile/feedback",
+			"style": {
+				"navigationStyle": "custom",
+				"backgroundColor": "#F4F7FF",
+				"backgroundColorContent": "#F4F7FF",
+				"swipeBackAsBackPress": true
+			}
+		},
+		{
 			"path": "pages/leave/records",
 			"style": {
 				"navigationStyle": "custom",

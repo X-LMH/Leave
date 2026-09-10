@@ -2,7 +2,7 @@
 	<PageTransition ref="pageTransition" enter-direction="peer">
 		<view class="page">
 			<image class="page-background" src="/static/my/index/background.png" mode="aspectFill"></image>
-			<scroll-view class="content-scroll" scroll-y="true" :show-scrollbar="false">
+			<view class="content-scroll">
 				<view class="content">
 					<view class="header">
 						<text class="page-title">我的</text>
@@ -48,6 +48,16 @@
 						</view>
 						<view class="service-divider">
 						</view>
+						<view class="service-item" @click="openFeedback">
+							<image class="service-icon" src="/static/my/index/icons/feedback.svg" mode="aspectFit"></image>
+							<view class="service-copy">
+								<text class="service-title">用户反馈</text>
+								<text class="service-description">提出建议或反馈使用问题</text>
+							</view>
+							<image class="service-arrow" src="/static/my/index/icons/arrow-right.png" mode="aspectFit"></image>
+						</view>
+						<view class="service-divider">
+						</view>
 						<view class="service-item" @click="openPassword">
 							<image class="service-icon" src="/static/my/index/icons/lock.png" mode="aspectFit"></image>
 							<view class="service-copy">
@@ -65,7 +75,7 @@
 					<view class="bottom-spacer">
 					</view>
 				</view>
-			</scroll-view>
+			</view>
 			<BottomNavigation active="profile" @navigate="handleTabNavigation" />
 			</view>
 		</PageTransition>
@@ -96,6 +106,10 @@ function openEdit() {
 
 function openRecords() {
 	uni.navigateTo({ url: '/pages/leave/records' })
+}
+
+function openFeedback() {
+	uni.navigateTo({ url: '/pages/profile/feedback' })
 }
 
 function openPassword() {
@@ -142,10 +156,11 @@ onShow(() => {
 	position: relative;
 	z-index: 1;
 	flex: 1;
+	overflow: hidden;
 }
 .content {
 	box-sizing: border-box;
-	padding-top: 145rpx;
+	padding-top: 120rpx;
 	padding-right: 44rpx;
 	padding-left: 44rpx;
 }
@@ -167,7 +182,7 @@ onShow(() => {
 .profile-card {
 	box-sizing: border-box;
 	height: 284rpx;
-	margin-top: 72rpx;
+	margin-top: 44rpx;
 	padding: 42rpx;
 	border-radius: 36rpx;
 	background-color: rgba(255, 255, 255, 0.84);
@@ -228,7 +243,7 @@ onShow(() => {
 	margin-left: 12rpx;
 }
 .section-title {
-	margin-top: 58rpx;
+	margin-top: 36rpx;
 	margin-left: 26rpx;
 	margin-bottom: 26rpx;
 	color: #153d79;
@@ -244,7 +259,7 @@ onShow(() => {
 	box-shadow: 0 14rpx 34rpx rgba(96, 130, 202, 0.12);
 }
 .service-item {
-	height: 134rpx;
+	height: 124rpx;
 	flex-direction: row;
 	align-items: center;
 }
@@ -280,8 +295,8 @@ onShow(() => {
 	background-color: rgba(121, 150, 208, 0.18);
 }
 .logout-card {
-	height: 146rpx;
-	margin-top: 32rpx;
+	height: 128rpx;
+	margin-top: 24rpx;
 	padding-right: 50rpx;
 	padding-left: 48rpx;
 	border-radius: 36rpx;
@@ -310,6 +325,6 @@ onShow(() => {
 	line-height: 60rpx;
 }
 .bottom-spacer {
-	height: 230rpx;
+	height: 32rpx;
 }
 </style>

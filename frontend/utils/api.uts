@@ -1,7 +1,7 @@
 import { getAppVersionCode } from '@/utils/device.uts'
 
 // export const API_BASE_URL = 'http://leave.mhspace.dpdns.org/api/v1'
-export const API_BASE_URL = 'http://localhost:8080/api/v1'
+export const API_BASE_URL = 'http://192.168.0.86:8080/api/v1'
 
 
 export const STORAGE_TOKEN_KEY = 'leave_token'
@@ -137,6 +137,18 @@ export type RecordListItem = {
 	start_time: string
 	end_time: string
 	duration: number
+}
+
+export type FeedbackPayload = {
+	content: string
+	is_anonymous: boolean
+}
+
+export type FeedbackResponse = {
+	id: number
+	is_anonymous: boolean
+	content: string
+	created_at: string
 }
 
 function clearSession() {
@@ -423,7 +435,7 @@ export async function getApartments(gender: string): Promise<ApartmentOption[]> 
 }
 
 export async function getLeaveTypes(): Promise<LeaveTypeOption[]> {
-	const data = await request<UTSJSONObject[]>('/leave_types', 'GET', null, true)
+	const data = await request<UTSJSONObject[]>('/leave-types', 'GET', null, true)
 	return data.map((item): LeaveTypeOption => {
 		return {
 			id: item['id'] as number,
@@ -434,6 +446,14 @@ export async function getLeaveTypes(): Promise<LeaveTypeOption[]> {
 
 export async function createRecord(payload: RecordCreatePayload): Promise<RecordDetail> {
 	return recordDetailFromJSON(await request<UTSJSONObject>('/record', 'POST', payload, true))
+}
+
+export function submitFeedback(content: string, isAnonymous: boolean): Promise<FeedbackResponse> {
+	const payload: FeedbackPayload = {
+		content: content,
+		is_anonymous: isAnonymous
+	}
+	return request<FeedbackResponse>('/feedback', 'POST', payload, true)
 }
 
 export async function getRecord(id: number): Promise<RecordDetail> {

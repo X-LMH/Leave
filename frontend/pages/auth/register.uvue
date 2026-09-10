@@ -25,10 +25,18 @@ function validStudentID(value: string): boolean {
 	return /^\d{12}$/.test(value.trim())
 }
 
+function isBlank(value: string): boolean {
+	return value.trim().length == 0
+}
+
 async function submit() {
 	if (submitting.value) return
 	if (!validStudentID(studentID.value)) {
 		uni.showToast({ title: '请输入 12 位学号', icon: 'none' })
+		return
+	}
+	if (isBlank(password.value) || isBlank(rePassword.value)) {
+		uni.showToast({ title: '请输入密码和确认密码', icon: 'none' })
 		return
 	}
 	if (password.value.length < 6 || password.value.length > 30) {

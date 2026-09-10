@@ -1,0 +1,180 @@
+<template>
+	<ProfilePageShell title="用户反馈" subtitle="你的建议将帮助我们持续改进" :scrollable="true" :logout-on-back="false">
+		<view class="feedback-form">
+			<view class="feedback-card">
+				<view class="field-header">
+					<text class="field-title">反馈内容</text>
+					<text class="required">*</text>
+				</view>
+				<view class="content-box">
+					<textarea class="content-input" v-model="content" maxlength="500" placeholder="请描述你遇到的问题或建议" placeholder-class="content-placeholder" />
+					<text class="word-count">{{ content.length }}/500</text>
+				</view>
+			</view>
+
+			<view class="feedback-card anonymous-card" @click="toggleAnonymous">
+				<view class="anonymous-copy">
+					<text class="field-title">匿名提交</text>
+					<text class="anonymous-description">{{ isAnonymous ? '匿名提交后不会保存你的学号' : '关闭后将按当前学号提交' }}</text>
+				</view>
+				<view :class="isAnonymous ? 'toggle toggle-active' : 'toggle'">
+					<view :class="isAnonymous ? 'toggle-dot toggle-dot-active' : 'toggle-dot'"></view>
+				</view>
+			</view>
+
+			<view :class="submitting ? 'submit-button submit-button-disabled' : 'submit-button'" @click="submit">
+				<text class="submit-text">{{ submitting ? '提交中…' : '提交反馈' }}</text>
+			</view>
+		</view>
+	</ProfilePageShell>
+</template>
+
+<script setup lang="uts">
+import { ref } from 'vue'
+import ProfilePageShell from '@/components/ProfilePageShell.uvue'
+import { submitFeedback } from '@/utils/api.uts'
+
+const content = ref('')
+const isAnonymous = ref(false)
+const submitting = ref(false)
+
+function toggleAnonymous() {
+	isAnonymous.value = !isAnonymous.value
+}
+
+async function submit() {
+	if (submitting.value) return
+
+	const normalizedContent = content.value.trim()
+	if (normalizedContent == '') {
+		uni.showToast({ title: '请填写反馈内容', icon: 'none' })
+		return
+	}
+
+	submitting.value = true
+	let submitted = false
+	try {
+		await submitFeedback(normalizedContent, isAnonymous.value)
+		submitted = true
+		uni.showToast({ title: '反馈已提交，感谢你的支持', icon: 'success' })
+		setTimeout(() => {
+			uni.navigateBack({})
+		}, 1200)
+	} catch (error) {
+		const message = (error as Error).message
+		uni.showToast({ title: message == null || message == '' ? '反馈提交失败' : message, icon: 'none' })
+	} finally {
+		if (!submitted) {
+			submitting.value = false
+		}
+	}
+}
+</script>
+
+<style>
+.feedback-form {
+	margin: 88rpx 20rpx 0;
+}
+.feedback-card {
+	padding: 34rpx 32rpx;
+	border-radius: 30rpx;
+	background-color: rgba(255, 255, 255, 0.9);
+	box-shadow: none;
+}
+.field-header {
+	flex-direction: row;
+	align-items: center;
+}
+.field-title {
+	color: #123b78;
+	font-size: 30rpx;
+	font-weight: 700;
+	line-height: 42rpx;
+}
+.required {
+	margin-left: 12rpx;
+	color: #f04f48;
+	font-size: 28rpx;
+	line-height: 42rpx;
+}
+.content-box {
+	position: relative;
+	height: 332rpx;
+	margin-top: 24rpx;
+	padding: 22rpx 24rpx 54rpx;
+	border-radius: 20rpx;
+	background-color: rgba(248, 250, 255, 0.86);
+}
+.content-input {
+	width: 100%;
+	height: 252rpx;
+	color: #405f98;
+	font-size: 27rpx;
+	line-height: 42rpx;
+}
+.content-placeholder {
+	color: #8ea2ca;
+}
+.word-count {
+	position: absolute;
+	right: 24rpx;
+	bottom: 18rpx;
+	color: #8297c0;
+	font-size: 22rpx;
+	line-height: 32rpx;
+}
+.anonymous-card {
+	margin-top: 30rpx;
+	flex-direction: row;
+	align-items: center;
+}
+.anonymous-copy {
+	flex: 1;
+	min-width: 0;
+}
+.anonymous-description {
+	margin-top: 10rpx;
+	color: #7890bc;
+	font-size: 23rpx;
+	line-height: 34rpx;
+}
+.toggle {
+	width: 88rpx;
+	height: 52rpx;
+	margin-left: 24rpx;
+	padding: 5rpx;
+	border-radius: 30rpx;
+	background-color: #c5d2eb;
+}
+.toggle-active {
+	background-color: #527df3;
+}
+.toggle-dot {
+	width: 42rpx;
+	height: 42rpx;
+	border-radius: 22rpx;
+	background-color: #ffffff;
+	box-shadow: 0 3rpx 8rpx rgba(68, 95, 148, 0.2);
+}
+.toggle-dot-active {
+	margin-left: 36rpx;
+}
+.submit-button {
+	height: 104rpx;
+	margin-top: 72rpx;
+	border-radius: 52rpx;
+	background-color: #527df3;
+	justify-content: center;
+	align-items: center;
+	box-shadow: none;
+}
+.submit-button-disabled {
+	background-color: #9aaee3;
+	box-shadow: none;
+}
+.submit-text {
+	color: #ffffff;
+	font-size: 30rpx;
+	font-weight: 500;
+}
+</style>

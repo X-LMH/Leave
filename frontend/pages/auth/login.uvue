@@ -36,7 +36,7 @@ async function login() {
 		uni.showToast({ title: '请输入 12 位学号', icon: 'none' })
 		return
 	}
-	if (password.value.length == 0) {
+	if (password.value.trim().length == 0) {
 		uni.showToast({ title: '请输入密码', icon: 'none' })
 		return
 	}
