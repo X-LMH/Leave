@@ -17,7 +17,7 @@ type Claims struct {
 // GenerateToken 生成JWT令牌
 func GenerateToken(studentID string, role string) (string, error) {
 	// 过期时间
-	expirationTime := time.Now().Add(30 * 24 * time.Hour)
+	expirationTime := time.Now().AddDate(0, 0, config.Cfg.JWT.ExpirationDays)
 
 	// 构建自定义负载
 	claims := &Claims{

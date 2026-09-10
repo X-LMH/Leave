@@ -10,7 +10,8 @@ import (
 // Config 全局配置结构体（修正字段名、标签与YAML匹配）
 type Config struct {
 	JWT struct {
-		Secret string `yaml:"secret"`
+		Secret         string `yaml:"secret"`
+		ExpirationDays int    `yaml:"expiration_days"`
 	} `yaml:"jwt"`
 	Mysql struct {
 		Host     string `yaml:"host"`
@@ -33,7 +34,8 @@ func Init() error {
 	viper.SetConfigName("config")   // 配置文件名（无后缀）
 	viper.SetConfigType("yaml")     // 配置文件类型
 	viper.AddConfigPath("./config") // 当前推荐的配置文件目录
-	viper.AddConfigPath(".")        // 兼容已有部署中的 config.yaml
+	//viper.AddConfigPath(".")        // 兼容已有部署中的 config.yaml
+	viper.AllowEmptyEnv(true)
 	viper.BindEnv("jwt.secret", "JWT_SECRET")
 	viper.SetDefault("app.package_dir", "/www/wwwroot/Leave/releases")
 
@@ -47,7 +49,14 @@ func Init() error {
 		return fmt.Errorf("解析配置失败: %w", err)
 	}
 	Cfg.JWT.Secret = strings.TrimSpace(viper.GetString("jwt.secret"))
+	Cfg.JWT.ExpirationDays = viper.GetInt("jwt.expiration_days")
 	Cfg.App.PackageDir = strings.TrimSpace(viper.GetString("app.package_dir"))
+	if Cfg.JWT.Secret == "" {
+		return fmt.Errorf("JWT secret cannot be empty; configure jwt.secret or JWT_SECRET")
+	}
+	if Cfg.JWT.ExpirationDays <= 0 {
+		return fmt.Errorf("jwt.expiration_days must be greater than 0")
+	}
 
 	return nil
 }
