@@ -35,6 +35,7 @@ func SetupRouter() *gin.Engine {
 	auth.Use(middleware.JWTAuthMiddleware())
 	{
 		auth.POST("/logout", controller.LogoutHandler)
+		auth.POST("/client-info", controller.UpdateAppInfoHandler)
 		auth.POST("/profile", controller.ProfileHandler)
 		auth.POST("/password", controller.ChangePasswordHandler)
 		auth.GET("/profile", controller.GetProfileHandler)

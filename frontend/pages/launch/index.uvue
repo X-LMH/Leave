@@ -14,8 +14,8 @@
 
 <script setup lang="uts">
 import { ref } from 'vue'
-import { getCurrentAppVersion, getProfile, saveUpdateInfo, STORAGE_TOKEN_KEY } from '@/utils/api.uts'
-import { getAppVersionCode } from '@/utils/device.uts'
+import { getCurrentAppVersion, getProfile, saveUpdateInfo, STORAGE_TOKEN_KEY, updateClientInfo } from '@/utils/api.uts'
+import { getAppVersion, getAppVersionCode, getDeviceName } from '@/utils/device.uts'
 
 const checking = ref(true)
 const errorMessage = ref('')
@@ -34,6 +34,8 @@ async function checkVersion() {
 		const storedToken = uni.getStorageSync(STORAGE_TOKEN_KEY)
 		const token = typeof storedToken == 'string' ? storedToken : ''
 		if (token != '') {
+			const currentVersion = getAppVersion()
+			await updateClientInfo(getDeviceName(), currentVersion)
 			try {
 				await getProfile()
 			} catch (error) {

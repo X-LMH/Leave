@@ -36,3 +36,8 @@ type PasswordChangeRequest struct {
 	NewPassword string `json:"new_password"`
 	RePassword  string `json:"re_password"`
 }
+
+type ClientInfoRequest struct {
+	DeviceName string `json:"device_name" binding:"max=255"`
+	AppVersion string `json:"app_version" binding:"max=64"`
+}

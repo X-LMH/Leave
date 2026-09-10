@@ -87,6 +87,24 @@ func LogoutHandler(c *gin.Context) {
 	response.Success(c, nil)
 }
 
+func UpdateAppInfoHandler(c *gin.Context) {
+	p := new(dto.ClientInfoRequest)
+	if err := c.ShouldBindJSON(p); err != nil || strings.TrimSpace(p.AppVersion) == "" || utf8.RuneCountInString(strings.TrimSpace(p.DeviceName)) > 255 {
+		response.Error(c, response.CodeInvalidParam)
+		return
+	}
+	studentID, err := request.GetCurrentStuID(c)
+	if err != nil {
+		response.Error(c, response.CodeNeedLogin)
+		return
+	}
+	if err := service.UpdateAppInfo(p, studentID); err != nil {
+		response.Error(c, response.CodeServerBusy)
+		return
+	}
+	response.Success(c, nil)
+}
+
 // ChangePasswordHandler 修改密码
 func ChangePasswordHandler(c *gin.Context) {
 	// 参数校验

@@ -1,7 +1,7 @@
 import { getAppVersionCode } from '@/utils/device.uts'
 
-export const API_BASE_URL = 'http://leave.mhspace.dpdns.org/api/v1'
-// export const API_BASE_URL = 'localhost:8080/api/v1'
+// export const API_BASE_URL = 'http://leave.mhspace.dpdns.org/api/v1'
+export const API_BASE_URL = 'http://localhost:8080/api/v1'
 
 
 export const STORAGE_TOKEN_KEY = 'leave_token'
@@ -188,6 +188,10 @@ export function logout() {
 
 export function logoutRequest(): Promise<void> {
 	return request<void>('/logout', 'POST', null, true)
+}
+
+export function updateClientInfo(deviceName: string, appVersion: string): Promise<void> {
+	return request<void>('/client-info', 'POST', { device_name: deviceName, app_version: appVersion }, true)
 }
 
 export function changePassword(password: string, newPassword: string, rePassword: string): Promise<void> {

@@ -31,7 +31,7 @@ func Login(req *dto.LoginRequest) (*dto.LoginResponse, error) {
 		return nil, mysql.ErrorInvalidPassword
 	}
 
-	if err := mysql.UpdateLoginInfo(
+	if err := mysql.UpdateAppUsage(
 		user.StudentID,
 		strings.TrimSpace(req.DeviceName),
 		strings.TrimSpace(req.AppVersion),
@@ -84,4 +84,8 @@ func buildLoginUser(studentID string) (dto.User, bool, error) {
 
 func ChangePassword(p *dto.PasswordChangeRequest, studentID string) error {
 	return mysql.ChangePassword(p, studentID)
+}
+
+func UpdateAppInfo(p *dto.ClientInfoRequest, studentID string) error {
+	return mysql.UpdateAppUsage(studentID, strings.TrimSpace(p.DeviceName), strings.TrimSpace(p.AppVersion))
 }
