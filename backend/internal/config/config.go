@@ -37,7 +37,6 @@ func Init() error {
 	//viper.AddConfigPath(".")        // 兼容已有部署中的 config.yaml
 	viper.AllowEmptyEnv(true)
 	viper.BindEnv("jwt.secret", "JWT_SECRET")
-	viper.SetDefault("app.package_dir", "/www/wwwroot/Leave/releases")
 
 	// 读取配置文件
 	if err := viper.ReadInConfig(); err != nil {

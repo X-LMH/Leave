@@ -1,13 +1,9 @@
-# Shared Air configuration for Linux/WSL and macOS.
-# Run `air -c example.air.toml` from the backend directory.
 root = "."
 tmp_dir = "tmp"
 
 [build]
 bin = "tmp/main"
-# Build a native binary for the current host OS and architecture.
-# Keep GOOS/GOARCH unset so this works on both Linux/WSL and macOS.
-cmd = "go build -o ./tmp/main ."
+cmd = "go build -o ./tmp/main ./cmd/server"
 full_bin = ""
 delay = 1000
 stop_on_error = true

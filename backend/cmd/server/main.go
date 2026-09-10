@@ -2,30 +2,23 @@ package main
 
 import (
 	"backend/internal/config"
+	"backend/internal/dao/mysql"
 	"backend/internal/router"
 	"fmt"
 	"log"
-
-	"backend/internal/dao/mysql"
 )
 
 func main() {
 	if err := config.Init(); err != nil {
 		log.Fatal("初始化配置失败, err:", err)
-		return
 	}
-	// 初始化数据库
+
 	if err := mysql.Init(); err != nil {
 		log.Fatal("数据库初始化配置失败, err:", err)
-		return
 	}
 
-	// 启动路由
 	r := router.SetupRouter()
-	// 启动
 	if err := r.Run(":8080"); err != nil {
-		fmt.Printf("Run mysql failed, err:%v\n", err)
-		return
+		fmt.Printf("Run server failed, err:%v\n", err)
 	}
-
 }
