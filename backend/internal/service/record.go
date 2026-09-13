@@ -6,6 +6,7 @@ import (
 	"backend/internal/models"
 	"errors"
 	"strings"
+	"time"
 )
 
 var (
@@ -49,7 +50,6 @@ func CreateRecord(studentID string, request *dto.RecordCreateRequest) (*dto.Reco
 		ClassName:      class.ClassName,
 		StartTime:      request.StartTime,
 		EndTime:        request.EndTime,
-		Duration:       request.Duration,
 		AffectedCourse: request.AffectedCourse,
 		IsLeaveSchool:  *request.IsLeaveSchool,
 		LeaveReason:    request.LeaveReason,
@@ -78,13 +78,15 @@ func GetRecordsList(studentID string, query dto.RecordListQuery) ([]*dto.RecordL
 	}
 	items := make([]*dto.RecordListItem, 0, len(records))
 	for _, record := range records {
+		days, hours := durationParts(record.StartTime, record.EndTime)
 		items = append(items, &dto.RecordListItem{
-			ID:          record.ID,
-			LeaveType:   record.LeaveTypeName,
-			LeaveReason: record.LeaveReason,
-			StartTime:   record.StartTime,
-			EndTime:     record.EndTime,
-			Duration:    record.Duration,
+			ID:            record.ID,
+			LeaveType:     record.LeaveTypeName,
+			LeaveReason:   record.LeaveReason,
+			StartTime:     record.StartTime,
+			EndTime:       record.EndTime,
+			DurationDays:  days,
+			DurationHours: hours,
 		})
 	}
 	return items, nil
@@ -125,10 +127,20 @@ func validateAndNormalizeRecordRequest(request *dto.RecordCreateRequest) bool {
 	if !request.EndTime.After(request.StartTime) || request.ApprovedAt.Before(request.AppliedAt) {
 		return false
 	}
-	return request.Duration > 0
+	return true
+}
+
+func durationParts(startTime, endTime time.Time) (uint, uint) {
+	if !endTime.After(startTime) {
+		return 0, 0
+	}
+	difference := endTime.Sub(startTime)
+	hours := uint((difference + time.Hour - 1) / time.Hour)
+	return hours / 24, hours % 24
 }
 
 func toRecordResponse(record *models.Record) *dto.RecordResponse {
+	days, hours := durationParts(record.StartTime, record.EndTime)
 	response := &dto.RecordResponse{
 		ID:          record.ID,
 		StudentID:   record.StudentID,
@@ -143,7 +155,8 @@ func toRecordResponse(record *models.Record) *dto.RecordResponse {
 		LeaveType:      record.LeaveTypeName,
 		StartTime:      record.StartTime,
 		EndTime:        record.EndTime,
-		Duration:       record.Duration,
+		DurationDays:   days,
+		DurationHours:  hours,
 		AffectedCourse: record.AffectedCourse,
 		IsLeaveSchool:  record.IsLeaveSchool,
 		LeaveReason:    record.LeaveReason,

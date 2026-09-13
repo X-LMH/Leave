@@ -12275,8 +12275,8 @@ body {
 <span data-v-42af73e1 class=value data-field=endTime></span>
 </div>
 <div data-v-42af73e1 class=goods-spec>
-<span data-v-42af73e1 class=label>请假时长(小时)：</span>
-<span data-v-42af73e1 class=value data-field=duration></span>
+<span data-v-42af73e1 class=label>请假时长：</span>
+<span data-v-42af73e1 class=value data-field=durationText></span>
 </div>
 <div data-v-42af73e1 class=goods-spec>
 <span data-v-42af73e1 class=label>请假审批状态：</span>
@@ -12507,7 +12507,6 @@ const pageData = {
   leaveType: '',
   startTime: '',
   endTime: '',
-  duration: '',
   durationText: '',
   reason: '',
   course: '',
@@ -12543,8 +12542,7 @@ if (hasSubmittedApplication) {
   pageData.leaveType = applicationValue('leaveType', '-');
   pageData.startTime = applicationValue('startDate', '-');
   pageData.endTime = applicationValue('endDate', '-');
-  pageData.duration = applicationValue('duration', '0');
-  pageData.durationText = `${pageData.duration}小时`;
+  pageData.durationText = `${applicationValue('durationDays', '0')}天${applicationValue('durationHours', '0')}小时`;
   pageData.reason = applicationValue('reason', '-');
   pageData.course = applicationValue('course', '-');
   pageData.leaveSchool = applicationValue('leaveSchool', '-');

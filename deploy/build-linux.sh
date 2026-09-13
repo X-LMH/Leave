@@ -12,7 +12,7 @@ mkdir -p "$OUTPUT_DIR"
 echo "Building Linux binary: linux/$GOARCH"
 
 cd "$PROJECT_DIR/backend"
-CGO_ENABLED=0 GOOS=linux GOARCH="$GOARCH" go build -o "$OUTPUT_FILE" .
+CGO_ENABLED=0 GOOS=linux GOARCH="$GOARCH" go build -o "$OUTPUT_FILE" ./cmd/server
 
 chmod +x "$OUTPUT_FILE"
 echo "Build complete: $OUTPUT_FILE"

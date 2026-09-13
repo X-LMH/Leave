@@ -108,11 +108,8 @@ function formatTime(value: string): string {
 	return `${date.getFullYear()}-${twoDigits(date.getMonth() + 1)}-${twoDigits(date.getDate())} ${twoDigits(date.getHours())}:${twoDigits(date.getMinutes())}`
 }
 
-function formatDuration(hours: number): string {
-	if (hours < 24) return `${hours}小时`
-	const days = Math.floor(hours / 24)
-	const remainingHours = hours % 24
-	return remainingHours == 0 ? `${days}天` : `${days}天${remainingHours}小时`
+function formatDuration(days: number, hours: number): string {
+	return `${days}天${hours}小时`
 }
 
 function toRecordCard(item: RecordListItem): RecordCard {
@@ -122,7 +119,7 @@ function toRecordCard(item: RecordListItem): RecordCard {
 		reason: item.leave_reason,
 		start: formatTime(item.start_time),
 		end: formatTime(item.end_time),
-		durationText: formatDuration(item.duration)
+		durationText: formatDuration(item.duration_days, item.duration_hours)
 	}
 }
 

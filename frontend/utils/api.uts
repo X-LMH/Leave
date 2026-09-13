@@ -103,7 +103,6 @@ export type RecordCreatePayload = {
 	leave_type_id: number
 	start_time: string
 	end_time: string
-	duration: number
 	affected_course: string
 	is_leave_school: boolean
 	leave_reason: string
@@ -122,7 +121,8 @@ export type RecordDetail = {
 	leave_type: string
 	start_time: string
 	end_time: string
-	duration: number
+	duration_days: number
+	duration_hours: number
 	affected_course: string
 	is_leave_school: boolean
 	leave_reason: string
@@ -137,7 +137,8 @@ export type RecordListItem = {
 	leave_reason: string
 	start_time: string
 	end_time: string
-	duration: number
+	duration_days: number
+	duration_hours: number
 }
 
 export type FeedbackPayload = {
@@ -471,7 +472,8 @@ export async function getRecords(page: number, pageSize: number): Promise<Record
 			leave_reason: item['leave_reason'] as string,
 			start_time: item['start_time'] as string,
 			end_time: item['end_time'] as string,
-			duration: item['duration'] as number
+			duration_days: item['duration_days'] as number,
+			duration_hours: item['duration_hours'] as number
 		}
 	})
 }
@@ -496,7 +498,8 @@ function recordDetailFromJSON(data: UTSJSONObject): RecordDetail {
 		leave_type: data['leave_type'] as string,
 		start_time: data['start_time'] as string,
 		end_time: data['end_time'] as string,
-		duration: data['duration'] as number,
+		duration_days: data['duration_days'] as number,
+		duration_hours: data['duration_hours'] as number,
 		affected_course: data['affected_course'] as string,
 		is_leave_school: data['is_leave_school'] as boolean,
 		leave_reason: data['leave_reason'] as string,

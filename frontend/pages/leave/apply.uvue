@@ -70,7 +70,7 @@
 					<view class="field-row duration-row">
 						<text class="field-label">请假时长</text>
 						<view class="duration-content">
-							<text :class="hasDuration ? 'duration-value' : 'field-placeholder'">{{ hasDuration ? durationHours + ' 小时' : " " }}</text>
+							<text :class="hasDuration ? 'duration-value' : 'field-placeholder'">{{ hasDuration ? durationText : " " }}</text>
 						</view>
 					</view>
 				</view>
@@ -163,6 +163,9 @@ const durationHours = computed((): number => {
 	return difference <= 0 ? 0 : Math.ceil(difference / 3600000)
 })
 const hasDuration = computed((): boolean => durationHours.value > 0)
+const durationDays = computed((): number => Math.floor(durationHours.value / 24))
+const remainingDurationHours = computed((): number => durationHours.value % 24)
+const durationText = computed((): string => `${durationDays.value}天${remainingDurationHours.value}小时`)
 function leaveTypeChange(e: UniPickerChangeEvent) {
 	const selected = leaveTypes.value[e.detail.value as number]
 	if (selected == null) return
@@ -228,7 +231,6 @@ async function submit() {
 			leave_type_id: leaveTypeID.value,
 			start_time: toRFC3339(startDate.value),
 			end_time: toRFC3339(endDate.value),
-			duration: durationHours.value,
 			affected_course: course.value,
 			is_leave_school: leaveSchool.value == '是',
 			leave_reason: reason.value,

@@ -18,7 +18,6 @@ func TestValidateAndNormalizeRecordRequest(t *testing.T) {
 		LeaveReason:    " 身体不适 ",
 		AffectedCourse: " 高等数学 ",
 		TravelWay:      " 步行 ",
-		Duration:       1,
 		AppliedAt:      start.Add(-time.Hour),
 		ApprovedAt:     start,
 	}
@@ -41,20 +40,43 @@ func TestValidateAndNormalizeRecordRequest(t *testing.T) {
 	}
 
 	request.ApprovedAt = request.EndTime
-	request.Duration = 0
-	if validateAndNormalizeRecordRequest(request) {
-		t.Fatal("expected missing or zero duration to be invalid")
+	if !validateAndNormalizeRecordRequest(request) {
+		t.Fatal("expected valid request without a duration snapshot")
+	}
+}
+
+func TestDurationInHours(t *testing.T) {
+	start := time.Date(2026, time.September, 30, 23, 30, 0, 0, time.UTC)
+	tests := []struct {
+		name  string
+		end   time.Time
+		days  uint
+		hours uint
+	}{
+		{name: "thirty minutes", end: start.Add(30 * time.Minute), days: 0, hours: 1},
+		{name: "twenty three hours", end: start.Add(23 * time.Hour), days: 0, hours: 23},
+		{name: "one day", end: start.Add(24 * time.Hour), days: 1, hours: 0},
+		{name: "one day and ten minutes", end: start.Add(24*time.Hour + 10*time.Minute), days: 1, hours: 1},
+		{name: "across month", end: start.Add(49 * time.Hour), days: 2, hours: 1},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if days, hours := durationParts(start, test.end); days != test.days || hours != test.hours {
+				t.Fatalf("expected %d days %d hours, got %d days %d hours", test.days, test.hours, days, hours)
+			}
+		})
 	}
 }
 
 func TestToRecordResponse(t *testing.T) {
 	approvedAt := time.Date(2026, time.September, 7, 9, 0, 0, 0, time.UTC)
 	record := &models.Record{
-		ID: 7, StudentID: "20260001", Name: "张三", ParentName: "张父", ParentPhone: "13900139000", LeaveTypeID: 2, LeaveTypeName: "病假-本科生", College: "计算机学院", Major: "软件工程", ClassName: "软工 1 班", Duration: 3,
+		ID: 7, StudentID: "20260001", Name: "张三", ParentName: "张父", ParentPhone: "13900139000", LeaveTypeID: 2, LeaveTypeName: "病假-本科生", College: "计算机学院", Major: "软件工程", ClassName: "软工 1 班", StartTime: approvedAt, EndTime: approvedAt.Add(27 * time.Hour),
 		LeaveReason: "就医", ApprovedAt: &approvedAt,
 	}
 	response := toRecordResponse(record)
-	if response.ID != record.ID || response.StudentID != record.StudentID || response.Name != record.Name || response.ParentName != record.ParentName || response.ParentPhone != record.ParentPhone || response.ClassInfo.ClassName != record.ClassName || response.LeaveType != record.LeaveTypeName || response.ApprovedAt != approvedAt {
+	if response.ID != record.ID || response.StudentID != record.StudentID || response.Name != record.Name || response.ParentName != record.ParentName || response.ParentPhone != record.ParentPhone || response.ClassInfo.ClassName != record.ClassName || response.LeaveType != record.LeaveTypeName || response.DurationDays != 1 || response.DurationHours != 3 || response.ApprovedAt != approvedAt {
 		t.Fatalf("record response does not preserve detail data: %#v", response)
 	}
 }

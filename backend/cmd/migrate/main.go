@@ -83,7 +83,7 @@ func openDatabase(configPath string) (*sql.DB, error) {
 	}
 
 	// 组装 MySQL 数据源名称（DSN）并建立数据库连接。
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&parseTime=true&loc=Local",
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&parseTime=true&loc=Local&multiStatements=true",
 		url.QueryEscape(user), url.QueryEscape(password), host, port, url.PathEscape(database))
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
@@ -103,7 +103,7 @@ func applyMigrations(db *sql.DB, migrationDir string, repair bool) error {
 
 	fileNames := make([]string, 0, len(entries))
 	for _, entry := range entries {
-		if !entry.IsDir() && filepath.Ext(entry.Name()) == ".sql" {
+		if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".up.sql") {
 			fileNames = append(fileNames, entry.Name())
 		}
 	}

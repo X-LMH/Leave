@@ -8,7 +8,6 @@ type RecordCreateRequest struct {
 	LeaveTypeID    uint      `json:"leave_type_id"`
 	StartTime      time.Time `json:"start_time"`
 	EndTime        time.Time `json:"end_time"`
-	Duration       uint      `json:"duration"`
 	AffectedCourse string    `json:"affected_course"`
 	IsLeaveSchool  *bool     `json:"is_leave_school"`
 	LeaveReason    string    `json:"leave_reason"`
@@ -28,7 +27,8 @@ type RecordResponse struct {
 	LeaveType      string           `json:"leave_type"`
 	StartTime      time.Time        `json:"start_time"`
 	EndTime        time.Time        `json:"end_time"`
-	Duration       uint             `json:"duration"`
+	DurationDays   uint             `json:"duration_days"`
+	DurationHours  uint             `json:"duration_hours"`
 	AffectedCourse string           `json:"affected_course"`
 	IsLeaveSchool  bool             `json:"is_leave_school"`
 	LeaveReason    string           `json:"leave_reason"`
@@ -39,12 +39,13 @@ type RecordResponse struct {
 
 // RecordListItem is the compact record representation returned by GET /records.
 type RecordListItem struct {
-	ID          uint      `json:"id"`
-	LeaveType   string    `json:"leave_type"`
-	LeaveReason string    `json:"leave_reason"`
-	StartTime   time.Time `json:"start_time"`
-	EndTime     time.Time `json:"end_time"`
-	Duration    uint      `json:"duration"`
+	ID            uint      `json:"id"`
+	LeaveType     string    `json:"leave_type"`
+	LeaveReason   string    `json:"leave_reason"`
+	StartTime     time.Time `json:"start_time"`
+	EndTime       time.Time `json:"end_time"`
+	DurationDays  uint      `json:"duration_days"`
+	DurationHours uint      `json:"duration_hours"`
 }
 
 type RecordListQuery struct {

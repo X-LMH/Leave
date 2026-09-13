@@ -23,7 +23,6 @@ type Record struct {
 	ClassName      string         `gorm:"column:class_name"`
 	StartTime      time.Time      `gorm:"column:start_time"`
 	EndTime        time.Time      `gorm:"column:end_time"`
-	Duration       uint           `gorm:"column:duration"`
 	AffectedCourse string         `gorm:"column:affected_course"`
 	IsLeaveSchool  bool           `gorm:"column:is_leave_school"` // LeaveSchoolNo 或 LeaveSchoolYes
 	LeaveReason    string         `gorm:"column:leave_reason"`

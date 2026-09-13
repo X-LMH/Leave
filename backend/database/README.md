@@ -55,7 +55,19 @@ migrations/
 - `up.sql`：执行升级。
 - `down.sql`：回滚本次升级。
 
-当前项目的迁移命令入口位于 `cmd/migrate`。在真正接入迁移执行逻辑前，migration 文件仍然需要按本规范保存和提交。
+当前项目的迁移命令入口位于 `cmd/migrate`，它只会按文件名顺序执行 `.up.sql` 文件。
+
+## 执行迁移与初始化
+
+已有数据库升级时，在 `backend/` 目录运行：
+
+```text
+go run ./cmd/migrate -config ./config/config.yaml
+```
+
+迁移程序支持同一文件内的多条 SQL 语句。`.down.sql` 文件不由该命令自动执行；需要回滚时，应先确认影响范围和备份，再通过数据库客户端执行对应的回滚脚本，并将 `schema_migrations` 状态恢复到上一个版本。
+
+新建开发数据库时，先按 `tables/` 中的完整表结构初始化，再执行 `seed/` 中的基础数据脚本；不要对已经按完整表结构初始化的数据库重复执行历史 migration。
 
 ## Migration 命名规范
 
