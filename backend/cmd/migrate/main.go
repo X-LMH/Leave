@@ -28,7 +28,6 @@ const (
 func main() {
 	// 允许通过命令行指定配置文件路径。
 	configPath := flag.String("config", "./config/config.yaml", "path to the YAML configuration file")
-	repair := flag.Bool("repair", false, "repair dirty migration state")
 	flag.Parse()
 
 	// 打开数据库连接，并在程序结束时关闭连接。
@@ -43,7 +42,7 @@ func main() {
 	}
 
 	// 按版本顺序执行尚未完成的迁移脚本。
-	if err := applyMigrations(db, migrationDir, *repair); err != nil {
+	if err := applyMigrations(db, migrationDir); err != nil {
 		log.Fatal(err)
 	}
 
@@ -94,7 +93,7 @@ func openDatabase(configPath string) (*sql.DB, error) {
 	return db, nil
 }
 
-func applyMigrations(db *sql.DB, migrationDir string, repair bool) error {
+func applyMigrations(db *sql.DB, migrationDir string) error {
 	// 读取目录中的 SQL 文件，并按文件名排序来确定迁移顺序。
 	entries, err := os.ReadDir(migrationDir)
 	if err != nil {
@@ -121,14 +120,11 @@ func applyMigrations(db *sql.DB, migrationDir string, repair bool) error {
 		return err
 	}
 	if dirty {
-		if repair {
-			if err := repairMigration(db, currentVersion-1); err != nil {
-				return err
-			}
-			log.Printf("repaired dirty migration: version=%d", currentVersion)
-			return nil
+		if err := repairMigration(db, currentVersion-1); err != nil {
+			return err
 		}
-		return fmt.Errorf("migration version %d is dirty; fix the database before continuing", currentVersion)
+		currentVersion--
+		log.Printf("repaired dirty migration: version=%d", currentVersion)
 	}
 
 	for index, fileName := range fileNames {

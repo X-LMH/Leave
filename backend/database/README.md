@@ -65,6 +65,14 @@ migrations/
 go run ./cmd/migrate -config ./config/config.yaml
 ```
 
+也可以在项目根目录直接运行：
+
+```text
+make migrate
+```
+
+如果迁移因执行失败而处于 dirty 状态，再次运行 `make migrate` 会自动将状态回退到上一个版本并重试该迁移。自动重试前应确认上一次失败没有留下无法重复执行的部分变更。
+
 迁移程序支持同一文件内的多条 SQL 语句。`.down.sql` 文件不由该命令自动执行；需要回滚时，应先确认影响范围和备份，再通过数据库客户端执行对应的回滚脚本，并将 `schema_migrations` 状态恢复到上一个版本。
 
 新建开发数据库时，先按 `tables/` 中的完整表结构初始化，再执行 `seed/` 中的基础数据脚本；不要对已经按完整表结构初始化的数据库重复执行历史 migration。
