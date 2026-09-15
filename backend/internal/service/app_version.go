@@ -12,12 +12,29 @@ import (
 var ErrAppVersionNotFound = errors.New("未找到已发布的应用版本")
 
 // GetCurrentAppVersion returns the currently usable version for a platform.
-func GetCurrentAppVersion(platform string) (*dto.AppVersionResponse, error) {
+func GetCurrentAppVersion(platform string, currentVersionCode int) (*dto.AppVersionResponse, error) {
 	version, err := GetCurrentAppPackage(platform)
 	if err != nil {
 		return nil, err
 	}
-	return appVersionResponse(version), nil
+	updates, err := mysql.GetAppVersionUpdates(platform, currentVersionCode)
+	if err != nil {
+		return nil, err
+	}
+	response := &dto.AppVersionResponse{
+		Platform:          version.Platform,
+		LatestVersionCode: version.VersionCode,
+		LatestVersionName: version.VersionName,
+		Updates:           make([]dto.AppVersionUpdate, 0, len(updates)),
+	}
+	for _, update := range updates {
+		response.Updates = append(response.Updates, dto.AppVersionUpdate{
+			VersionCode:  update.VersionCode,
+			VersionName:  update.VersionName,
+			ReleaseNotes: releaseNotes(update.ReleaseNotes),
+		})
+	}
+	return response, nil
 }
 
 // GetCurrentAppPackage returns the current version record used to serve its package.
@@ -32,22 +49,17 @@ func GetCurrentAppPackage(platform string) (*models.AppVersion, error) {
 
 // IsCurrentAppVersion reports whether a client is running the current published version.
 func IsCurrentAppVersion(platform string, versionCode int) (*dto.AppVersionResponse, bool, error) {
-	current, err := GetCurrentAppVersion(platform)
+	current, err := GetCurrentAppVersion(platform, versionCode)
 	if err != nil {
 		return nil, false, err
 	}
-	return current, current.VersionCode == versionCode, nil
+	return current, current.LatestVersionCode == versionCode, nil
 }
 
-func appVersionResponse(version *models.AppVersion) *dto.AppVersionResponse {
-	var releaseNotes []string
-	if version.ReleaseNotes != "" {
-		_ = json.Unmarshal([]byte(version.ReleaseNotes), &releaseNotes)
+func releaseNotes(value string) []string {
+	var notes []string
+	if value != "" {
+		_ = json.Unmarshal([]byte(value), &notes)
 	}
-	return &dto.AppVersionResponse{
-		Platform:     version.Platform,
-		VersionCode:  version.VersionCode,
-		VersionName:  version.VersionName,
-		ReleaseNotes: releaseNotes,
-	}
+	return notes
 }

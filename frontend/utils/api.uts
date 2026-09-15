@@ -21,6 +21,12 @@ export type ApiResponse<T> = {
 
 export type AppVersionInfo = {
 	platform: string
+	latest_version_code: number
+	latest_version_name: string
+	updates: AppVersionUpdate[]
+}
+
+export type AppVersionUpdate = {
 	version_code: number
 	version_name: string
 	release_notes: string[]
@@ -94,6 +100,13 @@ export type ProfilePayload = {
 	teacher_name: string
 }
 
+export type RecordApplicantInfo = {
+	name: string
+	parent_name: string
+	parent_phone: string
+	teacher_name: string
+}
+
 export type LeaveTypeOption = {
 	id: number
 	name: string
@@ -114,12 +127,7 @@ export type RecordCreatePayload = {
 export type RecordDetail = {
 	id: number
 	student_id: string
-	applicant_info: {
-		name: string
-		parent_name: string
-		parent_phone: string
-		teacher_name: string
-	}
+	applicant_info: RecordApplicantInfo
 	class_info: ProfileClassInfo
 	leave_type: string
 	start_time: string
@@ -225,12 +233,23 @@ function handleUnauthorized() {
 }
 
 function appVersionInfoFromJSON(data: UTSJSONObject): AppVersionInfo {
-	const notes = data['release_notes'] as string[] | null
+	const updatesData = data['updates'] as UTSJSONObject[] | null
+	const updates: AppVersionUpdate[] = []
+	if (updatesData != null) {
+		for (const update of updatesData) {
+			const updateNotes = update['release_notes'] as string[] | null
+			updates.push({
+				version_code: update['version_code'] as number,
+				version_name: update['version_name'] as string,
+				release_notes: updateNotes == null ? [] : updateNotes
+			})
+		}
+	}
 	return {
 		platform: data['platform'] as string,
-		version_code: data['version_code'] as number,
-		version_name: data['version_name'] as string,
-		release_notes: notes == null ? [] : notes
+		latest_version_code: data['latest_version_code'] as number,
+		latest_version_name: data['latest_version_name'] as string,
+		updates: updates
 	}
 }
 
@@ -273,7 +292,7 @@ function toRequestData(data: object): UTSJSONObject {
 export function getCurrentAppVersion(): Promise<AppVersionInfo> {
 	return new Promise((resolve, reject) => {
 		uni.request<UTSJSONObject>({
-			url: API_BASE_URL + '/app-version?platform=' + APP_PLATFORM,
+			url: API_BASE_URL + '/app-version?platform=' + APP_PLATFORM + '&version_code=' + getAppVersionCode(),
 			method: 'GET',
 			success: (response) => {
 				const body = response.data

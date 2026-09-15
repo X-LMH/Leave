@@ -24,13 +24,16 @@
 					</view>
 					<view class="notes-section">
 						<text class="notes-title">本次更新</text>
-						<view v-if="releaseNotes.length == 0" class="note-row">
+						<view v-if="updateGroups.length == 0" class="note-row">
 							<view class="note-dot"></view>
 							<text class="note-text">修复已知问题并提升使用体验</text>
 						</view>
-						<view v-for="(note, index) in releaseNotes" :key="index" class="note-row">
-							<view class="note-dot"></view>
-							<text class="note-text">{{ note }}</text>
+						<view v-for="update in updateGroups" :key="update.version_code" class="update-group">
+							<text class="update-version">{{ update.version_name }}</text>
+							<view v-for="(note, noteIndex) in update.release_notes" :key="noteIndex" class="note-row">
+								<view class="note-dot"></view>
+								<text class="note-text">{{ note }}</text>
+							</view>
 						</view>
 					</view>
 				</view>
@@ -53,7 +56,7 @@
 
 <script setup lang="uts">
 import { computed, ref } from 'vue'
-import { AppVersionInfo, getAppDownloadURL, getCurrentAppVersion, getStoredUpdateInfo, saveUpdateInfo } from '@/utils/api.uts'
+import { AppVersionInfo, AppVersionUpdate, getAppDownloadURL, getCurrentAppVersion, getStoredUpdateInfo, saveUpdateInfo } from '@/utils/api.uts'
 import { getAppVersion } from '@/utils/device.uts'
 
 const latestVersion = ref<AppVersionInfo | null>(getStoredUpdateInfo())
@@ -66,8 +69,12 @@ const downloadProgressDisplay = computed((): number => Math.floor(downloadProgre
 const actionError = ref('')
 
 const currentVersionName = computed((): string => getAppVersion())
-const latestVersionName = computed((): string => latestVersion.value == null ? '' : latestVersion.value.version_name)
-const releaseNotes = computed((): string[] => latestVersion.value == null ? [] : latestVersion.value.release_notes)
+const latestVersionName = computed((): string => latestVersion.value == null ? '' : latestVersion.value.latest_version_name)
+const updateGroups = computed((): AppVersionUpdate[] => {
+	if (latestVersion.value == null) return []
+	const updates = latestVersion.value.updates
+	return updates
+})
 const actionText = computed((): string => {
 	if (downloading.value) return '正在下载'
 	if (installing.value) return '正在调起安装'
@@ -198,12 +205,15 @@ onBackPress((): boolean => true)
 	font-size: 27rpx;
 }
 .version-value {
+	min-width: 84rpx;
+	box-sizing: border-box;
 	color: #52627C;
 	font-size: 28rpx;
 	font-weight: 600;
+	text-align: center;
 }
 .version-value-highlight {
-	padding: 6rpx 16rpx;
+	padding: 6rpx 0;
 	border-radius: 12rpx;
 	background-color: #EDF1FF;
 	color: #5874D8;
@@ -221,9 +231,18 @@ onBackPress((): boolean => true)
 	font-size: 28rpx;
 	font-weight: 700;
 }
+.update-group {
+	margin-top: 18rpx;
+}
+.update-version {
+	color: #52627C;
+	font-size: 26rpx;
+	font-weight: 600;
+}
 .note-row {
-	flex-direction: row;
 	margin-top: 10rpx;
+	flex-direction: row;
+	padding-left: 16rpx;
 }
 .note-dot {
 	width: 8rpx;

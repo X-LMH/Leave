@@ -15,19 +15,14 @@ func TestAppVersionResponse(t *testing.T) {
 		ReleaseNotes: `["修复登录问题","优化请假流程"]`,
 	}
 
-	got := appVersionResponse(version)
-	if got.Platform != "android" || got.VersionCode != 2 || got.VersionName != "0.0.2" {
-		t.Fatalf("unexpected version response: %#v", got)
-	}
 	wantNotes := []string{"修复登录问题", "优化请假流程"}
-	if !reflect.DeepEqual(got.ReleaseNotes, wantNotes) {
-		t.Fatalf("ReleaseNotes = %#v, want %#v", got.ReleaseNotes, wantNotes)
+	if !reflect.DeepEqual(releaseNotes(version.ReleaseNotes), wantNotes) {
+		t.Fatalf("ReleaseNotes = %#v, want %#v", releaseNotes(version.ReleaseNotes), wantNotes)
 	}
 }
 
 func TestAppVersionResponseInvalidReleaseNotes(t *testing.T) {
-	got := appVersionResponse(&models.AppVersion{ReleaseNotes: "not-json"})
-	if len(got.ReleaseNotes) != 0 {
-		t.Fatalf("ReleaseNotes = %#v, want empty slice", got.ReleaseNotes)
+	if len(releaseNotes("not-json")) != 0 {
+		t.Fatalf("ReleaseNotes should be empty")
 	}
 }

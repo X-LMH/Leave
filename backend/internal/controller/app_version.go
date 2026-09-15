@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -23,7 +24,8 @@ func GetCurrentAppVersionHandler(c *gin.Context) {
 		return
 	}
 
-	version, err := service.GetCurrentAppVersion(platform)
+	versionCode, _ := strconv.Atoi(c.Query("version_code"))
+	version, err := service.GetCurrentAppVersion(platform, versionCode)
 	if err != nil {
 		response.Error(c, response.CodeServerBusy)
 		return

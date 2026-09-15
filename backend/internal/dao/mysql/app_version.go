@@ -23,3 +23,10 @@ func GetCurrentAppVersion(platform string) (*models.AppVersion, error) {
 	}
 	return version, nil
 }
+
+func GetAppVersionUpdates(platform string, versionCode int) ([]models.AppVersion, error) {
+	var versions []models.AppVersion
+	err := db.Where("platform = ? AND version_code > ? AND status IN ?", platform, versionCode, []string{models.AppVersionStatusPublished, models.AppVersionStatusArchived}).
+		Order("version_code ASC").Find(&versions).Error
+	return versions, err
+}
