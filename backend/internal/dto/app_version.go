@@ -2,10 +2,15 @@ package dto
 
 // AppVersionResponse is returned to a client before it enters the application.
 type AppVersionResponse struct {
-	Platform          string             `json:"platform"`
-	LatestVersionCode int                `json:"latest_version_code"`
-	LatestVersionName string             `json:"latest_version_name"`
-	Updates           []AppVersionUpdate `json:"updates"`
+	Platform          string `json:"platform"`
+	LatestVersionCode int    `json:"latest_version_code"`
+	LatestVersionName string `json:"latest_version_name"`
+	// TODO: 旧客户端全部升级后，删除以下兼容字段。
+	// 保留旧字段，兼容已经发布的客户端。
+	VersionCode  int                `json:"version_code"`
+	VersionName  string             `json:"version_name"`
+	ReleaseNotes []string           `json:"release_notes"`
+	Updates      []AppVersionUpdate `json:"updates"`
 }
 
 type AppVersionUpdate struct {

@@ -25,6 +25,9 @@ func GetCurrentAppVersion(platform string, currentVersionCode int) (*dto.AppVers
 		Platform:          version.Platform,
 		LatestVersionCode: version.VersionCode,
 		LatestVersionName: version.VersionName,
+		VersionCode:       version.VersionCode,
+		VersionName:       version.VersionName,
+		ReleaseNotes:      releaseNotes(version.ReleaseNotes),
 		Updates:           make([]dto.AppVersionUpdate, 0, len(updates)),
 	}
 	for _, update := range updates {

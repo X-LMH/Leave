@@ -234,6 +234,9 @@ function handleUnauthorized() {
 
 function appVersionInfoFromJSON(data: UTSJSONObject): AppVersionInfo {
 	const updatesData = data['updates'] as UTSJSONObject[] | null
+	// TODO: 旧客户端全部升级后，删除旧字段回退逻辑。
+	const latestVersionCode = data['latest_version_code'] as number | null
+	const latestVersionName = data['latest_version_name'] as string | null
 	const updates: AppVersionUpdate[] = []
 	if (updatesData != null) {
 		for (const update of updatesData) {
@@ -247,8 +250,8 @@ function appVersionInfoFromJSON(data: UTSJSONObject): AppVersionInfo {
 	}
 	return {
 		platform: data['platform'] as string,
-		latest_version_code: data['latest_version_code'] as number,
-		latest_version_name: data['latest_version_name'] as string,
+		latest_version_code: latestVersionCode == null ? data['version_code'] as number : latestVersionCode,
+		latest_version_name: latestVersionName == null ? data['version_name'] as string : latestVersionName,
 		updates: updates
 	}
 }
