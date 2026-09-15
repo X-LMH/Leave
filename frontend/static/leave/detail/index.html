@@ -12442,7 +12442,7 @@ body {
 <div class=van-step__title>
 <div data-v-6e105e04 class=timeline-node>
 <div data-v-6e105e04 class=node-header>
-<span data-v-6e105e04 class=node-title>班主任 · <span data-v-6e105e04 class="status status-success">通过</span>
+<span data-v-6e105e04 class=node-title><span data-v-6e105e04 data-field=teacherName></span> · <span data-v-6e105e04 class="status status-success">通过</span>
 </span>
 <span data-v-6e105e04 class="node-tages space-x-3">
 <span data-v-6e105e04 class=node-type data-field=approvalTime></span>
@@ -12502,6 +12502,7 @@ const pageData = {
   studentName: '',
   parentName: '',
   parentPhone: '',
+  teacherName: '',
   studentId: '',
   classInfo: '',
   leaveType: '',
@@ -12537,6 +12538,7 @@ if (hasSubmittedApplication) {
   pageData.studentName = applicationValue('studentName', '-');
   pageData.parentName = applicationValue('parentName', '-');
   pageData.parentPhone = applicationValue('parentPhone', '-');
+  pageData.teacherName = applicationValue('teacherName', '-');
   pageData.studentId = applicationValue('studentId', '-');
   pageData.classInfo = applicationValue('classInfo', '-');
   pageData.leaveType = applicationValue('leaveType', '-');

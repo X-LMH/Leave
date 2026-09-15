@@ -16,6 +16,7 @@ type Record struct {
 	Name           string         `gorm:"column:name"`
 	ParentName     string         `gorm:"column:parent_name"`
 	ParentPhone    string         `gorm:"column:parent_phone"`
+	TeacherName    string         `gorm:"column:teacher_name"`
 	LeaveTypeID    uint           `gorm:"column:leave_type_id"`
 	LeaveTypeName  string         `gorm:"column:leave_type_name"`
 	College        string         `gorm:"column:college"`

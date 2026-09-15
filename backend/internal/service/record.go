@@ -43,6 +43,7 @@ func CreateRecord(studentID string, request *dto.RecordCreateRequest) (*dto.Reco
 		Name:           profile.Name,
 		ParentName:     profile.ParentName,
 		ParentPhone:    profile.ParentPhone,
+		TeacherName:    profile.TeacherName,
 		LeaveTypeID:    request.LeaveTypeID,
 		LeaveTypeName:  leaveType.Name,
 		College:        class.College,
@@ -142,11 +143,14 @@ func durationParts(startTime, endTime time.Time) (uint, uint) {
 func toRecordResponse(record *models.Record) *dto.RecordResponse {
 	days, hours := durationParts(record.StartTime, record.EndTime)
 	response := &dto.RecordResponse{
-		ID:          record.ID,
-		StudentID:   record.StudentID,
-		Name:        record.Name,
-		ParentName:  record.ParentName,
-		ParentPhone: record.ParentPhone,
+		ID:        record.ID,
+		StudentID: record.StudentID,
+		ApplicantInfo: dto.RecordApplicantInfo{
+			Name:        record.Name,
+			ParentName:  record.ParentName,
+			ParentPhone: record.ParentPhone,
+			TeacherName: record.TeacherName,
+		},
 		ClassInfo: dto.ProfileClassInfo{
 			College:   record.College,
 			Major:     record.Major,

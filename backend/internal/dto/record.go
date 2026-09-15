@@ -16,25 +16,30 @@ type RecordCreateRequest struct {
 	ApprovedAt     time.Time `json:"approved_at"`
 }
 
+type RecordApplicantInfo struct {
+	Name        string `json:"name"`
+	ParentName  string `json:"parent_name"`
+	ParentPhone string `json:"parent_phone"`
+	TeacherName string `json:"teacher_name"`
+}
+
 // RecordResponse contains all information needed by the leave-record detail view.
 type RecordResponse struct {
-	ID             uint             `json:"id"`
-	StudentID      string           `json:"student_id"`
-	Name           string           `json:"name"`
-	ParentName     string           `json:"parent_name"`
-	ParentPhone    string           `json:"parent_phone"`
-	ClassInfo      ProfileClassInfo `json:"class_info"`
-	LeaveType      string           `json:"leave_type"`
-	StartTime      time.Time        `json:"start_time"`
-	EndTime        time.Time        `json:"end_time"`
-	DurationDays   uint             `json:"duration_days"`
-	DurationHours  uint             `json:"duration_hours"`
-	AffectedCourse string           `json:"affected_course"`
-	IsLeaveSchool  bool             `json:"is_leave_school"`
-	LeaveReason    string           `json:"leave_reason"`
-	TravelWay      string           `json:"travel_way"`
-	AppliedAt      time.Time        `json:"applied_at"`
-	ApprovedAt     time.Time        `json:"approved_at"`
+	ID             uint                `json:"id"`
+	StudentID      string              `json:"student_id"`
+	ApplicantInfo  RecordApplicantInfo `json:"applicant_info"`
+	ClassInfo      ProfileClassInfo    `json:"class_info"`
+	LeaveType      string              `json:"leave_type"`
+	StartTime      time.Time           `json:"start_time"`
+	EndTime        time.Time           `json:"end_time"`
+	DurationDays   uint                `json:"duration_days"`
+	DurationHours  uint                `json:"duration_hours"`
+	AffectedCourse string              `json:"affected_course"`
+	IsLeaveSchool  bool                `json:"is_leave_school"`
+	LeaveReason    string              `json:"leave_reason"`
+	TravelWay      string              `json:"travel_way"`
+	AppliedAt      time.Time           `json:"applied_at"`
+	ApprovedAt     time.Time           `json:"approved_at"`
 }
 
 // RecordListItem is the compact record representation returned by GET /records.

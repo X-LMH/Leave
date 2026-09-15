@@ -7,6 +7,7 @@ CREATE TABLE `records`
     `name`            VARCHAR(64)  NOT NULL COMMENT '姓名快照',
     `parent_name`     VARCHAR(64)  NOT NULL COMMENT '家长姓名快照',
     `parent_phone`    VARCHAR(20)  NOT NULL COMMENT '家长电话快照',
+    `teacher_name`    VARCHAR(64)  NOT NULL COMMENT '班主任姓名快照',
     `leave_type_id`   INT UNSIGNED NOT NULL COMMENT '请假类型ID',
     `leave_type_name` VARCHAR(64)  NOT NULL COMMENT '请假类型名称快照',
     `college`         VARCHAR(64)  NOT NULL COMMENT '学院快照',

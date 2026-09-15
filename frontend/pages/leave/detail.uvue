@@ -33,9 +33,10 @@ function formatTime(value: string): string {
 
 function detailApplication(record: RecordDetail): string {
 	return JSON.stringify({
-		studentName: record.name,
-		parentName: record.parent_name,
-		parentPhone: record.parent_phone,
+		studentName: record.applicant_info.name,
+		parentName: record.applicant_info.parent_name,
+		parentPhone: record.applicant_info.parent_phone,
+		teacherName: record.applicant_info.teacher_name,
 		studentId: record.student_id,
 		classInfo: `${record.class_info.college} · ${record.class_info.major} · ${record.class_info.class_name}`,
 		leaveType: record.leave_type,

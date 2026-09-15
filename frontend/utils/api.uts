@@ -114,9 +114,12 @@ export type RecordCreatePayload = {
 export type RecordDetail = {
 	id: number
 	student_id: string
-	name: string
-	parent_name: string
-	parent_phone: string
+	applicant_info: {
+		name: string
+		parent_name: string
+		parent_phone: string
+		teacher_name: string
+	}
 	class_info: ProfileClassInfo
 	leave_type: string
 	start_time: string
@@ -487,9 +490,12 @@ function recordDetailFromJSON(data: UTSJSONObject): RecordDetail {
 	return {
 		id: data['id'] as number,
 		student_id: data['student_id'] as string,
-		name: data['name'] as string,
-		parent_name: data['parent_name'] as string,
-		parent_phone: data['parent_phone'] as string,
+		applicant_info: {
+			name: (data['applicant_info'] as UTSJSONObject)['name'] as string,
+			parent_name: (data['applicant_info'] as UTSJSONObject)['parent_name'] as string,
+			parent_phone: (data['applicant_info'] as UTSJSONObject)['parent_phone'] as string,
+			teacher_name: (data['applicant_info'] as UTSJSONObject)['teacher_name'] as string
+		},
 		class_info: {
 			college: classInfo['college'] as string,
 			major: classInfo['major'] as string,
