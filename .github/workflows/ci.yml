@@ -36,11 +36,11 @@ jobs:
     steps:
       # 将当前仓库代码下载到 GitHub Runner。
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       # 按 backend/go.mod 中的版本安装 Go，并缓存依赖。
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: backend/go.mod
           cache-dependency-path: backend/go.sum
