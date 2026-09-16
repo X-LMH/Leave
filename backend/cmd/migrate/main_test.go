@@ -28,12 +28,11 @@ func TestApplyMigrations(t *testing.T) {
 			dirty BOOLEAN NOT NULL
 		);
 		INSERT INTO schema_migrations (version, dirty) VALUES (0, 0);
-		CREATE TABLE records (id INT NOT NULL, duration INT NULL);
 	`)
 	if err != nil {
 		t.Fatalf("create migration fixtures: %v", err)
 	}
-	defer db.Exec("DROP TABLE IF EXISTS records, schema_migrations")
+	defer db.Exec("DROP TABLE IF EXISTS users, records, profiles, leave_types, feedbacks, classes, app_versions, apartments, schema_migrations")
 
 	if err := applyMigrations(db, "../../database/migrations"); err != nil {
 		t.Fatalf("apply migrations: %v", err)
@@ -44,7 +43,7 @@ func TestApplyMigrations(t *testing.T) {
 	if err := db.QueryRow("SELECT version, dirty FROM schema_migrations").Scan(&version, &dirty); err != nil {
 		t.Fatalf("read migration state: %v", err)
 	}
-	if version != 1 || dirty {
+	if version != 3 || dirty {
 		t.Fatalf("unexpected migration state: version=%d dirty=%t", version, dirty)
 	}
 
@@ -57,5 +56,15 @@ func TestApplyMigrations(t *testing.T) {
 	}
 	if columnCount != 0 {
 		t.Fatal("duration column still exists after migration")
+	}
+
+	if err := db.QueryRow(`
+		SELECT COUNT(*) FROM information_schema.columns
+		WHERE table_schema = DATABASE() AND table_name = 'records' AND column_name = 'teacher_name'
+	`).Scan(&columnCount); err != nil {
+		t.Fatalf("check teacher name column: %v", err)
+	}
+	if columnCount != 1 {
+		t.Fatal("teacher_name column does not exist after migration")
 	}
 }
