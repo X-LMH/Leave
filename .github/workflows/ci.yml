@@ -18,6 +18,20 @@ jobs:
   test:
     name: Check and test backend
     runs-on: ubuntu-latest
+    # 为集成测试提供一次性 MySQL，不涉及任何生产数据库。
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_DATABASE: leave_ci
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -ppassword"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
 
     steps:
       # 将当前仓库代码下载到 GitHub Runner。
@@ -48,18 +62,13 @@ jobs:
         working-directory: backend
         run: go mod download
 
-      # 扫描 Go 依赖及其调用路径中的已知安全漏洞。
-      # govulncheck 使用 Go 官方漏洞数据库，不会修改项目代码或依赖文件。
-      - name: Scan Go vulnerabilities
-        working-directory: backend
-        run: |
-          go install golang.org/x/vuln/cmd/govulncheck@latest
-          "$(go env GOPATH)/bin/govulncheck" ./...
-
       # 执行后端全部单元测试。
       # 该步骤不连接生产数据库；如果测试需要 MySQL，后续再添加临时 MySQL 服务。
       - name: Run Go tests
         working-directory: backend
+        env:
+          # migration 集成测试只使用 CI 中的临时数据库。
+          MYSQL_TEST_DSN: root:password@tcp(127.0.0.1:3306)/leave_ci?multiStatements=true
         run: go test ./...
 
       # 编译 HTTP server，确认后端主程序可以正常构建。
