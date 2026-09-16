@@ -1,0 +1,65 @@
+# 当前工作流只负责持续集成（CI）：检查、测试并编译后端代码。
+# 前端 Android 应用仍然由 HBuilderX 在本地手动打包，本流程不会处理 frontend 目录。
+name: Leave Backend CI
+
+on:
+  # 目前只在当前测试分支 test/github-ci 被推送到 GitHub 时执行 CI。
+  # 等本次验证完成后，再根据需要扩大到主分支、Pull Request 或版本 Tag。
+  push:
+    branches:
+      - "test/github-ci"
+
+# 同一个分支快速连续提交时，只保留最新的一次 CI，避免浪费运行资源。
+concurrency:
+  group: backend-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Check and test backend
+    runs-on: ubuntu-latest
+
+    steps:
+      # 将当前仓库代码下载到 GitHub Runner。
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      # 按 backend/go.mod 中的版本安装 Go，并缓存依赖。
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      # 检查 Go 源码是否已经经过 gofmt 格式化。
+      # 如果输出了文件名，说明存在未格式化的代码，CI 会失败。
+      - name: Check Go format
+        working-directory: backend
+        run: |
+          test -z "$(gofmt -l .)"
+
+      # 执行 Go 静态检查，发现部分编译器无法直接提示的问题。
+      - name: Run go vet
+        working-directory: backend
+        run: go vet ./...
+
+      # 下载并校验 go.mod / go.sum 中声明的依赖。
+      - name: Download Go dependencies
+        working-directory: backend
+        run: go mod download
+
+      # 执行后端全部单元测试。
+      # 该步骤不连接生产数据库；如果测试需要 MySQL，后续再添加临时 MySQL 服务。
+      - name: Run Go tests
+        working-directory: backend
+        run: go test ./...
+
+      # 编译 HTTP server，确认后端主程序可以正常构建。
+      - name: Build server
+        working-directory: backend
+        run: go build ./cmd/server
+
+      # 编译数据库迁移工具，确认 migration 执行程序可以正常构建。
+      - name: Build migration tool
+        working-directory: backend
+        run: go build ./cmd/migrate
