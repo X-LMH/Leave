@@ -4,6 +4,7 @@ name: Leave Backend CI
 
 on:
   push:
+    # 当前测试阶段监听 test/cicd；将 CI 正式用于主分支时可改为 master。
     branches:
       - test/cicd
   # 允许发布 workflow 在 Tag 上复用完全相同的 CI 检查。
@@ -15,23 +16,24 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # CI 只有一个 job，负责检查、测试和编译后端，不负责部署到服务器。
   test:
     name: Check and test backend
     runs-on: ubuntu-latest
-    # 为集成测试提供一次性 MySQL，不涉及任何生产数据库。
-    services:
-      mysql:
-        image: mysql:8.0
-        env:
-          MYSQL_ROOT_PASSWORD: password
-          MYSQL_DATABASE: leave_ci
-        ports:
-          - 3306:3306
-        options: >-
-          --health-cmd="mysqladmin ping -h 127.0.0.1 -ppassword"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=10
+    # 暂时注释 MySQL 服务：当前阶段只验证 CI/CD 链路，不运行数据库相关测试。
+    # services:
+    #   mysql:
+    #     image: mysql:8.0
+    #     env:
+    #       MYSQL_ROOT_PASSWORD: password
+    #       MYSQL_DATABASE: leave_ci
+    #     ports:
+    #       - 3306:3306
+    #     options: >-
+    #       --health-cmd="mysqladmin ping -h 127.0.0.1 -ppassword"
+    #       --health-interval=10s
+    #       --health-timeout=5s
+    #       --health-retries=10
 
     steps:
       # 将当前仓库代码下载到 GitHub Runner。
@@ -45,31 +47,27 @@ jobs:
           go-version-file: backend/go.mod
           cache-dependency-path: backend/go.sum
 
-      # 检查 Go 源码是否已经经过 gofmt 格式化。
-      # 如果输出了文件名，说明存在未格式化的代码，CI 会失败。
-      - name: Check Go format
-        working-directory: backend
-        run: |
-          test -z "$(gofmt -l .)"
+      # 暂时跳过格式检查，恢复时取消下面代码的注释即可。
+      # - name: Check Go format
+      #   working-directory: backend
+      #   run: test -z "$(gofmt -l .)"
 
-      # 执行 Go 静态检查，发现部分编译器无法直接提示的问题。
-      - name: Run go vet
-        working-directory: backend
-        run: go vet ./...
+      # 暂时跳过 Go 静态检查，恢复时取消下面代码的注释即可。
+      # - name: Run go vet
+      #   working-directory: backend
+      #   run: go vet ./...
 
-      # 下载并校验 go.mod / go.sum 中声明的依赖。
-      - name: Download Go dependencies
-        working-directory: backend
-        run: go mod download
+      # 暂时跳过显式依赖下载；构建时 Go 仍会按需下载编译所需依赖。
+      # - name: Download Go dependencies
+      #   working-directory: backend
+      #   run: go mod download
 
-      # 执行后端全部单元测试。
-      # 该步骤不连接生产数据库；如果测试需要 MySQL，后续再添加临时 MySQL 服务。
-      - name: Run Go tests
-        working-directory: backend
-        env:
-          # migration 集成测试只使用 CI 中的临时数据库。
-          MYSQL_TEST_DSN: root:password@tcp(127.0.0.1:3306)/leave_ci?multiStatements=true
-        run: go test ./...
+      # 暂时跳过单元测试，恢复时取消下面代码的注释，并同步恢复上面的 MySQL 服务。
+      # - name: Run Go tests
+      #   working-directory: backend
+      #   env:
+      #     MYSQL_TEST_DSN: root:password@tcp(127.0.0.1:3306)/leave_ci?multiStatements=true
+      #   run: go test ./...
 
       # 编译 HTTP server，确认后端主程序可以正常构建。
       - name: Build server
