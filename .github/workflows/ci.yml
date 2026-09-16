@@ -48,6 +48,14 @@ jobs:
         working-directory: backend
         run: go mod download
 
+      # 扫描 Go 依赖及其调用路径中的已知安全漏洞。
+      # govulncheck 使用 Go 官方漏洞数据库，不会修改项目代码或依赖文件。
+      - name: Scan Go vulnerabilities
+        working-directory: backend
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          "$(go env GOPATH)/bin/govulncheck" ./...
+
       # 执行后端全部单元测试。
       # 该步骤不连接生产数据库；如果测试需要 MySQL，后续再添加临时 MySQL 服务。
       - name: Run Go tests
