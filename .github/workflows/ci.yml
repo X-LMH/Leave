@@ -3,11 +3,11 @@
 name: Leave Backend CI
 
 on:
-  # 目前只在当前测试分支 test/github-ci 被推送到 GitHub 时执行 CI。
-  # 等本次验证完成后，再根据需要扩大到主分支、Pull Request 或版本 Tag。
   push:
     branches:
-      - "test/github-ci"
+      - test/cicd
+  # 允许发布 workflow 在 Tag 上复用完全相同的 CI 检查。
+  workflow_call:
 
 # 同一个分支快速连续提交时，只保留最新的一次 CI，避免浪费运行资源。
 concurrency:

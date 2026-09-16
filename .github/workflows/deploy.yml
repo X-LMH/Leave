@@ -1,0 +1,63 @@
+# 持续交付（CD）流程：只有推送版本 Tag 时才执行正式发布。
+name: Leave Backend CD
+
+on:
+  push:
+    tags:
+      - "test-v*"
+
+# 同一个 Tag 重复触发时不取消正在进行的发布，避免产生不完整的发布结果。
+concurrency:
+  group: backend-cd-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # 在 Tag 对应的 commit 上复用 CI workflow。
+  # 发布前会执行格式检查、静态检查、测试和构建验证。
+  ci:
+    name: Run CI for release tag
+    uses: ./.github/workflows/ci.yml
+
+  deploy:
+    name: Build and upload server
+    # deploy 必须等待 ci 完成；CI 失败时，该 job 会被自动跳过。
+    needs: ci
+    if: needs.ci.result == 'success'
+    runs-on: ubuntu-latest
+
+    steps:
+      # checkout 当前触发 CD 的版本 Tag，而不是默认分支的最新代码。
+      # 因此构建出来的程序与发布 Tag 严格对应。
+      - name: Check out tag
+        uses: actions/checkout@v5
+
+      # 根据 backend/go.mod 设置项目要求的 Go 版本，并缓存 backend/go.sum 对应的依赖。
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      # 创建用于存放发布构建产物的目录。
+      - name: Prepare distribution directory
+        run: mkdir -p dist
+
+      # 在 backend 目录编译 HTTP server 主程序，产物统一放到仓库根目录的 dist 目录。
+      # CGO_ENABLED=0 生成不依赖系统 C 库的静态程序，目标平台为 Linux amd64。
+      # ./cmd/server 是当前项目的后端服务入口。
+      - name: Build Linux server binary
+        working-directory: backend
+        run: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o ../dist/leave-server ./cmd/server
+
+      # 使用 SSH 密码认证将构建产物上传到服务器。
+      # 当前为临时明文测试配置；测试完成后建议改回 GitHub Repository Secrets。
+      # target 是服务器上的目标目录，已存在的同名文件会被覆盖。
+      - name: Upload server binary
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: 39.104.89.165
+          username: root
+          password: xmS10711
+          port: 22
+          source: dist/leave-server
+          target: /www/wwwroot/test
