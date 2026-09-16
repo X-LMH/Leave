@@ -6,7 +6,7 @@ on:
     tags:
       - "test-v*"
 
-# 同一个 Tag 重复触发时不取消正在进行的发布，避免产生不完整的发布结果。
+# 同一个 Tag 重复触发时不取消正在进行的发布，避免产生不完整的发布结果
 concurrency:
   group: backend-cd-${{ github.ref }}
   cancel-in-progress: false
