@@ -6,7 +6,7 @@ on:
   push:
     # 当前测试阶段监听 test/cicd；将 CI 正式用于主分支时可改为 master。
     branches:
-      - test/cicd
+      - deploy
   # 允许发布 workflow 在 Tag 上复用完全相同的 CI 检查。
   workflow_call:
 
