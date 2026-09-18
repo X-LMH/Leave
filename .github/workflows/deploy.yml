@@ -12,7 +12,7 @@ concurrency:
   group: android-release-${{ github.ref }}
   cancel-in-progress: false
 
-# 创建或更新 Release 需要写入仓库内容的权限。
+# 创建或更新 Release 需要写入仓库内容的权限
 permissions:
   contents: write
 
