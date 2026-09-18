@@ -3,12 +3,12 @@
 name: Leave Backend CI
 
 on:
-  push:
-    # 当前测试阶段监听 test/cicd；将 CI 正式用于主分支时可改为 master。
-    branches:
-      - deploy
-  # 允许发布 workflow 在 Tag 上复用完全相同的 CI 检查。
-  workflow_call:
+#  push:
+#    # 当前测试阶段监听 test/cicd；将 CI 正式用于主分支时可改为 master。
+#    branches:
+#      - deploy
+#  # 允许发布 workflow 在 Tag 上复用完全相同的 CI 检查。
+#  workflow_call:
 
 # 同一个分支快速连续提交时，只保留最新的一次 CI，避免浪费运行资源。
 concurrency:
