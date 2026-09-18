@@ -2,9 +2,11 @@ package config
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/spf13/viper"
+	"github.com/subosito/gotenv"
 )
 
 // Config 全局配置结构体（修正字段名、标签与YAML匹配）
@@ -30,12 +32,17 @@ var Cfg Config
 
 // Init 初始化配置（读取并解析yaml）
 func Init() error {
+	if err := loadDotEnv(); err != nil {
+		return fmt.Errorf("加载环境变量文件失败: %w", err)
+	}
+
 	// 设置viper参数
 	viper.SetConfigName("config")   // 配置文件名（无后缀）
 	viper.SetConfigType("yaml")     // 配置文件类型
 	viper.AddConfigPath("./config") // 当前推荐的配置文件目录
 	//viper.AddConfigPath(".")        // 兼容已有部署中的 config.yaml
 	viper.AllowEmptyEnv(true)
+	viper.BindEnv("mysql.password", "MYSQL_PASSWORD")
 	viper.BindEnv("jwt.secret", "JWT_SECRET")
 
 	// 读取配置文件
@@ -49,7 +56,11 @@ func Init() error {
 	}
 	Cfg.JWT.Secret = strings.TrimSpace(viper.GetString("jwt.secret"))
 	Cfg.JWT.ExpirationDays = viper.GetInt("jwt.expiration_days")
+	Cfg.Mysql.Password = viper.GetString("mysql.password")
 	Cfg.App.PackageDir = strings.TrimSpace(viper.GetString("app.package_dir"))
+	if Cfg.Mysql.Password == "" {
+		return fmt.Errorf("MySQL password cannot be empty; configure MYSQL_PASSWORD")
+	}
 	if Cfg.JWT.Secret == "" {
 		return fmt.Errorf("JWT secret cannot be empty; configure jwt.secret or JWT_SECRET")
 	}
@@ -57,6 +68,17 @@ func Init() error {
 		return fmt.Errorf("jwt.expiration_days must be greater than 0")
 	}
 
+	return nil
+}
+
+func loadDotEnv() error {
+	for _, path := range []string{".env", "../.env"} {
+		if _, err := os.Stat(path); err == nil {
+			return gotenv.Load(path)
+		} else if !os.IsNotExist(err) {
+			return err
+		}
+	}
 	return nil
 }
 

@@ -14,6 +14,7 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/spf13/viper"
+	"github.com/subosito/gotenv"
 )
 
 const (
@@ -26,6 +27,8 @@ const (
 // database migration must not require unrelated application settings such as
 // the JWT secret.
 func main() {
+	loadDotEnv()
+
 	// 允许通过命令行指定配置文件路径。
 	configPath := flag.String("config", "./config/config.yaml", "path to the YAML configuration file")
 	flag.Parse()
@@ -49,11 +52,21 @@ func main() {
 	log.Println("database migrations are up to date")
 }
 
+func loadDotEnv() {
+	for _, path := range []string{".env", "../.env"} {
+		if _, err := os.Stat(path); err == nil {
+			_ = gotenv.Load(path)
+			return
+		}
+	}
+}
+
 func openDatabase(configPath string) (*sql.DB, error) {
 	// 迁移程序只读取 MySQL 相关配置，不依赖其他业务配置。
 	v := viper.New()
 	v.SetConfigFile(configPath)
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	v.BindEnv("mysql.password", "MYSQL_PASSWORD")
 	v.AutomaticEnv()
 
 	if err := v.ReadInConfig(); err != nil {
@@ -79,6 +92,9 @@ func openDatabase(configPath string) (*sql.DB, error) {
 	}
 	if database == "" {
 		return nil, errors.New("mysql.database must be configured")
+	}
+	if password == "" {
+		return nil, errors.New("MYSQL_PASSWORD must be configured")
 	}
 
 	// 组装 MySQL 数据源名称（DSN）并建立数据库连接。
