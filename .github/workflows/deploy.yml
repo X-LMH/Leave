@@ -1,72 +1,43 @@
-name: Leave Android Release
+# 持续交付（CD）流程：只有推送版本 Tag 时才执行正式发布。
+name: Leave Backend CD
 
-# 只有推送测试版本 Tag 时才触发本流程。
-# 例如：test-v0.0.5
 on:
   push:
     branches:
       - deploy
-    tags:
-      - "test-v*"
 
-# 同一个 Tag 重复推送时不取消正在执行的任务，避免 Release 上传到一半被中断。
+# 同一个 Tag 重复触发时不取消正在进行的发布，避免产生不完整的发布结果
 concurrency:
-  group: android-release-${{ github.ref }}
+  group: backend-cd-${{ github.ref }}
   cancel-in-progress: false
 
-# 创建或更新 Release 需要写入仓库内容的权限.
-permissions:
-  contents: write
-
 jobs:
-  release:
-    name: Upload APK to GitHub Release
+  # 在 Tag 对应的 commit 上复用 CI workflow。
+  # 发布前会执行格式检查、静态检查、测试和构建验证。
+  ci:
+    name: Run CI for release tag
+    uses: ./.github/workflows/ci.yml
+
+  deploy:
+    name: Upload Android APK
+    # deploy 必须等待 ci 完成；CI 失败时，该 job 会被自动跳过。
+    needs: ci
+    if: needs.ci.result == 'success'
     runs-on: ubuntu-latest
 
     steps:
-      # 下载 deploy 分支当前的文件。
-      # APK 不要求存在于触发 CD 的 Tag 提交中，只要已经提交到 deploy 分支即可。
-      - name: Check out deployment branch
-        uses: actions/checkout@v4
+      # checkout 当前触发 CD 的版本，而不是默认分支的最新代码。
+      - name: Check out tag
+        uses: actions/checkout@v5
+
+      # 使用 GitHub Repository Secrets 提供 SSH 连接参数和私钥，仓库不保存任何凭据。
+      # 上传后服务器上的文件名为 app.apk，已存在的同名文件会被覆盖。
+      - name: Upload Android APK
+        uses: appleboy/scp-action@v0.1.7
         with:
-          ref: deploy
-
-      # 使用 GitHub Actions 自动提供的 Token 操作当前仓库的 Release。
-      # 工作流会自动查找 current 目录中的唯一 APK，不要求固定文件名。
-      - name: Create or update GitHub Release
-        env:
-          GH_TOKEN: ${{ github.token }}
-          TAG_NAME: ${{ github.ref_name }}
-        run: |
-          # 查找当前目录下的 APK 文件，不限制具体文件名。
-          mapfile -t apk_files < <(find artifacts/android/current -maxdepth 1 -type f -iname '*.apk' -print | sort)
-
-          # 约定当前目录必须且只能有一个 APK。
-          if [ "${#apk_files[@]}" -eq 0 ]; then
-            echo "No APK found in artifacts/android/current" >&2
-            exit 1
-          fi
-
-          if [ "${#apk_files[@]}" -gt 1 ]; then
-            echo "More than one APK found in artifacts/android/current:" >&2
-            printf ' - %s\n' "${apk_files[@]}" >&2
-            exit 1
-          fi
-
-          APK_PATH="${apk_files[0]}"
-          echo "Using APK: $APK_PATH"
-
-          # 去掉 Tag 前缀，得到用于 Release 标题的应用版本号。
-          version="${TAG_NAME#test-v}"
-
-          # 如果这个 Tag 已经有 Release，则覆盖同名 APK 附件。
-          if gh release view "$TAG_NAME" >/dev/null 2>&1; then
-            gh release upload "$TAG_NAME" "$APK_PATH" --clobber
-          else
-            # 如果 Release 不存在，则创建 Release 并同时上传 APK。
-            # --generate-notes 会根据提交记录自动生成发布说明。
-            gh release create "$TAG_NAME" "$APK_PATH" \
-              --title "Leave Android $version" \
-              --generate-notes \
-              --target "$GITHUB_SHA"
-          fi
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USERNAME }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT }}
+          source: artifacts/android/app.apk
+          target: /www/wwwroot
