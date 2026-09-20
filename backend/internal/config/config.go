@@ -24,6 +24,7 @@ type Config struct {
 	} `yaml:"mysql"`
 	App struct {
 		PackageDir string `yaml:"package_dir"`
+		Port       int    `yaml:"port"`
 	} `yaml:"app"`
 }
 
@@ -42,6 +43,7 @@ func Init() error {
 	viper.AddConfigPath("./config") // 当前推荐的配置文件目录
 	//viper.AddConfigPath(".")        // 兼容已有部署中的 config.yaml
 	viper.AllowEmptyEnv(true)
+	viper.SetDefault("app.port", 10000)
 	viper.BindEnv("mysql.password", "MYSQL_PASSWORD")
 	viper.BindEnv("jwt.secret", "JWT_SECRET")
 
@@ -58,6 +60,7 @@ func Init() error {
 	Cfg.JWT.ExpirationDays = viper.GetInt("jwt.expiration_days")
 	Cfg.Mysql.Password = viper.GetString("mysql.password")
 	Cfg.App.PackageDir = strings.TrimSpace(viper.GetString("app.package_dir"))
+	Cfg.App.Port = viper.GetInt("app.port")
 	if Cfg.Mysql.Password == "" {
 		return fmt.Errorf("MySQL password cannot be empty; configure MYSQL_PASSWORD")
 	}
@@ -66,6 +69,9 @@ func Init() error {
 	}
 	if Cfg.JWT.ExpirationDays <= 0 {
 		return fmt.Errorf("jwt.expiration_days must be greater than 0")
+	}
+	if Cfg.App.Port <= 0 || Cfg.App.Port > 65535 {
+		return fmt.Errorf("app.port must be between 1 and 65535")
 	}
 
 	return nil

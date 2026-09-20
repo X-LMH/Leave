@@ -42,7 +42,7 @@ WorkingDirectory 必须设置为项目根目录，因为程序会读取：
 
 所有 release 共用 `/www/wwwroot/Leave_test/config/config.yaml` 和 `/www/wwwroot/Leave_test/.env`，新版本目录不再复制配置文件。
 
-Go 服务监听本机 `127.0.0.1:10000`，Nginx 负责 HTTPS 和反向代理。
+Go 服务监听 `config/config.yaml` 中 `app.port` 配置的本机端口，Nginx 负责 HTTPS 和反向代理。
 
 ## CD 发布流程
 
@@ -50,7 +50,7 @@ GitHub Actions 的 `Leave CD` 工作流在 `deploy` 分支更新后执行以下�
 
     从 frontend/manifest.json 读取 versionCode/versionName
         ↓
-    从 deploy/releases/*.apk 选择最后修改时间最新的 APK，并校验固定文件名
+    从 deploy/releases/*.apk 选择最后修改时间最新的 APK，并按版本信息生成标准文件名
         ↓
     上传到 packages/android/
         ↓
@@ -64,7 +64,7 @@ GitHub Actions 的 `Leave CD` 工作流在 `deploy` 分支更新后执行以下�
         ↓
     从 current/Leave 启动 Leave_test
         ↓
-    检查 10000 端口健康接口
+    根据 app.port 检查健康接口
 
 本流程不上传或处理 `scripts/`、`backups/`，也不会编译或运行 `migrate`，不会自动执行数据库结构迁移。APK 必须放在 `deploy/releases/`，原始文件名可以是任意名称；如果目录中存在多个 APK，使用最后修改时间最新的一个，并在上传前统一重命名为 `leave-{platform}-{versionCode}-{versionName}.apk`。每个 release 只保存程序文件，配置统一使用项目根目录的 `config/config.yaml` 和 `.env`。
 
@@ -73,6 +73,6 @@ GitHub Actions 的 `Leave CD` 工作流在 `deploy` 分支更新后执行以下�
 需要配置以下 Secrets：
 
 - `SERVER_HOST`、`SERVER_PORT`、`SERVER_USERNAME`、`SERVER_SSH_KEY`
-项目目录固定为 `/www/wwwroot/Leave_test`，运行文件固定为 `/www/wwwroot/Leave_test/current/Leave`。工作流只停止占用 `10000` 端口的旧进程，不生成 `Leave.log` 或 `Leave.pid`，将 `current` 统一切换为项目内相对软链接 `releases/v{version}`；如果旧 `current` 是实体目录，会先移到 `.current-directory-{version}` 保留，不会直接删除。随后通过 `current/Leave` 启动程序，并检查 `127.0.0.1:10000/api/v1/health`。不会使用 `pkill` 或 `killall`，也不会停止其他 Go 进程。
+项目目录固定为 `/www/wwwroot/Leave_test`，运行文件固定为 `/www/wwwroot/Leave_test/current/Leave`。工作流只停止占用 `config/config.yaml` 中 `app.port` 端口的旧进程，不生成 `Leave.log` 或 `Leave.pid`，将 `current` 统一切换为项目内相对软链接 `releases/v{version}`；如果旧 `current` 是实体目录，会先移到 `.current-directory-{version}` 保留，不会直接删除。随后通过 `current/Leave` 启动程序，并检查对应端口的 `/api/v1/health`。不会使用 `pkill` 或 `killall`，也不会停止其他 Go 进程。
 
 回滚时，将 current 重新指向上一个 releases 目录，然后重启服务。

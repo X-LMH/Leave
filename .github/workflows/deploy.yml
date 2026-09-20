@@ -37,37 +37,35 @@ jobs:
           go-version-file: backend/go.mod
           cache-dependency-path: backend/go.sum
 
-      # manifest.json 含有注释，不能直接按标准 JSON 解析；这里只读取两个版本字段。
-      # 输出同时作为 APK 文件名和服务器 releases 目录名，确保三者版本一致。
-      - name: Read application version
+      # Ruby 脚本统一读取 manifest.json 和发布 YAML，并输出后续步骤需要的版本变量。
+      - name: Read release metadata
         id: app-version
         shell: bash
         run: |
-          node <<'NODE' >> "$GITHUB_OUTPUT"
-          const fs = require('fs');
-          const manifest = fs.readFileSync('frontend/manifest.json', 'utf8');
+          ruby deploy/build-version-sql.rb --format github >> "$GITHUB_OUTPUT"
 
-          function readManifestValue(name) {
-            const match = manifest.match(new RegExp('"' + name + '"\\s*:\\s*"([^"]+)"'));
-            if (!match) {
-              throw new Error(`Missing ${name} in frontend/manifest.json`);
-            }
-            return match[1];
-          }
+      # 在选择 APK、编译和上传之前检查版本冲突，避免无效版本继续消耗构建资源。
+      - name: Check release version conflict
+        uses: appleboy/ssh-action@v1
+        env:
+          APP_ROOT: /www/wwwroot/Leave_test
+          VERSION_NAME: ${{ steps.app-version.outputs.version_name }}
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USERNAME }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT }}
+          envs: APP_ROOT,VERSION_NAME
+          script: |
+            set -eu
+            release_dir="$APP_ROOT/releases/v$VERSION_NAME"
+            current_dir="$APP_ROOT/current"
+            if [ -e "$release_dir" ]; then
+              echo "Release already exists: $release_dir" >&2
+              echo "Version reuse is not allowed; update frontend/manifest.json before deploying." >&2
+              exit 1
+            fi
 
-          const versionName = readManifestValue('versionName');
-          const versionCode = readManifestValue('versionCode');
-          if (!/^\d+(?:\.\d+)*$/.test(versionName)) {
-            throw new Error(`Invalid versionName: ${versionName}`);
-          }
-          if (!/^\d+$/.test(versionCode)) {
-            throw new Error(`Invalid versionCode: ${versionCode}`);
-          }
-
-          console.log(`version_name=${versionName}`);
-          console.log(`version_code=${versionCode}`);
-          console.log(`apk_name=leave-android-${versionCode}-${versionName}.apk`);
-          NODE
 
       - name: Select release APK
         id: release-apk
@@ -96,11 +94,9 @@ jobs:
           mkdir -p dist
           cp "$APK_PATH" "dist/$APK_NAME"
           mkdir -p dist/release-tools
-          cp deploy/publish-version.sh deploy/build-version-sql.rb deploy/releases/android.yaml frontend/manifest.json dist/release-tools/
+          cp deploy/deploy-release.sh deploy/publish-version.sh deploy/build-version-sql.rb deploy/switch-and-restart.sh deploy/releases/android.yaml frontend/manifest.json dist/release-tools/
           bash deploy/build-linux.sh amd64
 
-      # 先在服务器上做版本占用检查，再创建本次发布需要的目录。
-      # 这里不会创建或触碰 scripts/、backups/，也不会覆盖已有版本目录。
       - name: Prepare server release directories
         uses: appleboy/ssh-action@v1
         env:
@@ -116,16 +112,8 @@ jobs:
             set -eu
             release_dir="$APP_ROOT/releases/v$VERSION_NAME"
             current_dir="$APP_ROOT/current"
-            if [ -e "$release_dir" ]; then
-              echo "Release already exists: $release_dir" >&2
-              echo "Version reuse is not allowed; update frontend/manifest.json before deploying." >&2
-              exit 1
-            fi
-
-            # 只有版本目录确认不存在后，才创建本次发布需要的目录。
-            mkdir -p "$APP_ROOT/config" "$APP_ROOT/packages/android" "$APP_ROOT/releases/v$VERSION_NAME"
-
-            # 首次切换到统一配置时，从旧 current 迁移一次；后续发布不再复制配置。
+            test ! -e "$release_dir" || { echo "Release appeared during build: $release_dir" >&2; exit 1; }
+            mkdir -p "$APP_ROOT/config" "$APP_ROOT/packages/android" "$release_dir"
             if [ ! -f "$APP_ROOT/config/config.yaml" ] && [ -f "$current_dir/config/config.yaml" ]; then
               cp -p "$current_dir/config/config.yaml" "$APP_ROOT/config/config.yaml"
             fi
@@ -184,75 +172,6 @@ jobs:
             set -eu
 
             release_dir="$APP_ROOT/releases/v$VERSION_NAME"
-            current_dir="$APP_ROOT/current"
-            release_binary="$release_dir/Leave"
-            release_script="$release_dir/publish-version.sh"
-            old_current_dir="$APP_ROOT/.current-directory-$VERSION_NAME"
-
-            # 发布目录和根目录环境文件必须存在，否则立即停止，不触碰旧服务。
-            test -f "$release_binary"
-            test -r "$APP_ROOT/.env" || { echo "Environment file not readable: $APP_ROOT/.env" >&2; exit 1; }
-            test -r "$APP_ROOT/config/config.yaml" || { echo "Shared config is not readable: $APP_ROOT/config/config.yaml" >&2; exit 1; }
-            test -f "$release_script" || { echo "Release publish script not found: $release_script" >&2; exit 1; }
-
-            # 显式导出根目录 .env，避免 current 软链接解析到 releases 后丢失环境变量。
-            set -a
-            . "$APP_ROOT/.env"
-            set +a
-            test -n "${JWT_SECRET:-}" || { echo "JWT_SECRET is empty in $APP_ROOT/.env" >&2; exit 1; }
-            test -n "${MYSQL_PASSWORD:-}" || { echo "MYSQL_PASSWORD is empty in $APP_ROOT/.env" >&2; exit 1; }
-
-            # 客户端发布记录不是 schema migration；直接调用发布脚本写入 app_versions。
-            chmod 0755 "$release_script"
-            APP_ROOT="$APP_ROOT" \
-            CONFIG_FILE="$APP_ROOT/config/config.yaml" \
-            MANIFEST_FILE="$release_dir/manifest.json" \
-            RELEASE_FILE="$release_dir/android.yaml" \
-            BUILD_SQL_SCRIPT="$release_dir/build-version-sql.rb" \
-              "$release_script"
-
-            # 只停止占用 Leave_test 固定端口的进程，不生成或读取 PID/日志文件。
-            if command -v fuser >/dev/null 2>&1; then
-              fuser -k 10000/tcp 2>/dev/null || true
-              sleep 2
-            else
-              echo "fuser is required to stop the existing Leave_test process" >&2
-              exit 1
-            fi
-
-            # current 必须最终成为版本软链接，不能继续保留为旧版本实体目录。
-            if [ -L "$current_dir" ]; then
-              next_current="$APP_ROOT/.current-$VERSION_NAME"
-              # 链接位于 APP_ROOT 下，因此目标使用项目内相对路径。
-              ln -sfn "releases/v$VERSION_NAME" "$next_current"
-              mv -Tf "$next_current" "$current_dir"
-            elif [ -d "$current_dir" ]; then
-              # 旧 current 是实体目录时先移开保留，再创建新的相对软链接。
-              test -d "$current_dir"
-              test ! -e "$old_current_dir"
-              mv "$current_dir" "$old_current_dir"
-              ln -s "releases/v$VERSION_NAME" "$current_dir"
-            else
-              # current 不存在时直接创建本次版本的相对软链接。
-              ln -s "releases/v$VERSION_NAME" "$current_dir"
-            fi
-            test -L "$current_dir"
-            test "$(readlink -f "$current_dir")" = "$(readlink -f "$release_dir")"
-
-            project_binary="$current_dir/Leave"
-            chmod 0755 "$project_binary"
-
-            # 工作目录使用项目根目录，使所有 release 共用根目录 config/config.yaml 和 .env。
-            cd "$APP_ROOT"
-            nohup "$APP_ROOT/current/Leave" >/dev/null 2>&1 &
-            cd "$APP_ROOT"
-
-            # 确认程序实际监听 10000 端口，而不是仅确认进程存在。
-            for _ in 1 2 3 4 5 6 7 8 9 10; do
-              if curl --fail --silent --show-error http://127.0.0.1:10000/api/v1/health >/dev/null; then
-                exit 0
-              fi
-              sleep 1
-            done
-            echo "Leave_test did not become healthy on port 10000" >&2
-            exit 1
+            deploy_script="$release_dir/deploy-release.sh"
+            test -f "$deploy_script" || { echo "Deploy script not found: $deploy_script" >&2; exit 1; }
+            APP_ROOT="$APP_ROOT" VERSION_NAME="$VERSION_NAME" "$deploy_script"

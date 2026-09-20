@@ -18,7 +18,7 @@ func main() {
 	}
 
 	r := router.SetupRouter()
-	if err := r.Run(":10000"); err != nil {
+	if err := r.Run(fmt.Sprintf(":%d", config.Cfg.App.Port)); err != nil {
 		fmt.Printf("Run server failed, err:%v\n", err)
 	}
 }

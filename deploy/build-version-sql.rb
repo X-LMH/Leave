@@ -4,11 +4,12 @@ require 'json'
 require 'optparse'
 require 'yaml'
 
-options = { manifest: File.expand_path('../frontend/manifest.json', __dir__), release: File.expand_path('releases/android.yaml', __dir__), platform: 'android' }
+options = { manifest: File.expand_path('../frontend/manifest.json', __dir__), release: File.expand_path('releases/android.yaml', __dir__), platform: 'android', format: 'sql' }
 OptionParser.new do |parser|
   parser.on('--manifest PATH') { |path| options[:manifest] = path }
   parser.on('--release PATH') { |path| options[:release] = path }
   parser.on('--platform PLATFORM') { |platform| options[:platform] = platform }
+  parser.on('--format FORMAT', %w[sql github]) { |format| options[:format] = format }
 end.parse!
 
 manifest = File.read(options[:manifest])
@@ -26,6 +27,13 @@ unless release_notes.is_a?(Array) && release_notes.all? { |note| note.is_a?(Stri
   abort 'release_notes must be a YAML list of strings'
 end
 info = { 'platform' => options[:platform], 'version_code' => version_code.to_i, 'version_name' => version_name, 'package_file' => "leave-#{options[:platform]}-#{version_code}-#{version_name}.apk", 'release_notes' => release_notes }
+if options[:format] == 'github'
+  puts "version_code=#{info.fetch('version_code')}"
+  puts "version_name=#{info.fetch('version_name')}"
+  puts "apk_name=#{info.fetch('package_file')}"
+  exit
+end
+
 quote = ->(value) { "'#{value.to_s.gsub("'", "''")}'" }
 notes = JSON.generate(info.fetch('release_notes'))
 
