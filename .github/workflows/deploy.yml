@@ -1,0 +1,213 @@
+# 持续交付流程：推送 v* 版本标签后发布当前版本。
+name: Leave CD
+
+on:
+  push:
+    tags:
+      - 'v*'
+  # 允许在修复服务器路径或 Secrets 后，从 Actions 页面手动重新运行。
+  workflow_dispatch:
+
+# 同一个分支连续发布时不取消正在进行的发布，避免产生不完整的发布结果。
+concurrency:
+  group: leave-cd-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # 先复用 CI，只有检查成功才允许触发服务器上传。
+  ci:
+    name: Run CI before deployment
+    uses: ./.github/workflows/ci.yml
+
+  deploy:
+    name: Upload APK and Go server
+    needs: ci
+    if: needs.ci.result == 'success'
+    runs-on: ubuntu-latest
+
+    steps:
+      # 固定使用本次推送对应的提交，避免构建到其他分支的代码。
+      - name: Check out release commit
+        uses: actions/checkout@v5
+
+      # 使用 backend/go.mod 声明的 Go 版本，保证本地和 CI 的编译环境一致。
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      # Ruby 脚本统一读取 manifest.json 和发布 YAML，并输出后续步骤需要的版本变量。
+      - name: Read release metadata
+        id: app-version
+        shell: bash
+        run: |
+          ruby deploy/build-version-sql.rb --format github >> "$GITHUB_OUTPUT"
+
+      # 在选择 APK、编译和上传之前检查版本冲突，避免无效版本继续消耗构建资源。
+      - name: Check release version conflict
+        uses: appleboy/ssh-action@v1
+        env:
+          APP_ROOT: ${{ secrets.SERVER_APP_ROOT }}
+          VERSION_NAME: ${{ steps.app-version.outputs.version_name }}
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USERNAME }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT }}
+          envs: APP_ROOT,VERSION_NAME
+          script: |
+            set -eu
+            release_dir="$APP_ROOT/releases/v$VERSION_NAME"
+            current_dir="$APP_ROOT/current"
+            if [ -e "$release_dir" ]; then
+              echo "Release already exists: $release_dir" >&2
+              echo "Version reuse is not allowed; update frontend/manifest.json before deploying." >&2
+              exit 1
+            fi
+
+
+      - name: Select release APK
+        id: release-apk
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t apk_entries < <(find deploy/releases -maxdepth 1 -type f -name '*.apk' -printf '%T@ %p\n' | sort -nr)
+          test "${#apk_entries[@]}" -gt 0 || { echo "No APK found in deploy/releases" >&2; exit 1; }
+
+          apk_entry="${apk_entries[0]}"
+          apk_path="${apk_entry#* }"
+          apk_name="leave-android-${{ steps.app-version.outputs.version_code }}-${{ steps.app-version.outputs.version_name }}.apk"
+
+          echo "apk_path=$apk_path" >> "$GITHUB_OUTPUT"
+          echo "apk_name=$apk_name" >> "$GITHUB_OUTPUT"
+          echo "Using latest APK by modification time: $apk_path"
+          echo "Uploading it as: $apk_name"
+
+      # APK 从 deploy/releases 上传；多个 APK 时选择最后修改时间最新的一个。
+      # build-linux.sh 同时编译 cmd/server 和 cmd/migrate；migrate 随后上传到服务器 scripts/。
+      - name: Prepare release artifacts
+        env:
+          APK_PATH: ${{ steps.release-apk.outputs.apk_path }}
+          APK_NAME: ${{ steps.release-apk.outputs.apk_name }}
+        run: |
+          mkdir -p dist
+          cp "$APK_PATH" "dist/$APK_NAME"
+          ruby deploy/build-version-sql.rb > dist/app-version.sql
+          bash deploy/build-linux.sh amd64
+
+      - name: Prepare server release directories
+        uses: appleboy/ssh-action@v1
+        env:
+          APP_ROOT: ${{ secrets.SERVER_APP_ROOT }}
+          VERSION_NAME: ${{ steps.app-version.outputs.version_name }}
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USERNAME }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT }}
+          envs: APP_ROOT,VERSION_NAME
+          script: |
+            set -eu
+            release_dir="$APP_ROOT/releases/v$VERSION_NAME"
+            current_dir="$APP_ROOT/current"
+            test ! -e "$release_dir" || { echo "Release appeared during build: $release_dir" >&2; exit 1; }
+            mkdir -p "$APP_ROOT/config" "$APP_ROOT/scripts" "$APP_ROOT/database/migrations" "$APP_ROOT/packages/android" "$release_dir"
+            if [ ! -f "$APP_ROOT/config/config.yaml" ] && [ -f "$current_dir/config/config.yaml" ]; then
+              cp -p "$current_dir/config/config.yaml" "$APP_ROOT/config/config.yaml"
+            fi
+            test -r "$APP_ROOT/config/config.yaml" || {
+              echo "Shared config is not readable: $APP_ROOT/config/config.yaml" >&2
+              exit 1
+            }
+
+      # APK 按版本保存；由于上一步已经禁止重复版本，这里不会覆盖旧安装包。
+      - name: Upload versioned APK
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USERNAME }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT }}
+          source: dist/${{ steps.app-version.outputs.apk_name }}
+          target: ${{ secrets.SERVER_APP_ROOT }}/packages/android
+          strip_components: 1
+
+      # 先上传后端二进制，只有上传完成后才会切换 current 和重启服务。
+      - name: Upload versioned Go server
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USERNAME }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT }}
+          source: bin/Leave
+          target: ${{ secrets.SERVER_APP_ROOT }}/releases/v${{ steps.app-version.outputs.version_name }}
+          strip_components: 1
+
+      # migrate 是服务器长期使用的数据库迁移工具，统一放在 scripts 目录。
+      - name: Upload migration tool
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USERNAME }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT }}
+          source: bin/migrate
+          target: ${{ secrets.SERVER_APP_ROOT }}/scripts
+          strip_components: 1
+
+      # 数据库 migration 是全局累积历史，上传到项目根目录而不是某个 release。
+      - name: Upload database migrations
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USERNAME }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT }}
+          source: backend/database/migrations/*
+          target: ${{ secrets.SERVER_APP_ROOT }}/database/migrations
+          strip_components: 3
+
+      - name: Upload release SQL
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USERNAME }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT }}
+          source: dist/app-version.sql
+          target: ${{ secrets.SERVER_APP_ROOT }}/releases/v${{ steps.app-version.outputs.version_name }}
+          strip_components: 1
+
+      - name: Upload deployment scripts
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USERNAME }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT }}
+          source: deploy/deploy-release.sh,deploy/run-migrations.sh,deploy/publish-version.sh,deploy/switch-and-restart.sh
+          target: ${{ secrets.SERVER_APP_ROOT }}/scripts
+          strip_components: 1
+
+      - name: Replace current and restart Leave
+        uses: appleboy/ssh-action@v1
+        env:
+          APP_ROOT: ${{ secrets.SERVER_APP_ROOT }}
+          VERSION_NAME: ${{ steps.app-version.outputs.version_name }}
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USERNAME }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT }}
+          envs: APP_ROOT,VERSION_NAME
+          script: |
+            set -eu
+
+            release_dir="$APP_ROOT/releases/v$VERSION_NAME"
+            deploy_script="$APP_ROOT/scripts/deploy-release.sh"
+            release_sql="$release_dir/app-version.sql"
+            test -f "$deploy_script" || { echo "Deploy script not found: $deploy_script" >&2; exit 1; }
+            test -f "$release_sql" || { echo "Release SQL not found: $release_sql" >&2; exit 1; }
+            APP_ROOT="$APP_ROOT" VERSION_NAME="$VERSION_NAME" RELEASE_SQL="$release_sql" "$deploy_script"

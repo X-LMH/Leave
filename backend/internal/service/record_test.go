@@ -76,7 +76,7 @@ func TestToRecordResponse(t *testing.T) {
 		LeaveReason: "就医", ApprovedAt: &approvedAt,
 	}
 	response := toRecordResponse(record)
-	if response.ID != record.ID || response.StudentID != record.StudentID || response.Name != record.Name || response.ParentName != record.ParentName || response.ParentPhone != record.ParentPhone || response.ClassInfo.ClassName != record.ClassName || response.LeaveType != record.LeaveTypeName || response.DurationDays != 1 || response.DurationHours != 3 || response.ApprovedAt != approvedAt {
+	if response.ID != record.ID || response.StudentID != record.StudentID || response.ApplicantInfo.Name != record.Name || response.ApplicantInfo.ParentName != record.ParentName || response.ApplicantInfo.ParentPhone != record.ParentPhone || response.ClassInfo.ClassName != record.ClassName || response.LeaveType != record.LeaveTypeName || response.DurationDays != 1 || response.DurationHours != 3 || response.ApprovedAt != approvedAt {
 		t.Fatalf("record response does not preserve detail data: %#v", response)
 	}
 }

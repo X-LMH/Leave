@@ -1,0 +1,78 @@
+# 当前工作流只负责持续集成（CI）：检查、测试并编译后端代码。
+# 前端 Android 应用仍然由 HBuilderX 在本地手动打包，本流程不会处理 frontend 目录。
+name: Leave Backend CI
+
+on:
+  push:
+    # master 是 CI 的主分支。
+    branches:
+      - master
+  # 允许发布 workflow 复用完全相同的 CI 检查。
+  workflow_call:
+
+# 同一个分支快速连续提交时，只保留最新的一次 CI，避免浪费运行资源。
+concurrency:
+  group: backend-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # CI 只有一个 job，负责检查、测试和编译后端，不负责部署到服务器。
+  test:
+    name: Check and test backend
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_DATABASE: leave_ci
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -ppassword"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      # 将当前仓库代码下载到 GitHub Runner。
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      # 按 backend/go.mod 中的版本安装 Go，并缓存依赖。
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - name: Check Go format
+        working-directory: backend
+        run: test -z "$(gofmt -l .)"
+
+      # 执行 Go 静态检查。
+      - name: Run go vet
+        working-directory: backend
+        run: go vet ./...
+
+      # 显式下载 Go 依赖，尽早发现依赖问题。
+      - name: Download Go dependencies
+        working-directory: backend
+        run: go mod download
+
+      # 使用 MySQL 服务执行后端测试。
+      - name: Run Go tests
+        working-directory: backend
+        env:
+          MYSQL_TEST_DSN: root:password@tcp(127.0.0.1:3306)/leave_ci?multiStatements=true
+        run: go test ./...
+
+      # 编译 HTTP server，确认后端主程序可以正常构建。
+      - name: Build server
+        working-directory: backend
+        run: go build ./cmd/server
+
+      # 编译数据库迁移工具，确认 migration 执行程序可以正常构建。
+      - name: Build migration tool
+        working-directory: backend
+        run: go build ./cmd/migrate

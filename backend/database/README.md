@@ -7,7 +7,7 @@ database/
 ├── README.md
 ├── tables/      # 当前完整表结构
 ├── seed/        # 初始化数据和测试数据
-└── migrations/ # 数据库结构增量变更
+└── migrations/  # 数据库结构增量变更
 ```
 
 ## 目录职责
@@ -57,6 +57,12 @@ migrations/
 
 当前项目的迁移命令入口位于 `cmd/migrate`，它只会按文件名顺序执行 `.up.sql` 文件。
 
+因此相关目录和配置的职责分别是：
+
+- `migrations/`：升级数据库表结构；
+- `seed/`：初始化新数据库所需的基础数据；
+- 发布版本配置：放在项目根目录的 `deploy/releases/`，不属于数据库初始化或结构迁移。
+
 ## 执行迁移与初始化
 
 已有数据库升级时，在 `backend/` 目录运行：
@@ -76,6 +82,30 @@ make migrate
 迁移程序支持同一文件内的多条 SQL 语句。`.down.sql` 文件不由该命令自动执行；需要回滚时，应先确认影响范围和备份，再通过数据库客户端执行对应的回滚脚本，并将 `schema_migrations` 状态恢复到上一个版本。
 
 新建开发数据库时，先按 `tables/` 中的完整表结构初始化，再执行 `seed/` 中的基础数据脚本；不要对已经按完整表结构初始化的数据库重复执行历史 migration。
+
+客户端版本发布时，不需要修改 `schema_migrations`，也不需要为每个客户端版本新增 migration。应在 `deploy/releases/` 中维护 YAML 发布配置，由 `deploy/build-version-sql.rb` 读取版本号和自定义更新说明并生成发布 SQL，再由 deploy 流程更新 `app_versions`。
+
+例如：
+
+```text
+deploy/releases/android.yaml
+```
+
+```yaml
+release_notes:
+  - 新增请假记录筛选
+  - 修复登录问题
+```
+
+YAML 只维护人工填写的 `release_notes`。`version_code`、`version_name` 由 `frontend/manifest.json` 自动读取，APK 文件名按固定模板 `leave-{platform}-{versionCode}-{versionName}.apk` 自动生成，避免重复维护。可在项目根目录运行：
+
+```text
+ruby deploy/build-version-sql.rb
+```
+
+deploy 应在 APK 上传成功后，在一个事务中先将同平台旧的 `published` 版本更新为 `archived`，再插入新的 `published` 版本。旧版本仍会保留为历史更新记录。
+
+项目提供 `deploy/publish-version.sh` 执行这次发布数据更新。它调用 `mysql` 客户端连接数据库，数据库密码优先使用 `MYSQL_PASSWORD` 环境变量；这一步不属于 `migrate`。
 
 ## Migration 命名规范
 
@@ -137,7 +167,7 @@ ALTER TABLE `app_versions`
 
 ```sql
 ALTER TABLE `app_versions`
-    DROP COLUMN `channel`;
+    DROP COLUMN `package_file`;
 ```
 
 ### 3. 本地验证
