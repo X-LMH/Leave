@@ -79,16 +79,12 @@ jobs:
 
           apk_entry="${apk_entries[0]}"
           apk_path="${apk_entry#* }"
-          apk_name="$(basename "$apk_path")"
-          expected_name="leave-android-${{ steps.app-version.outputs.version_code }}-${{ steps.app-version.outputs.version_name }}.apk"
-          test "$apk_name" = "$expected_name" || {
-            echo "Selected APK must be named $expected_name, got $apk_name" >&2
-            exit 1
-          }
+          apk_name="leave-android-${{ steps.app-version.outputs.version_code }}-${{ steps.app-version.outputs.version_name }}.apk"
 
           echo "apk_path=$apk_path" >> "$GITHUB_OUTPUT"
           echo "apk_name=$apk_name" >> "$GITHUB_OUTPUT"
           echo "Using latest APK by modification time: $apk_path"
+          echo "Uploading it as: $apk_name"
 
       # APK 从 deploy/releases 上传；多个 APK 时选择最后修改时间最新的一个。
       # build-linux.sh 只编译 cmd/server，不编译或执行 cmd/migrate。
