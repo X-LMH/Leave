@@ -54,6 +54,10 @@ GitHub Actions 的 `Leave CD` 工作流在 `deploy` 分支更新后执行以下�
         ↓
     上传到 packages/android/
         ↓
+    上传发布脚本、manifest.json 和 android.yaml
+        ↓
+    在服务器直接调用发布脚本，使用根目录 config.yaml 和 .env 更新 app_versions
+        ↓
     使用 CGO_ENABLED=0 编译 backend/cmd/server，并上传为 releases/v{versionName}/Leave
         ↓
     将 current 统一切换为相对路径 releases/v{versionName} 的软链接

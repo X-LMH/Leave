@@ -2,11 +2,13 @@
 
 set -euo pipefail
 
-PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 APP_ROOT="${APP_ROOT:-$PROJECT_DIR}"
 CONFIG_FILE="${CONFIG_FILE:-$APP_ROOT/config/config.yaml}"
 MANIFEST_FILE="${MANIFEST_FILE:-$PROJECT_DIR/frontend/manifest.json}"
-RELEASE_FILE="${RELEASE_FILE:-$PROJECT_DIR/deploy/releases/android.yaml}"
+RELEASE_FILE="${RELEASE_FILE:-$SCRIPT_DIR/releases/android.yaml}"
+BUILD_SQL_SCRIPT="${BUILD_SQL_SCRIPT:-$SCRIPT_DIR/build-version-sql.rb}"
 
 command -v ruby >/dev/null 2>&1 || { echo "ruby is required" >&2; exit 1; }
 command -v mysql >/dev/null 2>&1 || { echo "mysql client is required" >&2; exit 1; }
@@ -32,7 +34,7 @@ test -n "$mysql_host" && test -n "$mysql_port" && test -n "$mysql_database" && t
   exit 1
 }
 
-sql="$(ruby "$PROJECT_DIR/deploy/build-version-sql.rb" \
+sql="$(ruby "$BUILD_SQL_SCRIPT" \
   --manifest "$MANIFEST_FILE" \
   --release "$RELEASE_FILE")"
 

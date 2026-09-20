@@ -95,6 +95,8 @@ jobs:
         run: |
           mkdir -p dist
           cp "$APK_PATH" "dist/$APK_NAME"
+          mkdir -p dist/release-tools
+          cp deploy/publish-version.sh deploy/build-version-sql.rb deploy/releases/android.yaml frontend/manifest.json dist/release-tools/
           bash deploy/build-linux.sh amd64
 
       # 先在服务器上做版本占用检查，再创建本次发布需要的目录。
@@ -113,6 +115,7 @@ jobs:
           script: |
             set -eu
             release_dir="$APP_ROOT/releases/v$VERSION_NAME"
+            current_dir="$APP_ROOT/current"
             if [ -e "$release_dir" ]; then
               echo "Release already exists: $release_dir" >&2
               echo "Version reuse is not allowed; update frontend/manifest.json before deploying." >&2
@@ -155,6 +158,17 @@ jobs:
           target: /www/wwwroot/Leave_test/releases/v${{ steps.app-version.outputs.version_name }}
           strip_components: 1
 
+      - name: Upload app version release files
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USERNAME }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT }}
+          source: dist/release-tools/*
+          target: /www/wwwroot/Leave_test/releases/v${{ steps.app-version.outputs.version_name }}
+          strip_components: 2
+
       - name: Replace current and restart Leave_test
         uses: appleboy/ssh-action@v1
         env:
@@ -172,11 +186,14 @@ jobs:
             release_dir="$APP_ROOT/releases/v$VERSION_NAME"
             current_dir="$APP_ROOT/current"
             release_binary="$release_dir/Leave"
+            release_script="$release_dir/publish-version.sh"
             old_current_dir="$APP_ROOT/.current-directory-$VERSION_NAME"
 
             # 发布目录和根目录环境文件必须存在，否则立即停止，不触碰旧服务。
             test -f "$release_binary"
             test -r "$APP_ROOT/.env" || { echo "Environment file not readable: $APP_ROOT/.env" >&2; exit 1; }
+            test -r "$APP_ROOT/config/config.yaml" || { echo "Shared config is not readable: $APP_ROOT/config/config.yaml" >&2; exit 1; }
+            test -f "$release_script" || { echo "Release publish script not found: $release_script" >&2; exit 1; }
 
             # 显式导出根目录 .env，避免 current 软链接解析到 releases 后丢失环境变量。
             set -a
@@ -184,6 +201,15 @@ jobs:
             set +a
             test -n "${JWT_SECRET:-}" || { echo "JWT_SECRET is empty in $APP_ROOT/.env" >&2; exit 1; }
             test -n "${MYSQL_PASSWORD:-}" || { echo "MYSQL_PASSWORD is empty in $APP_ROOT/.env" >&2; exit 1; }
+
+            # 客户端发布记录不是 schema migration；直接调用发布脚本写入 app_versions。
+            chmod 0755 "$release_script"
+            APP_ROOT="$APP_ROOT" \
+            CONFIG_FILE="$APP_ROOT/config/config.yaml" \
+            MANIFEST_FILE="$release_dir/manifest.json" \
+            RELEASE_FILE="$release_dir/android.yaml" \
+            BUILD_SQL_SCRIPT="$release_dir/build-version-sql.rb" \
+              "$release_script"
 
             # 只停止占用 Leave_test 固定端口的进程，不生成或读取 PID/日志文件。
             if command -v fuser >/dev/null 2>&1; then
