@@ -15,6 +15,7 @@
     │   └── v0.0.2/
     ├── packages/android/
     ├── backups/mysql/
+    ├── database/migrations/
     └── scripts/
 
 ## 目录作用
@@ -23,7 +24,8 @@
 - releases/：保存每次发布的后端程序，保留旧版本用于回滚。
 - packages/android/：保存 APK 安装包。
 - backups/mysql/：保存 MySQL 数据库备份。
-- scripts/：保存发布、备份、迁移等重复执行的脚本。
+- database/migrations/：保存完整、累积的数据库 migration 历史。
+- scripts/：保存发布脚本、迁移调用脚本和长期使用的 migrate 程序。
 
 客户端版本发布记录由 `deploy/releases/android.yaml` 维护。GitHub Actions 使用
 `deploy/build-version-sql.rb` 生成事务 SQL，上传到本次 release 后，由服务器
@@ -41,7 +43,7 @@ WorkingDirectory 必须设置为项目根目录，因为程序会读取：
     ./config/config.yaml
     ./database/migrations
 
-所有 release 共用 `/www/wwwroot/Leave_test/config/config.yaml` 和 `/www/wwwroot/Leave_test/.env`，新版本目录不再复制配置文件。
+所有 release 共用 `/www/wwwroot/Leave_test/config/config.yaml`、`/www/wwwroot/Leave_test/.env` 和根目录下的 `database/migrations/`，新版本目录不再复制这些文件。
 
 Go 服务监听 `config/config.yaml` 中 `app.port` 配置的本机端口，Nginx 负责 HTTPS 和反向代理。
 
@@ -53,21 +55,25 @@ GitHub Actions 的 `Leave CD` 工作流在 `deploy` 分支更新后执行以下�
         ↓
     从 deploy/releases/*.apk 选择最后修改时间最新的 APK，并按版本信息生成标准文件名
         ↓
-    上传到 packages/android/
+    生成 app-version.sql，并检查 releases/v{versionName} 是否已存在
         ↓
-    上传发布 SQL 到本次 release，并更新服务器 scripts/ 下的部署脚本
+    上传 APK 到 packages/android/
         ↓
-    在服务器直接调用发布脚本，使用根目录 config.yaml 和 .env 更新 app_versions
+    上传 Leave 到 releases/v{versionName}/
         ↓
-    使用 CGO_ENABLED=0 编译 backend/cmd/server，并上传为 releases/v{versionName}/Leave
+    上传 migrate 到服务器 scripts/migrate
+        ↓
+    同步 backend/database/migrations/* 到根目录 database/migrations/
+        ↓
+    执行 scripts/migrate，连接根目录 config.yaml 和 .env 中配置的 MySQL
+        ↓
+    migrate 成功后执行 app-version.sql，更新 app_versions
         ↓
     将 current 统一切换为相对路径 releases/v{versionName} 的软链接
         ↓
-    从 current/Leave 启动 Leave_test
-        ↓
-    根据 app.port 检查健康接口
+    从 current/Leave 启动 Leave_test，并检查健康接口
 
-本流程不处理 `backups/`，也不会编译或运行 `migrate`，不会自动执行数据库结构迁移。部署脚本统一放在服务器的 `scripts/`，每个 release 只保存程序和本次发布 SQL。APK 必须放在 `deploy/releases/`，原始文件名可以是任意名称；如果目录中存在多个 APK，使用最后修改时间最新的一个，并在上传前统一重命名为 `leave-{platform}-{versionCode}-{versionName}.apk`。配置统一使用项目根目录的 `config/config.yaml` 和 `.env`。
+本流程不处理 `backups/`。`manifest.json` 和 `android.yaml` 只在 GitHub Actions 中读取，不上传服务器。部署脚本统一放在服务器的 `scripts/`，每个 release 保存程序和本次发布 SQL；数据库 migration 统一保存在根目录，并且只新增、不修改历史文件。APK 必须放在 `deploy/releases/`，原始文件名可以是任意名称；如果目录中存在多个 APK，使用最后修改时间最新的一个，并在上传前统一重命名为 `leave-{platform}-{versionCode}-{versionName}.apk`。配置统一使用项目根目录的 `config/config.yaml` 和 `.env`。
 
 ## GitHub Secrets
 

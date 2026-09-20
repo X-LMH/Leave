@@ -9,7 +9,9 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -18,8 +20,8 @@ import (
 )
 
 const (
-	migrationTable = "schema_migrations"
-	migrationDir   = "./database/migrations"
+	migrationTable       = "schema_migrations"
+	migrationFilePattern = `^(\d+)_.*\.up\.sql$`
 )
 
 // main initializes the database schema from the versioned table definitions.
@@ -31,6 +33,7 @@ func main() {
 
 	// 允许通过命令行指定配置文件路径。
 	configPath := flag.String("config", "./config/config.yaml", "path to the YAML configuration file")
+	migrationsPath := flag.String("migrations", "./database/migrations", "path to the migration files")
 	flag.Parse()
 
 	// 打开数据库连接，并在程序结束时关闭连接。
@@ -45,7 +48,7 @@ func main() {
 	}
 
 	// 按版本顺序执行尚未完成的迁移脚本。
-	if err := applyMigrations(db, migrationDir); err != nil {
+	if err := applyMigrations(db, *migrationsPath); err != nil {
 		log.Fatal(err)
 	}
 
@@ -110,21 +113,42 @@ func openDatabase(configPath string) (*sql.DB, error) {
 }
 
 func applyMigrations(db *sql.DB, migrationDir string) error {
-	// 读取目录中的 SQL 文件，并按文件名排序来确定迁移顺序。
+	// 读取目录中的 SQL 文件，并按文件名中的版本号确定迁移顺序。
 	entries, err := os.ReadDir(migrationDir)
 	if err != nil {
 		return fmt.Errorf("read migrations: %w", err)
 	}
 
-	fileNames := make([]string, 0, len(entries))
+	type migrationFile struct {
+		name    string
+		version int64
+	}
+
+	pattern := regexp.MustCompile(migrationFilePattern)
+	migrationFiles := make([]migrationFile, 0, len(entries))
 	for _, entry := range entries {
 		if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".up.sql") {
-			fileNames = append(fileNames, entry.Name())
+			matches := pattern.FindStringSubmatch(entry.Name())
+			if len(matches) != 2 {
+				return fmt.Errorf("invalid migration filename %q: expected NNN_name.up.sql", entry.Name())
+			}
+			version, err := strconv.ParseInt(matches[1], 10, 64)
+			if err != nil || version <= 0 {
+				return fmt.Errorf("invalid migration version in filename %q", entry.Name())
+			}
+			migrationFiles = append(migrationFiles, migrationFile{name: entry.Name(), version: version})
 		}
 	}
-	sort.Strings(fileNames)
-	if len(fileNames) == 0 {
+	sort.Slice(migrationFiles, func(i, j int) bool {
+		return migrationFiles[i].version < migrationFiles[j].version
+	})
+	if len(migrationFiles) == 0 {
 		return errors.New("no migrations found")
+	}
+	for index := 1; index < len(migrationFiles); index++ {
+		if migrationFiles[index].version == migrationFiles[index-1].version {
+			return fmt.Errorf("duplicate migration version: %d", migrationFiles[index].version)
+		}
 	}
 
 	if err := ensureMigrationTableExists(db); err != nil {
@@ -136,15 +160,12 @@ func applyMigrations(db *sql.DB, migrationDir string) error {
 		return err
 	}
 	if dirty {
-		if err := repairMigration(db, currentVersion-1); err != nil {
-			return err
-		}
-		currentVersion--
-		log.Printf("repaired dirty migration: version=%d", currentVersion)
+		return fmt.Errorf("migration state is dirty at version %d; inspect the database and repair it manually before retrying", currentVersion)
 	}
 
-	for index, fileName := range fileNames {
-		version := int64(index + 1)
+	for _, migration := range migrationFiles {
+		version := migration.version
+		fileName := migration.name
 		if version <= currentVersion {
 			continue
 		}
@@ -211,16 +232,4 @@ func markMigrationDirty(db *sql.DB, version int64) error {
 	// 将目标迁移版本标记为执行中；只有成功后才会清除 dirty 标记。
 	_, err := db.Exec("UPDATE `schema_migrations` SET `version` = ?, `dirty` = 1", version)
 	return err
-}
-
-func repairMigration(db *sql.DB, version int64) error {
-	// 回退到上一个版本，并清除 dirty 状态；修复后需再次运行迁移程序。
-	_, err := db.Exec(
-		"UPDATE `schema_migrations` SET `version` = ?, `dirty` = 0",
-		version,
-	)
-	if err != nil {
-		return fmt.Errorf("repair migration state: %w", err)
-	}
-	return nil
 }

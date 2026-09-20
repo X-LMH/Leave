@@ -85,7 +85,7 @@ jobs:
           echo "Uploading it as: $apk_name"
 
       # APK 从 deploy/releases 上传；多个 APK 时选择最后修改时间最新的一个。
-      # build-linux.sh 只编译 cmd/server，不编译或执行 cmd/migrate。
+      # build-linux.sh 同时编译 cmd/server 和 cmd/migrate；migrate 随后上传到服务器 scripts/。
       - name: Prepare release artifacts
         env:
           APK_PATH: ${{ steps.release-apk.outputs.apk_path }}
@@ -112,7 +112,7 @@ jobs:
             release_dir="$APP_ROOT/releases/v$VERSION_NAME"
             current_dir="$APP_ROOT/current"
             test ! -e "$release_dir" || { echo "Release appeared during build: $release_dir" >&2; exit 1; }
-            mkdir -p "$APP_ROOT/config" "$APP_ROOT/scripts" "$APP_ROOT/packages/android" "$release_dir"
+            mkdir -p "$APP_ROOT/config" "$APP_ROOT/scripts" "$APP_ROOT/database/migrations" "$APP_ROOT/packages/android" "$release_dir"
             if [ ! -f "$APP_ROOT/config/config.yaml" ] && [ -f "$current_dir/config/config.yaml" ]; then
               cp -p "$current_dir/config/config.yaml" "$APP_ROOT/config/config.yaml"
             fi
@@ -145,6 +145,30 @@ jobs:
           target: /www/wwwroot/Leave_test/releases/v${{ steps.app-version.outputs.version_name }}
           strip_components: 1
 
+      # migrate 是服务器长期使用的数据库迁移工具，统一放在 scripts 目录。
+      - name: Upload migration tool
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USERNAME }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT }}
+          source: bin/migrate
+          target: /www/wwwroot/Leave_test/scripts
+          strip_components: 1
+
+      # 数据库 migration 是全局累积历史，上传到项目根目录而不是某个 release。
+      - name: Upload database migrations
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USERNAME }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT }}
+          source: backend/database/migrations/*
+          target: /www/wwwroot/Leave_test/database/migrations
+          strip_components: 3
+
       - name: Upload release SQL
         uses: appleboy/scp-action@v1
         with:
@@ -163,7 +187,7 @@ jobs:
           username: ${{ secrets.SERVER_USERNAME }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: ${{ secrets.SERVER_PORT }}
-          source: deploy/deploy-release.sh,deploy/publish-version.sh,deploy/switch-and-restart.sh
+          source: deploy/deploy-release.sh,deploy/run-migrations.sh,deploy/publish-version.sh,deploy/switch-and-restart.sh
           target: /www/wwwroot/Leave_test/scripts
           strip_components: 1
 

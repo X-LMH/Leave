@@ -32,7 +32,7 @@ func TestApplyMigrations(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create migration fixtures: %v", err)
 	}
-	defer db.Exec("DROP TABLE IF EXISTS users, records, profiles, leave_types, feedbacks, classes, app_versions, apartments, schema_migrations")
+	defer db.Exec("DROP TABLE IF EXISTS migration_test, users, records, profiles, leave_types, feedbacks, classes, app_versions, apartments, schema_migrations")
 
 	if err := applyMigrations(db, "../../database/migrations"); err != nil {
 		t.Fatalf("apply migrations: %v", err)
@@ -43,7 +43,7 @@ func TestApplyMigrations(t *testing.T) {
 	if err := db.QueryRow("SELECT version, dirty FROM schema_migrations").Scan(&version, &dirty); err != nil {
 		t.Fatalf("read migration state: %v", err)
 	}
-	if version != 3 || dirty {
+	if version != 4 || dirty {
 		t.Fatalf("unexpected migration state: version=%d dirty=%t", version, dirty)
 	}
 
