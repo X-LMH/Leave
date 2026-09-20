@@ -191,8 +191,12 @@ jobs:
 
             project_binary="$current_dir/Leave"
             chmod 0755 "$project_binary"
-            nohup "$project_binary" >> "$log_file" 2>&1 &
+
+            # 必须在 current 目录启动：程序会通过 ../.env 读取 Leave_test 根目录下的环境变量。
+            cd "$current_dir"
+            nohup ./Leave >> "$log_file" 2>&1 &
             new_pid="$!"
+            cd "$APP_ROOT"
             echo "$new_pid" > "$pid_file"
             kill -0 "$new_pid"
 
