@@ -53,9 +53,11 @@ GitHub Actions 的 `Leave CD` 工作流在 `deploy` 分支更新后执行以下�
         ↓
     从旧 current 复制 config/config.yaml 到新版本目录
         ↓
-    将 current 切换到新版本目录
+    原子替换 current -> releases/v{versionName}
         ↓
-    重启指定的 systemd Go 服务并检查 ActiveState/MainPID
+    从 current/Leave 启动 Leave_test
+        ↓
+    执行 Leave_test 启动脚本并检查新 PID/启动命令
 
 本流程不上传或处理 `scripts/`、`backups/`，也不会编译或运行 `migrate`，不会自动执行数据库迁移。
 
@@ -64,11 +66,6 @@ GitHub Actions 的 `Leave CD` 工作流在 `deploy` 分支更新后执行以下�
 需要配置以下 Secrets：
 
 - `SERVER_HOST`、`SERVER_PORT`、`SERVER_USERNAME`、`SERVER_SSH_KEY`
-- `SERVER_APP_ROOT`：例如 `/www/wwwroot/Leave_test`
-- `SERVER_PROJECT_BINARY`：Leave_test 项目实际运行的 Go 文件，例如 `/www/wwwroot/Leave_test/Leave`
-- `SERVER_PROJECT_PID_FILE`：Leave_test 项目专属 PID 文件的绝对路径
-- `SERVER_PROJECT_START_SCRIPT`：Leave_test 项目在宝塔中配置的启动脚本绝对路径
-
-发布前必须只读确认以上三个路径属于 `Leave_test` 项目。工作流会先把新二进制上传到版本目录，再替换 `SERVER_PROJECT_BINARY`，读取并停止 `SERVER_PROJECT_PID_FILE` 中的旧进程，最后执行 `SERVER_PROJECT_START_SCRIPT`。不会使用 `pkill` 或 `killall`，也不会停止其他 Go 进程。
+项目目录固定为 `/www/wwwroot/Leave_test`，程序固定从 `current/Leave` 启动，PID 文件固定为 `/www/wwwroot/Leave_test/Leave.pid`。工作流会先把新二进制上传到版本目录，再原子替换 `current`，停止旧进程，从新版本启动程序，并检查 `127.0.0.1:10000/api/v1/health`。不会使用 `pkill` 或 `killall`，也不会停止其他 Go 进程。
 
 回滚时，将 current 重新指向上一个 releases 目录，然后重启服务。

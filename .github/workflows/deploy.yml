@@ -5,6 +5,8 @@ on:
   push:
     branches:
       - deploy
+  # 允许在修复服务器路径或 Secrets 后，从 Actions 页面手动重新运行。
+  workflow_dispatch:
 
 # 同一个分支连续发布时不取消正在进行的发布，避免产生不完整的发布结果。
 concurrency:
@@ -83,7 +85,7 @@ jobs:
       - name: Prepare server release directories
         uses: appleboy/ssh-action@v1
         env:
-          APP_ROOT: ${{ secrets.SERVER_APP_ROOT }}
+          APP_ROOT: /www/wwwroot/Leave_test
           VERSION_NAME: ${{ steps.app-version.outputs.version_name }}
         with:
           host: ${{ secrets.SERVER_HOST }}
@@ -106,7 +108,7 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: ${{ secrets.SERVER_PORT }}
           source: dist/${{ steps.app-version.outputs.apk_name }}
-          target: ${{ secrets.SERVER_APP_ROOT }}/packages/android
+          target: /www/wwwroot/Leave_test/packages/android
           strip_components: 1
 
       # 先把后端二进制放到版本目录，上传完成后才进行 current 切换和服务重启。
@@ -118,50 +120,57 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: ${{ secrets.SERVER_PORT }}
           source: bin/Leave
-          target: ${{ secrets.SERVER_APP_ROOT }}/releases/v${{ steps.app-version.outputs.version_name }}
+          target: /www/wwwroot/Leave_test/releases/v${{ steps.app-version.outputs.version_name }}
           strip_components: 1
 
-      # 该步骤必须最后执行：替换 Leave_test 实际运行的文件、停止旧进程、重新启动并验证。
-      # 以下三个路径必须对应宝塔 Leave_test 项目的真实配置，不能填写通用进程名或猜测路径。
-      - name: Replace Leave_test binary and restart project
+      # 固定替换 /www/wwwroot/Leave_test/current，并从新版本启动 10000 端口服务。
+      - name: Replace current and restart Leave_test
         uses: appleboy/ssh-action@v1
         env:
-          APP_ROOT: ${{ secrets.SERVER_APP_ROOT }}
+          APP_ROOT: /www/wwwroot/Leave_test
           VERSION_NAME: ${{ steps.app-version.outputs.version_name }}
-          PROJECT_BINARY: ${{ secrets.SERVER_PROJECT_BINARY }}
-          PROJECT_PID_FILE: ${{ secrets.SERVER_PROJECT_PID_FILE }}
-          PROJECT_START_SCRIPT: ${{ secrets.SERVER_PROJECT_START_SCRIPT }}
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USERNAME }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: ${{ secrets.SERVER_PORT }}
-          envs: APP_ROOT,VERSION_NAME,PROJECT_BINARY,PROJECT_PID_FILE,PROJECT_START_SCRIPT
+          envs: APP_ROOT,VERSION_NAME
+          script_stop: true
           script: |
             set -eu
 
-            test -n "$APP_ROOT" || { echo "SERVER_APP_ROOT is empty" >&2; exit 1; }
-            test -n "$VERSION_NAME" || { echo "VERSION_NAME is empty" >&2; exit 1; }
-            test -n "$PROJECT_BINARY" || { echo "SERVER_PROJECT_BINARY is empty" >&2; exit 1; }
-            test -n "$PROJECT_PID_FILE" || { echo "SERVER_PROJECT_PID_FILE is empty" >&2; exit 1; }
-            test -n "$PROJECT_START_SCRIPT" || { echo "SERVER_PROJECT_START_SCRIPT is empty" >&2; exit 1; }
             release_dir="$APP_ROOT/releases/v$VERSION_NAME"
+            current_dir="$APP_ROOT/current"
             release_binary="$release_dir/Leave"
-            replacement_binary="$PROJECT_BINARY.new"
+            pid_file="$APP_ROOT/Leave.pid"
+            log_file="$APP_ROOT/Leave.log"
+            project_binary="$current_dir/Leave"
 
-            test -f "$release_binary" || { echo "Go binary not found: $release_binary" >&2; exit 1; }
-            test -x "$PROJECT_START_SCRIPT" || { echo "Start script is not executable: $PROJECT_START_SCRIPT" >&2; exit 1; }
+            test -f "$release_binary"
+            if [ -e "$current_dir" ] && [ ! -L "$current_dir" ]; then
+              echo "current must be a symlink: $current_dir" >&2
+              exit 1
+            fi
 
-            # 先准备临时文件，再替换宝塔项目实际使用的执行文件，避免直接覆盖正在运行的文件。
-            install -m 0755 "$release_binary" "$replacement_binary"
+            # 新版本继承旧版本配置，不执行 migrate。
+            if [ -f "$current_dir/config/config.yaml" ]; then
+              mkdir -p "$release_dir/config"
+              cp -p "$current_dir/config/config.yaml" "$release_dir/config/config.yaml"
+            fi
 
-            # 只读取 Leave_test 项目自己的 PID，并确认 PID 对应的命令确实是目标文件。
-            if [ -f "$PROJECT_PID_FILE" ]; then
-              old_pid="$(cat "$PROJECT_PID_FILE")"
+            # 原子替换 current，确保它明确指向本次发布版本。
+            next_current="$APP_ROOT/.current-$VERSION_NAME"
+            ln -sfn "$release_dir" "$next_current"
+            mv -Tf "$next_current" "$current_dir"
+            test "$(readlink -f "$current_dir")" = "$(readlink -f "$release_dir")"
+
+            # 只读取 Leave_test 自己的 PID，不使用 pkill/killall。
+            if [ -f "$pid_file" ]; then
+              old_pid="$(cat "$pid_file")"
               case "$old_pid" in
-                ''|*[!0-9]*) echo "Invalid PID file: $PROJECT_PID_FILE" >&2; exit 1 ;;
+                ''|*[!0-9]*) echo "Invalid PID file: $pid_file" >&2; exit 1 ;;
               esac
-              if [ -d "/proc/$old_pid" ] && tr '\0' ' ' < "/proc/$old_pid/cmdline" | grep -F -- "$PROJECT_BINARY" >/dev/null; then
+              if kill -0 "$old_pid" 2>/dev/null; then
                 kill "$old_pid"
                 for _ in 1 2 3 4 5; do
                   kill -0 "$old_pid" 2>/dev/null || break
@@ -174,15 +183,18 @@ jobs:
               fi
             fi
 
-            mv -f "$replacement_binary" "$PROJECT_BINARY"
-            chmod 0755 "$PROJECT_BINARY"
-
-            # 使用宝塔项目自己的启动脚本，确保 PID 文件、工作目录和自启动方式保持一致。
-            "$PROJECT_START_SCRIPT"
-            test -f "$PROJECT_PID_FILE"
-            new_pid="$(cat "$PROJECT_PID_FILE")"
-            case "$new_pid" in
-              ''|*[!0-9]*) echo "Invalid new PID file: $PROJECT_PID_FILE" >&2; exit 1 ;;
-            esac
+            chmod 0755 "$project_binary"
+            nohup "$project_binary" >> "$log_file" 2>&1 &
+            new_pid="$!"
+            echo "$new_pid" > "$pid_file"
             kill -0 "$new_pid"
-            tr '\0' ' ' < "/proc/$new_pid/cmdline"
+
+            # 确认程序实际监听 10000 端口，而不是仅确认进程存在。
+            for _ in 1 2 3 4 5 6 7 8 9 10; do
+              if curl --fail --silent --show-error http://127.0.0.1:10000/api/v1/health >/dev/null; then
+                exit 0
+              fi
+              sleep 1
+            done
+            echo "Leave_test did not become healthy on port 10000" >&2
+            exit 1
