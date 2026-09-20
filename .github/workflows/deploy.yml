@@ -69,19 +69,40 @@ jobs:
           console.log(`apk_name=leave-android-${versionCode}-${versionName}.apk`);
           NODE
 
-      # APK 只改发布文件名，不修改原始 artifacts/android/app.apk。
+      - name: Select release APK
+        id: release-apk
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t apk_entries < <(find deploy/releases -maxdepth 1 -type f -name '*.apk' -printf '%T@ %p\n' | sort -nr)
+          test "${#apk_entries[@]}" -gt 0 || { echo "No APK found in deploy/releases" >&2; exit 1; }
+
+          apk_entry="${apk_entries[0]}"
+          apk_path="${apk_entry#* }"
+          apk_name="$(basename "$apk_path")"
+          expected_name="leave-android-${{ steps.app-version.outputs.version_code }}-${{ steps.app-version.outputs.version_name }}.apk"
+          test "$apk_name" = "$expected_name" || {
+            echo "Selected APK must be named $expected_name, got $apk_name" >&2
+            exit 1
+          }
+
+          echo "apk_path=$apk_path" >> "$GITHUB_OUTPUT"
+          echo "apk_name=$apk_name" >> "$GITHUB_OUTPUT"
+          echo "Using latest APK by modification time: $apk_path"
+
+      # APK 从 deploy/releases 上传；多个 APK 时选择最后修改时间最新的一个。
       # build-linux.sh 只编译 cmd/server，不编译或执行 cmd/migrate。
       - name: Prepare release artifacts
         env:
-          APK_NAME: ${{ steps.app-version.outputs.apk_name }}
+          APK_PATH: ${{ steps.release-apk.outputs.apk_path }}
+          APK_NAME: ${{ steps.release-apk.outputs.apk_name }}
         run: |
           mkdir -p dist
-          test -f artifacts/android/app.apk
-          cp artifacts/android/app.apk "dist/$APK_NAME"
+          cp "$APK_PATH" "dist/$APK_NAME"
           bash deploy/build-linux.sh amd64
 
-      # scp-action 不负责业务目录规划，先创建本次发布需要的两个目录。
-      # 这里不创建、不触碰 scripts/ 和 backups/。
+      # 先在服务器上做版本占用检查，再创建本次发布需要的目录。
+      # 这里不会创建或触碰 scripts/、backups/，也不会覆盖已有版本目录。
       - name: Prepare server release directories
         uses: appleboy/ssh-action@v1
         env:
@@ -95,9 +116,6 @@ jobs:
           envs: APP_ROOT,VERSION_NAME
           script: |
             set -eu
-            test -n "$APP_ROOT" || { echo "APP_ROOT is empty" >&2; exit 1; }
-            case "$APP_ROOT" in /*) ;; *) echo "APP_ROOT must be absolute" >&2; exit 1 ;; esac
-
             release_dir="$APP_ROOT/releases/v$VERSION_NAME"
             if [ -e "$release_dir" ]; then
               echo "Release already exists: $release_dir" >&2
@@ -108,7 +126,7 @@ jobs:
             # 只有版本目录确认不存在后，才创建本次发布需要的目录。
             mkdir -p "$APP_ROOT/packages/android" "$APP_ROOT/releases/v$VERSION_NAME"
 
-      # APK 是按版本保存的，不覆盖旧版本安装包，便于客户端回退或重新下载
+      # APK 按版本保存；由于上一步已经禁止重复版本，这里不会覆盖旧安装包。
       - name: Upload versioned APK
         uses: appleboy/scp-action@v1
         with:
@@ -120,7 +138,7 @@ jobs:
           target: /www/wwwroot/Leave_test/packages/android
           strip_components: 1
 
-      # 先把后端二进制放到版本目录，上传完成后才进行 current 切换和服务重启
+      # 先上传后端二进制，只有上传完成后才会切换 current 和重启服务。
       - name: Upload versioned Go server
         uses: appleboy/scp-action@v1
         with:
@@ -132,7 +150,6 @@ jobs:
           target: /www/wwwroot/Leave_test/releases/v${{ steps.app-version.outputs.version_name }}
           strip_components: 1
 
-      # 固定替换 /www/wwwroot/Leave_test/current，并从新版本启动 10000 端口服务。
       - name: Replace current and restart Leave_test
         uses: appleboy/ssh-action@v1
         env:
@@ -150,11 +167,10 @@ jobs:
             release_dir="$APP_ROOT/releases/v$VERSION_NAME"
             current_dir="$APP_ROOT/current"
             release_binary="$release_dir/Leave"
-            project_binary="$current_dir/Leave"
             old_current_dir="$APP_ROOT/.current-directory-$VERSION_NAME"
 
+            # 发布目录和根目录环境文件必须存在，否则立即停止，不触碰旧服务。
             test -f "$release_binary"
-            test -e "$current_dir" || { echo "current path not found: $current_dir" >&2; exit 1; }
             test -r "$APP_ROOT/.env" || { echo "Environment file not readable: $APP_ROOT/.env" >&2; exit 1; }
 
             # 显式导出根目录 .env，避免 current 软链接解析到 releases 后丢失环境变量。
@@ -164,7 +180,7 @@ jobs:
             test -n "${JWT_SECRET:-}" || { echo "JWT_SECRET is empty in $APP_ROOT/.env" >&2; exit 1; }
             test -n "${MYSQL_PASSWORD:-}" || { echo "MYSQL_PASSWORD is empty in $APP_ROOT/.env" >&2; exit 1; }
 
-            # 新版本继承旧版本配置，不执行 migrate。
+            # 新版本继承旧版本配置；首次创建 current 时没有旧配置也允许继续。
             if [ -f "$current_dir/config/config.yaml" ]; then
               mkdir -p "$release_dir/config"
               cp -p "$current_dir/config/config.yaml" "$release_dir/config/config.yaml"
@@ -180,16 +196,19 @@ jobs:
             fi
 
             # current 必须最终成为版本软链接，不能继续保留为旧版本实体目录。
-            # 旧实体目录先移开保留，避免无恢复路径地删除服务器文件。
             if [ -L "$current_dir" ]; then
               next_current="$APP_ROOT/.current-$VERSION_NAME"
               # 链接位于 APP_ROOT 下，因此目标使用项目内相对路径。
               ln -sfn "releases/v$VERSION_NAME" "$next_current"
               mv -Tf "$next_current" "$current_dir"
-            else
+            elif [ -d "$current_dir" ]; then
+              # 旧 current 是实体目录时先移开保留，再创建新的相对软链接。
               test -d "$current_dir"
               test ! -e "$old_current_dir"
               mv "$current_dir" "$old_current_dir"
+              ln -s "releases/v$VERSION_NAME" "$current_dir"
+            else
+              # current 不存在时直接创建本次版本的相对软链接。
               ln -s "releases/v$VERSION_NAME" "$current_dir"
             fi
             test -L "$current_dir"
@@ -198,7 +217,7 @@ jobs:
             project_binary="$current_dir/Leave"
             chmod 0755 "$project_binary"
 
-            # 工作目录使用 current，运行文件也必须通过 current 软链接启动，不能直接执行版本目录。
+            # 工作目录和执行文件都使用 current，不能直接启动 releases 下的具体版本文件。
             cd "$current_dir"
             nohup "$APP_ROOT/current/Leave" >/dev/null 2>&1 &
             cd "$APP_ROOT"

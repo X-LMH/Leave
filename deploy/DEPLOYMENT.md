@@ -27,17 +27,17 @@
 
 ## 运行方式
 
-使用 systemd 管理 Go 服务：
+Leave_test 通过 current 软链接启动 Go 服务：
 
     WorkingDirectory=/www/wwwroot/Leave_test/current
     ExecStart=/www/wwwroot/Leave_test/current/Leave
 
-WorkingDirectory 必须设置，因为程序会读取：
+WorkingDirectory 必须设置为 current，因为程序会读取：
 
     ./config/config.yaml
     ./database/migrations
 
-Go 服务监听本机 127.0.0.1:8080，Nginx 负责 HTTPS 和反向代理。
+Go 服务监听本机 `127.0.0.1:10000`，Nginx 负责 HTTPS 和反向代理。
 
 ## CD 发布流程
 
@@ -45,7 +45,7 @@ GitHub Actions 的 `Leave CD` 工作流在 `deploy` 分支更新后执行以下�
 
     从 frontend/manifest.json 读取 versionCode/versionName
         ↓
-    将 artifacts/android/app.apk 命名为 leave-android-{versionCode}-{versionName}.apk
+    从 deploy/releases/*.apk 选择最后修改时间最新的 APK，并校验固定文件名
         ↓
     上传到 packages/android/
         ↓
@@ -57,9 +57,9 @@ GitHub Actions 的 `Leave CD` 工作流在 `deploy` 分支更新后执行以下�
         ↓
     从 current/Leave 启动 Leave_test
         ↓
-    执行 Leave_test 启动脚本并检查新 PID/启动命令
+    检查 10000 端口健康接口
 
-本流程不上传或处理 `scripts/`、`backups/`，也不会编译或运行 `migrate`，不会自动执行数据库迁移。
+本流程不上传或处理 `scripts/`、`backups/`，也不会编译或运行 `migrate`，不会自动执行数据库结构迁移。APK 必须放在 `deploy/releases/`，文件名遵循 `leave-{platform}-{versionCode}-{versionName}.apk`；如果目录中存在多个 APK，使用最后修改时间最新的一个。
 
 ## GitHub Secrets
 

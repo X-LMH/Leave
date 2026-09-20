@@ -1,0 +1,4 @@
+# 本文件只维护客户端发布时需要人工填写的内容。
+# version_code、version_name 和 APK 文件名由发布脚本自动读取和生成。
+release_notes:
+  - 测试版本
