@@ -144,25 +144,15 @@ jobs:
             pid_file="$APP_ROOT/Leave.pid"
             log_file="$APP_ROOT/Leave.log"
             project_binary="$current_dir/Leave"
+            old_current_dir="$APP_ROOT/.current-directory-$VERSION_NAME"
 
             test -f "$release_binary"
-            test -d "$current_dir" || { echo "current directory not found: $current_dir" >&2; exit 1; }
+            test -e "$current_dir" || { echo "current path not found: $current_dir" >&2; exit 1; }
 
             # 新版本继承旧版本配置，不执行 migrate。
             if [ -f "$current_dir/config/config.yaml" ]; then
               mkdir -p "$release_dir/config"
               cp -p "$current_dir/config/config.yaml" "$release_dir/config/config.yaml"
-            fi
-
-            if [ -L "$current_dir" ]; then
-              # current 是软链接时，原子替换它，确保明确指向本次发布版本。
-              next_current="$APP_ROOT/.current-$VERSION_NAME"
-              ln -sfn "$release_dir" "$next_current"
-              mv -Tf "$next_current" "$current_dir"
-              test "$(readlink -f "$current_dir")" = "$(readlink -f "$release_dir")"
-            else
-              # 当前服务器的 current 是实体目录：保留目录本身，只替换其中的 Leave。
-              install -m 0755 "$release_binary" "$current_dir/.Leave.new"
             fi
 
             # 只读取 Leave_test 自己的 PID，不使用 pkill/killall。
@@ -184,9 +174,22 @@ jobs:
               fi
             fi
 
-            if [ -f "$current_dir/.Leave.new" ]; then
-              mv -f "$current_dir/.Leave.new" "$project_binary"
+            # current 必须最终成为版本软链接，不能继续保留为旧版本实体目录。
+            # 旧实体目录先移开保留，避免无恢复路径地删除服务器文件。
+            if [ -L "$current_dir" ]; then
+              next_current="$APP_ROOT/.current-$VERSION_NAME"
+              ln -sfn "$release_dir" "$next_current"
+              mv -Tf "$next_current" "$current_dir"
+            else
+              test -d "$current_dir"
+              test ! -e "$old_current_dir"
+              mv "$current_dir" "$old_current_dir"
+              ln -s "$release_dir" "$current_dir"
             fi
+            test -L "$current_dir"
+            test "$(readlink -f "$current_dir")" = "$(readlink -f "$release_dir")"
+
+            project_binary="$current_dir/Leave"
             chmod 0755 "$project_binary"
             nohup "$project_binary" >> "$log_file" 2>&1 &
             new_pid="$!"
