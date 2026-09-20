@@ -95,8 +95,8 @@ jobs:
           envs: APP_ROOT,VERSION_NAME
           script: |
             set -eu
-            test -n "$APP_ROOT" || { echo "SERVER_APP_ROOT is empty" >&2; exit 1; }
-            case "$APP_ROOT" in /*) ;; *) echo "SERVER_APP_ROOT must be absolute" >&2; exit 1 ;; esac
+            test -n "$APP_ROOT" || { echo "APP_ROOT is empty" >&2; exit 1; }
+            case "$APP_ROOT" in /*) ;; *) echo "APP_ROOT must be absolute" >&2; exit 1 ;; esac
             mkdir -p "$APP_ROOT/packages/android" "$APP_ROOT/releases/v$VERSION_NAME"
 
       # APK 是按版本保存的，不覆盖旧版本安装包，便于客户端回退或重新下载。
@@ -135,7 +135,6 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: ${{ secrets.SERVER_PORT }}
           envs: APP_ROOT,VERSION_NAME
-          script_stop: true
           script: |
             set -eu
 
@@ -147,10 +146,7 @@ jobs:
             project_binary="$current_dir/Leave"
 
             test -f "$release_binary"
-            if [ -e "$current_dir" ] && [ ! -L "$current_dir" ]; then
-              echo "current must be a symlink: $current_dir" >&2
-              exit 1
-            fi
+            test -d "$current_dir" || { echo "current directory not found: $current_dir" >&2; exit 1; }
 
             # 新版本继承旧版本配置，不执行 migrate。
             if [ -f "$current_dir/config/config.yaml" ]; then
@@ -158,11 +154,16 @@ jobs:
               cp -p "$current_dir/config/config.yaml" "$release_dir/config/config.yaml"
             fi
 
-            # 原子替换 current，确保它明确指向本次发布版本。
-            next_current="$APP_ROOT/.current-$VERSION_NAME"
-            ln -sfn "$release_dir" "$next_current"
-            mv -Tf "$next_current" "$current_dir"
-            test "$(readlink -f "$current_dir")" = "$(readlink -f "$release_dir")"
+            if [ -L "$current_dir" ]; then
+              # current 是软链接时，原子替换它，确保明确指向本次发布版本。
+              next_current="$APP_ROOT/.current-$VERSION_NAME"
+              ln -sfn "$release_dir" "$next_current"
+              mv -Tf "$next_current" "$current_dir"
+              test "$(readlink -f "$current_dir")" = "$(readlink -f "$release_dir")"
+            else
+              # 当前服务器的 current 是实体目录：保留目录本身，只替换其中的 Leave。
+              install -m 0755 "$release_binary" "$current_dir/.Leave.new"
+            fi
 
             # 只读取 Leave_test 自己的 PID，不使用 pkill/killall。
             if [ -f "$pid_file" ]; then
@@ -183,6 +184,9 @@ jobs:
               fi
             fi
 
+            if [ -f "$current_dir/.Leave.new" ]; then
+              mv -f "$current_dir/.Leave.new" "$project_binary"
+            fi
             chmod 0755 "$project_binary"
             nohup "$project_binary" >> "$log_file" 2>&1 &
             new_pid="$!"
