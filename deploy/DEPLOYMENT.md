@@ -25,8 +25,9 @@
 - backups/mysql/：保存 MySQL 数据库备份。
 - scripts/：保存发布、备份、迁移等重复执行的脚本。
 
-客户端版本发布记录由 `deploy/releases/android.yaml` 维护。执行
-`deploy/publish-version.sh` 会读取 `frontend/manifest.json` 和该 YAML，生成事务 SQL 并通过 MySQL 客户端将旧版本标记为 `archived`，再插入新的 `published` 版本。数据库密码优先从 `MYSQL_PASSWORD` 环境变量读取。
+客户端版本发布记录由 `deploy/releases/android.yaml` 维护。GitHub Actions 使用
+`deploy/build-version-sql.rb` 生成事务 SQL，上传到本次 release 后，由服务器
+`scripts/publish-version.sh` 通过 MySQL 客户端将旧版本标记为 `archived`，再插入新的 `published` 版本。数据库密码优先从 `MYSQL_PASSWORD` 环境变量读取。
 
 ## 运行方式
 
@@ -54,7 +55,7 @@ GitHub Actions 的 `Leave CD` 工作流在 `deploy` 分支更新后执行以下�
         ↓
     上传到 packages/android/
         ↓
-    上传发布脚本、manifest.json 和 android.yaml
+    上传发布 SQL 到本次 release，并更新服务器 scripts/ 下的部署脚本
         ↓
     在服务器直接调用发布脚本，使用根目录 config.yaml 和 .env 更新 app_versions
         ↓
@@ -66,7 +67,7 @@ GitHub Actions 的 `Leave CD` 工作流在 `deploy` 分支更新后执行以下�
         ↓
     根据 app.port 检查健康接口
 
-本流程不上传或处理 `scripts/`、`backups/`，也不会编译或运行 `migrate`，不会自动执行数据库结构迁移。APK 必须放在 `deploy/releases/`，原始文件名可以是任意名称；如果目录中存在多个 APK，使用最后修改时间最新的一个，并在上传前统一重命名为 `leave-{platform}-{versionCode}-{versionName}.apk`。每个 release 只保存程序文件，配置统一使用项目根目录的 `config/config.yaml` 和 `.env`。
+本流程不处理 `backups/`，也不会编译或运行 `migrate`，不会自动执行数据库结构迁移。部署脚本统一放在服务器的 `scripts/`，每个 release 只保存程序和本次发布 SQL。APK 必须放在 `deploy/releases/`，原始文件名可以是任意名称；如果目录中存在多个 APK，使用最后修改时间最新的一个，并在上传前统一重命名为 `leave-{platform}-{versionCode}-{versionName}.apk`。配置统一使用项目根目录的 `config/config.yaml` 和 `.env`。
 
 ## GitHub Secrets
 

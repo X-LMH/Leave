@@ -93,8 +93,7 @@ jobs:
         run: |
           mkdir -p dist
           cp "$APK_PATH" "dist/$APK_NAME"
-          mkdir -p dist/release-tools
-          cp deploy/deploy-release.sh deploy/publish-version.sh deploy/build-version-sql.rb deploy/switch-and-restart.sh deploy/releases/android.yaml frontend/manifest.json dist/release-tools/
+          ruby deploy/build-version-sql.rb > dist/app-version.sql
           bash deploy/build-linux.sh amd64
 
       - name: Prepare server release directories
@@ -113,7 +112,7 @@ jobs:
             release_dir="$APP_ROOT/releases/v$VERSION_NAME"
             current_dir="$APP_ROOT/current"
             test ! -e "$release_dir" || { echo "Release appeared during build: $release_dir" >&2; exit 1; }
-            mkdir -p "$APP_ROOT/config" "$APP_ROOT/packages/android" "$release_dir"
+            mkdir -p "$APP_ROOT/config" "$APP_ROOT/scripts" "$APP_ROOT/packages/android" "$release_dir"
             if [ ! -f "$APP_ROOT/config/config.yaml" ] && [ -f "$current_dir/config/config.yaml" ]; then
               cp -p "$current_dir/config/config.yaml" "$APP_ROOT/config/config.yaml"
             fi
@@ -146,16 +145,27 @@ jobs:
           target: /www/wwwroot/Leave_test/releases/v${{ steps.app-version.outputs.version_name }}
           strip_components: 1
 
-      - name: Upload app version release files
+      - name: Upload release SQL
         uses: appleboy/scp-action@v1
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USERNAME }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: ${{ secrets.SERVER_PORT }}
-          source: dist/release-tools/*
+          source: dist/app-version.sql
           target: /www/wwwroot/Leave_test/releases/v${{ steps.app-version.outputs.version_name }}
-          strip_components: 2
+          strip_components: 1
+
+      - name: Upload deployment scripts
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USERNAME }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT }}
+          source: deploy/deploy-release.sh,deploy/publish-version.sh,deploy/switch-and-restart.sh
+          target: /www/wwwroot/Leave_test/scripts
+          strip_components: 1
 
       - name: Replace current and restart Leave_test
         uses: appleboy/ssh-action@v1
@@ -172,6 +182,8 @@ jobs:
             set -eu
 
             release_dir="$APP_ROOT/releases/v$VERSION_NAME"
-            deploy_script="$release_dir/deploy-release.sh"
+            deploy_script="$APP_ROOT/scripts/deploy-release.sh"
+            release_sql="$release_dir/app-version.sql"
             test -f "$deploy_script" || { echo "Deploy script not found: $deploy_script" >&2; exit 1; }
-            APP_ROOT="$APP_ROOT" VERSION_NAME="$VERSION_NAME" "$deploy_script"
+            test -f "$release_sql" || { echo "Release SQL not found: $release_sql" >&2; exit 1; }
+            APP_ROOT="$APP_ROOT" VERSION_NAME="$VERSION_NAME" RELEASE_SQL="$release_sql" "$deploy_script"
