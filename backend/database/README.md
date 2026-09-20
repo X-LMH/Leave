@@ -83,7 +83,7 @@ make migrate
 
 新建开发数据库时，先按 `tables/` 中的完整表结构初始化，再执行 `seed/` 中的基础数据脚本；不要对已经按完整表结构初始化的数据库重复执行历史 migration。
 
-客户端版本发布时，不需要修改 `schema_migrations`，也不需要为每个客户端版本新增 migration。应在 `deploy/releases/` 中维护 YAML 发布配置，由 `deploy/read-release.rb` 读取版本号和自定义更新说明，再由 deploy 流程更新 `app_versions`。
+客户端版本发布时，不需要修改 `schema_migrations`，也不需要为每个客户端版本新增 migration。应在 `deploy/releases/` 中维护 YAML 发布配置，由 `deploy/build-version-sql.rb` 读取版本号和自定义更新说明并生成发布 SQL，再由 deploy 流程更新 `app_versions`。
 
 例如：
 
@@ -100,10 +100,12 @@ release_notes:
 YAML 只维护人工填写的 `release_notes`。`version_code`、`version_name` 由 `frontend/manifest.json` 自动读取，APK 文件名按固定模板 `leave-{platform}-{versionCode}-{versionName}.apk` 自动生成，避免重复维护。可在项目根目录运行：
 
 ```text
-ruby deploy/read-release.rb
+ruby deploy/build-version-sql.rb
 ```
 
 deploy 应在 APK 上传成功后，在一个事务中先将同平台旧的 `published` 版本更新为 `archived`，再插入新的 `published` 版本。旧版本仍会保留为历史更新记录。
+
+项目提供 `deploy/publish-version.sh` 执行这次发布数据更新。它调用 `mysql` 客户端连接数据库，数据库密码优先使用 `MYSQL_PASSWORD` 环境变量；这一步不属于 `migrate`。
 
 ## Migration 命名规范
 

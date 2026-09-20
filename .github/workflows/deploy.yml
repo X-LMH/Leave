@@ -120,7 +120,16 @@ jobs:
             fi
 
             # 只有版本目录确认不存在后，才创建本次发布需要的目录。
-            mkdir -p "$APP_ROOT/packages/android" "$APP_ROOT/releases/v$VERSION_NAME"
+            mkdir -p "$APP_ROOT/config" "$APP_ROOT/packages/android" "$APP_ROOT/releases/v$VERSION_NAME"
+
+            # 首次切换到统一配置时，从旧 current 迁移一次；后续发布不再复制配置。
+            if [ ! -f "$APP_ROOT/config/config.yaml" ] && [ -f "$current_dir/config/config.yaml" ]; then
+              cp -p "$current_dir/config/config.yaml" "$APP_ROOT/config/config.yaml"
+            fi
+            test -r "$APP_ROOT/config/config.yaml" || {
+              echo "Shared config is not readable: $APP_ROOT/config/config.yaml" >&2
+              exit 1
+            }
 
       # APK 按版本保存；由于上一步已经禁止重复版本，这里不会覆盖旧安装包。
       - name: Upload versioned APK
@@ -176,12 +185,6 @@ jobs:
             test -n "${JWT_SECRET:-}" || { echo "JWT_SECRET is empty in $APP_ROOT/.env" >&2; exit 1; }
             test -n "${MYSQL_PASSWORD:-}" || { echo "MYSQL_PASSWORD is empty in $APP_ROOT/.env" >&2; exit 1; }
 
-            # 新版本继承旧版本配置；首次创建 current 时没有旧配置也允许继续。
-            if [ -f "$current_dir/config/config.yaml" ]; then
-              mkdir -p "$release_dir/config"
-              cp -p "$current_dir/config/config.yaml" "$release_dir/config/config.yaml"
-            fi
-
             # 只停止占用 Leave_test 固定端口的进程，不生成或读取 PID/日志文件。
             if command -v fuser >/dev/null 2>&1; then
               fuser -k 10000/tcp 2>/dev/null || true
@@ -213,8 +216,8 @@ jobs:
             project_binary="$current_dir/Leave"
             chmod 0755 "$project_binary"
 
-            # 工作目录和执行文件都使用 current，不能直接启动 releases 下的具体版本文件。
-            cd "$current_dir"
+            # 工作目录使用项目根目录，使所有 release 共用根目录 config/config.yaml 和 .env。
+            cd "$APP_ROOT"
             nohup "$APP_ROOT/current/Leave" >/dev/null 2>&1 &
             cd "$APP_ROOT"
 

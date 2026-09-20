@@ -5,13 +5,13 @@
 ## 目录结构
 
     /www/wwwroot/Leave_test
+    ├── config/
+    │   └── config.yaml
+    ├── .env
     ├── current -> releases/v0.0.3/
     ├── releases/
     │   ├── v0.0.3/
-    │   │   ├── Leave
-    │   │   ├── migrate
-    │   │   ├── config/config.yaml
-    │   │   └── database/migrations/
+    │   │   └── Leave
     │   └── v0.0.2/
     ├── packages/android/
     ├── backups/mysql/
@@ -25,17 +25,22 @@
 - backups/mysql/：保存 MySQL 数据库备份。
 - scripts/：保存发布、备份、迁移等重复执行的脚本。
 
+客户端版本发布记录由 `deploy/releases/android.yaml` 维护。执行
+`deploy/publish-version.sh` 会读取 `frontend/manifest.json` 和该 YAML，生成事务 SQL 并通过 MySQL 客户端将旧版本标记为 `archived`，再插入新的 `published` 版本。数据库密码优先从 `MYSQL_PASSWORD` 环境变量读取。
+
 ## 运行方式
 
 Leave_test 通过 current 软链接启动 Go 服务：
 
-    WorkingDirectory=/www/wwwroot/Leave_test/current
+    WorkingDirectory=/www/wwwroot/Leave_test
     ExecStart=/www/wwwroot/Leave_test/current/Leave
 
-WorkingDirectory 必须设置为 current，因为程序会读取：
+WorkingDirectory 必须设置为项目根目录，因为程序会读取：
 
     ./config/config.yaml
     ./database/migrations
+
+所有 release 共用 `/www/wwwroot/Leave_test/config/config.yaml` 和 `/www/wwwroot/Leave_test/.env`，新版本目录不再复制配置文件。
 
 Go 服务监听本机 `127.0.0.1:10000`，Nginx 负责 HTTPS 和反向代理。
 
@@ -51,15 +56,13 @@ GitHub Actions 的 `Leave CD` 工作流在 `deploy` 分支更新后执行以下�
         ↓
     使用 CGO_ENABLED=0 编译 backend/cmd/server，并上传为 releases/v{versionName}/Leave
         ↓
-    从旧 current 复制 config/config.yaml 到新版本目录
-        ↓
     将 current 统一切换为相对路径 releases/v{versionName} 的软链接
         ↓
     从 current/Leave 启动 Leave_test
         ↓
     检查 10000 端口健康接口
 
-本流程不上传或处理 `scripts/`、`backups/`，也不会编译或运行 `migrate`，不会自动执行数据库结构迁移。APK 必须放在 `deploy/releases/`，原始文件名可以是任意名称；如果目录中存在多个 APK，使用最后修改时间最新的一个，并在上传前统一重命名为 `leave-{platform}-{versionCode}-{versionName}.apk`。
+本流程不上传或处理 `scripts/`、`backups/`，也不会编译或运行 `migrate`，不会自动执行数据库结构迁移。APK 必须放在 `deploy/releases/`，原始文件名可以是任意名称；如果目录中存在多个 APK，使用最后修改时间最新的一个，并在上传前统一重命名为 `leave-{platform}-{versionCode}-{versionName}.apk`。每个 release 只保存程序文件，配置统一使用项目根目录的 `config/config.yaml` 和 `.env`。
 
 ## GitHub Secrets
 
