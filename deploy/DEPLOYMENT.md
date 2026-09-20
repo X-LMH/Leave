@@ -65,8 +65,10 @@ GitHub Actions 的 `Leave CD` 工作流在 `deploy` 分支更新后执行以下�
 
 - `SERVER_HOST`、`SERVER_PORT`、`SERVER_USERNAME`、`SERVER_SSH_KEY`
 - `SERVER_APP_ROOT`：例如 `/www/wwwroot/Leave_test`
-- `SERVER_SERVICE_NAME`：宝塔/systemd 中实际管理该 Go 程序的服务名
+- `SERVER_PROJECT_BINARY`：Leave_test 项目实际运行的 Go 文件，例如 `/www/wwwroot/Leave_test/Leave`
+- `SERVER_PROJECT_PID_FILE`：Leave_test 项目专属 PID 文件的绝对路径
+- `SERVER_PROJECT_START_SCRIPT`：Leave_test 项目在宝塔中配置的启动脚本绝对路径
 
-发布前应确认 `current/config/config.yaml` 已存在，并确认该 systemd 服务的 `WorkingDirectory` 和 `ExecStart` 都通过 `current` 指向当前版本。工作流只重启 `SERVER_SERVICE_NAME` 指定的服务，不会使用 `pkill` 或 `killall`。
+发布前必须只读确认以上三个路径属于 `Leave_test` 项目。工作流会先把新二进制上传到版本目录，再替换 `SERVER_PROJECT_BINARY`，读取并停止 `SERVER_PROJECT_PID_FILE` 中的旧进程，最后执行 `SERVER_PROJECT_START_SCRIPT`。不会使用 `pkill` 或 `killall`，也不会停止其他 Go 进程。
 
 回滚时，将 current 重新指向上一个 releases 目录，然后重启服务。

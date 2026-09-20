@@ -121,45 +121,68 @@ jobs:
           target: ${{ secrets.SERVER_APP_ROOT }}/releases/v${{ steps.app-version.outputs.version_name }}
           strip_components: 1
 
-      # 该步骤必须最后执行：复制配置、切换 current、重启并验证目标服务。
-      # SERVICE_NAME 必须是服务器上已确认的目标服务名，不能填写通用进程名。
-      - name: Switch release and restart Go service
+      # 该步骤必须最后执行：替换 Leave_test 实际运行的文件、停止旧进程、重新启动并验证。
+      # 以下三个路径必须对应宝塔 Leave_test 项目的真实配置，不能填写通用进程名或猜测路径。
+      - name: Replace Leave_test binary and restart project
         uses: appleboy/ssh-action@v1
         env:
           APP_ROOT: ${{ secrets.SERVER_APP_ROOT }}
           VERSION_NAME: ${{ steps.app-version.outputs.version_name }}
-          SERVICE_NAME: ${{ secrets.SERVER_SERVICE_NAME }}
+          PROJECT_BINARY: ${{ secrets.SERVER_PROJECT_BINARY }}
+          PROJECT_PID_FILE: ${{ secrets.SERVER_PROJECT_PID_FILE }}
+          PROJECT_START_SCRIPT: ${{ secrets.SERVER_PROJECT_START_SCRIPT }}
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USERNAME }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: ${{ secrets.SERVER_PORT }}
-          envs: APP_ROOT,VERSION_NAME,SERVICE_NAME
+          envs: APP_ROOT,VERSION_NAME,PROJECT_BINARY,PROJECT_PID_FILE,PROJECT_START_SCRIPT
           script: |
             set -eu
 
             test -n "$APP_ROOT" || { echo "SERVER_APP_ROOT is empty" >&2; exit 1; }
             test -n "$VERSION_NAME" || { echo "VERSION_NAME is empty" >&2; exit 1; }
-            test -n "$SERVICE_NAME" || { echo "SERVER_SERVICE_NAME is empty" >&2; exit 1; }
+            test -n "$PROJECT_BINARY" || { echo "SERVER_PROJECT_BINARY is empty" >&2; exit 1; }
+            test -n "$PROJECT_PID_FILE" || { echo "SERVER_PROJECT_PID_FILE is empty" >&2; exit 1; }
+            test -n "$PROJECT_START_SCRIPT" || { echo "SERVER_PROJECT_START_SCRIPT is empty" >&2; exit 1; }
             release_dir="$APP_ROOT/releases/v$VERSION_NAME"
-            current_dir="$APP_ROOT/current"
-            binary="$release_dir/Leave"
+            release_binary="$release_dir/Leave"
+            replacement_binary="$PROJECT_BINARY.new"
 
-            test -f "$binary" || { echo "Go binary not found: $binary" >&2; exit 1; }
-            test -f "$current_dir/config/config.yaml" || {
-              echo "Existing config not found: $current_dir/config/config.yaml" >&2
-              exit 1
-            }
+            test -f "$release_binary" || { echo "Go binary not found: $release_binary" >&2; exit 1; }
+            test -x "$PROJECT_START_SCRIPT" || { echo "Start script is not executable: $PROJECT_START_SCRIPT" >&2; exit 1; }
 
-            # 每个版本保留运行所需配置；不上传或处理 scripts、backups。
-            mkdir -p "$release_dir/config"
-            cp -p "$current_dir/config/config.yaml" "$release_dir/config/config.yaml"
-            chmod 0755 "$binary"
+            # 先准备临时文件，再替换宝塔项目实际使用的执行文件，避免直接覆盖正在运行的文件。
+            install -m 0755 "$release_binary" "$replacement_binary"
 
-            # current 是 systemd 的 WorkingDirectory/ExecStart 所使用的实际路径。
-            ln -sfn "$release_dir" "$current_dir"
+            # 只读取 Leave_test 项目自己的 PID，并确认 PID 对应的命令确实是目标文件。
+            if [ -f "$PROJECT_PID_FILE" ]; then
+              old_pid="$(cat "$PROJECT_PID_FILE")"
+              case "$old_pid" in
+                ''|*[!0-9]*) echo "Invalid PID file: $PROJECT_PID_FILE" >&2; exit 1 ;;
+              esac
+              if [ -d "/proc/$old_pid" ] && tr '\0' ' ' < "/proc/$old_pid/cmdline" | grep -F -- "$PROJECT_BINARY" >/dev/null; then
+                kill "$old_pid"
+                for _ in 1 2 3 4 5; do
+                  kill -0 "$old_pid" 2>/dev/null || break
+                  sleep 1
+                done
+                if kill -0 "$old_pid" 2>/dev/null; then
+                  echo "Leave_test process did not stop: $old_pid" >&2
+                  exit 1
+                fi
+              fi
+            fi
 
-            # 只重启指定的 Go 服务，绝不使用 pkill/killall。
-            systemctl restart "$SERVICE_NAME"
-            systemctl is-active --quiet "$SERVICE_NAME"
-            systemctl show "$SERVICE_NAME" --property=ActiveState,MainPID,ExecMainStartTimestamp
+            mv -f "$replacement_binary" "$PROJECT_BINARY"
+            chmod 0755 "$PROJECT_BINARY"
+
+            # 使用宝塔项目自己的启动脚本，确保 PID 文件、工作目录和自启动方式保持一致。
+            "$PROJECT_START_SCRIPT"
+            test -f "$PROJECT_PID_FILE"
+            new_pid="$(cat "$PROJECT_PID_FILE")"
+            case "$new_pid" in
+              ''|*[!0-9]*) echo "Invalid new PID file: $PROJECT_PID_FILE" >&2; exit 1 ;;
+            esac
+            kill -0 "$new_pid"
+            tr '\0' ' ' < "/proc/$new_pid/cmdline"
