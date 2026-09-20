@@ -91,10 +91,9 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: ${{ secrets.SERVER_PORT }}
           envs: APP_ROOT,VERSION_NAME
-          script_stop: true
           script: |
             set -eu
-            test -n "$APP_ROOT"
+            test -n "$APP_ROOT" || { echo "SERVER_APP_ROOT is empty" >&2; exit 1; }
             case "$APP_ROOT" in /*) ;; *) echo "SERVER_APP_ROOT must be absolute" >&2; exit 1 ;; esac
             mkdir -p "$APP_ROOT/packages/android" "$APP_ROOT/releases/v$VERSION_NAME"
 
@@ -136,19 +135,21 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: ${{ secrets.SERVER_PORT }}
           envs: APP_ROOT,VERSION_NAME,SERVICE_NAME
-          script_stop: true
           script: |
             set -eu
 
-            test -n "$APP_ROOT"
-            test -n "$VERSION_NAME"
-            test -n "$SERVICE_NAME"
+            test -n "$APP_ROOT" || { echo "SERVER_APP_ROOT is empty" >&2; exit 1; }
+            test -n "$VERSION_NAME" || { echo "VERSION_NAME is empty" >&2; exit 1; }
+            test -n "$SERVICE_NAME" || { echo "SERVER_SERVICE_NAME is empty" >&2; exit 1; }
             release_dir="$APP_ROOT/releases/v$VERSION_NAME"
             current_dir="$APP_ROOT/current"
             binary="$release_dir/Leave"
 
-            test -f "$binary"
-            test -f "$current_dir/config/config.yaml"
+            test -f "$binary" || { echo "Go binary not found: $binary" >&2; exit 1; }
+            test -f "$current_dir/config/config.yaml" || {
+              echo "Existing config not found: $current_dir/config/config.yaml" >&2
+              exit 1
+            }
 
             # 每个版本保留运行所需配置；不上传或处理 scripts、backups。
             mkdir -p "$release_dir/config"
