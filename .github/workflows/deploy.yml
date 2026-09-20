@@ -148,6 +148,14 @@ jobs:
 
             test -f "$release_binary"
             test -e "$current_dir" || { echo "current path not found: $current_dir" >&2; exit 1; }
+            test -r "$APP_ROOT/.env" || { echo "Environment file not readable: $APP_ROOT/.env" >&2; exit 1; }
+
+            # 显式导出根目录 .env，避免 current 软链接解析到 releases 后丢失环境变量。
+            set -a
+            . "$APP_ROOT/.env"
+            set +a
+            test -n "${JWT_SECRET:-}" || { echo "JWT_SECRET is empty in $APP_ROOT/.env" >&2; exit 1; }
+            test -n "${MYSQL_PASSWORD:-}" || { echo "MYSQL_PASSWORD is empty in $APP_ROOT/.env" >&2; exit 1; }
 
             # 新版本继承旧版本配置，不执行 migrate。
             if [ -f "$current_dir/config/config.yaml" ]; then

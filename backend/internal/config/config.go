@@ -72,7 +72,9 @@ func Init() error {
 }
 
 func loadDotEnv() error {
-	for _, path := range []string{".env", "../.env"} {
+	// current 通常是软链接，进程工作目录可能解析为 releases/vX.Y.Z；
+	// 因此还需要向上两级读取 Leave_test 根目录下的 .env。
+	for _, path := range []string{".env", "../.env", "../../.env"} {
 		if _, err := os.Stat(path); err == nil {
 			return gotenv.Load(path)
 		} else if !os.IsNotExist(err) {
