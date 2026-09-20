@@ -3,8 +3,8 @@ name: Leave CD
 
 on:
   push:
-    branches:
-      - deploy
+    tags:
+      - 'v*'
   # 允许在修复服务器路径或 Secrets 后，从 Actions 页面手动重新运行。
   workflow_dispatch:
 
