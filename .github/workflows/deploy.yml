@@ -97,6 +97,15 @@ jobs:
             set -eu
             test -n "$APP_ROOT" || { echo "APP_ROOT is empty" >&2; exit 1; }
             case "$APP_ROOT" in /*) ;; *) echo "APP_ROOT must be absolute" >&2; exit 1 ;; esac
+
+            release_dir="$APP_ROOT/releases/v$VERSION_NAME"
+            if [ -e "$release_dir" ]; then
+              echo "Release already exists: $release_dir" >&2
+              echo "Version reuse is not allowed; update frontend/manifest.json before deploying." >&2
+              exit 1
+            fi
+
+            # 只有版本目录确认不存在后，才创建本次发布需要的目录。
             mkdir -p "$APP_ROOT/packages/android" "$APP_ROOT/releases/v$VERSION_NAME"
 
       # APK 是按版本保存的，不覆盖旧版本安装包，便于客户端回退或重新下载
