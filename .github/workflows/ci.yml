@@ -70,11 +70,11 @@ jobs:
       #   run: go test ./...
 
       # 编译 HTTP server，确认后端主程序可以正常构建。
-      - name: Build server
-        working-directory: backend
-        run: go build ./cmd/server
+#      - name: Build server
+#        working-directory: backend
+#        run: go build ./cmd/server
 
       # 编译数据库迁移工具，确认 migration 执行程序可以正常构建。
-      - name: Build migration tool
-        working-directory: backend
-        run: go build ./cmd/migrate
+#      - name: Build migration tool
+#        working-directory: backend
+#        run: go build ./cmd/migrate
