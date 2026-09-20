@@ -53,7 +53,7 @@ GitHub Actions 的 `Leave CD` 工作流在 `deploy` 分支更新后执行以下�
         ↓
     从旧 current 复制 config/config.yaml 到新版本目录
         ↓
-    将 current 统一切换为 releases/v{versionName} 的软链接
+    将 current 统一切换为相对路径 releases/v{versionName} 的软链接
         ↓
     从 current/Leave 启动 Leave_test
         ↓
@@ -66,6 +66,6 @@ GitHub Actions 的 `Leave CD` 工作流在 `deploy` 分支更新后执行以下�
 需要配置以下 Secrets：
 
 - `SERVER_HOST`、`SERVER_PORT`、`SERVER_USERNAME`、`SERVER_SSH_KEY`
-项目目录固定为 `/www/wwwroot/Leave_test`，程序固定从 `current/Leave` 启动，PID 文件固定为 `/www/wwwroot/Leave_test/Leave.pid`。工作流会停止旧进程，将 `current` 统一切换为新版本软链接；如果旧 `current` 是实体目录，会先移到 `.current-directory-{version}` 保留，不会直接删除。随后从新版本启动程序，并检查 `127.0.0.1:10000/api/v1/health`。不会使用 `pkill` 或 `killall`，也不会停止其他 Go 进程。
+项目目录固定为 `/www/wwwroot/Leave_test`，运行文件固定为 `/www/wwwroot/Leave_test/current/Leave`。工作流只停止占用 `10000` 端口的旧进程，不生成 `Leave.log` 或 `Leave.pid`，将 `current` 统一切换为项目内相对软链接 `releases/v{version}`；如果旧 `current` 是实体目录，会先移到 `.current-directory-{version}` 保留，不会直接删除。随后通过 `current/Leave` 启动程序，并检查 `127.0.0.1:10000/api/v1/health`。不会使用 `pkill` 或 `killall`，也不会停止其他 Go 进程。
 
 回滚时，将 current 重新指向上一个 releases 目录，然后重启服务。
