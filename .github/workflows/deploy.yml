@@ -99,7 +99,7 @@ jobs:
             case "$APP_ROOT" in /*) ;; *) echo "APP_ROOT must be absolute" >&2; exit 1 ;; esac
             mkdir -p "$APP_ROOT/packages/android" "$APP_ROOT/releases/v$VERSION_NAME"
 
-      # APK 是按版本保存的，不覆盖旧版本安装包，便于客户端回退或重新下载。
+      # APK 是按版本保存的，不覆盖旧版本安装包，便于客户端回退或重新下载
       - name: Upload versioned APK
         uses: appleboy/scp-action@v1
         with:
