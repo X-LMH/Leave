@@ -111,7 +111,7 @@ jobs:
           target: /www/wwwroot/Leave_test/packages/android
           strip_components: 1
 
-      # 先把后端二进制放到版本目录，上传完成后才进行 current 切换和服务重启。
+      # 先把后端二进制放到版本目录，上传完成后才进行 current 切换和服务重启
       - name: Upload versioned Go server
         uses: appleboy/scp-action@v1
         with:
