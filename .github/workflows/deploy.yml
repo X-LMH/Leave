@@ -1,43 +1,164 @@
-# 持续交付（CD）流程：只有推送版本 Tag 时才执行正式发布。
-name: Leave Backend CD
+# 持续交付流程：推送 deploy 分支后发布当前版本。
+name: Leave CD
 
 on:
   push:
     branches:
       - deploy
 
-# 同一个 Tag 重复触发时不取消正在进行的发布，避免产生不完整的发布结果
+# 同一个分支连续发布时不取消正在进行的发布，避免产生不完整的发布结果。
 concurrency:
-  group: backend-cd-${{ github.ref }}
+  group: leave-cd-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
-  # 在 Tag 对应的 commit 上复用 CI workflow。
-  # 发布前会执行格式检查、静态检查、测试和构建验证。
+  # 先复用 CI，只有检查成功才允许触发服务器上传。
   ci:
-    name: Run CI for release tag
+    name: Run CI before deployment
     uses: ./.github/workflows/ci.yml
 
   deploy:
-    name: Upload Android APK
-    # deploy 必须等待 ci 完成；CI 失败时，该 job 会被自动跳过。
+    name: Upload APK and Go server
     needs: ci
     if: needs.ci.result == 'success'
     runs-on: ubuntu-latest
 
     steps:
-      # checkout 当前触发 CD 的版本，而不是默认分支的最新代码。
-      - name: Check out tag
+      # 固定使用本次推送对应的提交，避免构建到其他分支的代码。
+      - name: Check out release commit
         uses: actions/checkout@v5
 
-      # 使用 GitHub Repository Secrets 提供 SSH 连接参数和私钥，仓库不保存任何凭据。
-      # 上传后服务器上的文件名为 app.apk，已存在的同名文件会被覆盖。
-      - name: Upload Android APK
-        uses: appleboy/scp-action@v0.1.7
+      # 使用 backend/go.mod 声明的 Go 版本，保证本地和 CI 的编译环境一致。
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      # manifest.json 含有注释，不能直接按标准 JSON 解析；这里只读取两个版本字段。
+      # 输出同时作为 APK 文件名和服务器 releases 目录名，确保三者版本一致。
+      - name: Read application version
+        id: app-version
+        shell: bash
+        run: |
+          node <<'NODE' >> "$GITHUB_OUTPUT"
+          const fs = require('fs');
+          const manifest = fs.readFileSync('frontend/manifest.json', 'utf8');
+
+          function readManifestValue(name) {
+            const match = manifest.match(new RegExp('"' + name + '"\\s*:\\s*"([^"]+)"'));
+            if (!match) {
+              throw new Error(`Missing ${name} in frontend/manifest.json`);
+            }
+            return match[1];
+          }
+
+          const versionName = readManifestValue('versionName');
+          const versionCode = readManifestValue('versionCode');
+          if (!/^\d+(?:\.\d+)*$/.test(versionName)) {
+            throw new Error(`Invalid versionName: ${versionName}`);
+          }
+          if (!/^\d+$/.test(versionCode)) {
+            throw new Error(`Invalid versionCode: ${versionCode}`);
+          }
+
+          console.log(`version_name=${versionName}`);
+          console.log(`version_code=${versionCode}`);
+          console.log(`apk_name=leave-android-${versionCode}-${versionName}.apk`);
+          NODE
+
+      # APK 只改发布文件名，不修改原始 artifacts/android/app.apk。
+      # build-linux.sh 只编译 cmd/server，不编译或执行 cmd/migrate。
+      - name: Prepare release artifacts
+        env:
+          APK_NAME: ${{ steps.app-version.outputs.apk_name }}
+        run: |
+          mkdir -p dist
+          test -f artifacts/android/app.apk
+          cp artifacts/android/app.apk "dist/$APK_NAME"
+          bash deploy/build-linux.sh amd64
+
+      # scp-action 不负责业务目录规划，先创建本次发布需要的两个目录。
+      # 这里不创建、不触碰 scripts/ 和 backups/。
+      - name: Prepare server release directories
+        uses: appleboy/ssh-action@v1
+        env:
+          APP_ROOT: ${{ secrets.SERVER_APP_ROOT }}
+          VERSION_NAME: ${{ steps.app-version.outputs.version_name }}
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USERNAME }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: ${{ secrets.SERVER_PORT }}
-          source: artifacts/android/app.apk
-          target: /www/wwwroot
+          envs: APP_ROOT,VERSION_NAME
+          script_stop: true
+          script: |
+            set -eu
+            test -n "$APP_ROOT"
+            case "$APP_ROOT" in /*) ;; *) echo "SERVER_APP_ROOT must be absolute" >&2; exit 1 ;; esac
+            mkdir -p "$APP_ROOT/packages/android" "$APP_ROOT/releases/v$VERSION_NAME"
+
+      # APK 是按版本保存的，不覆盖旧版本安装包，便于客户端回退或重新下载。
+      - name: Upload versioned APK
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USERNAME }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT }}
+          source: dist/${{ steps.app-version.outputs.apk_name }}
+          target: ${{ secrets.SERVER_APP_ROOT }}/packages/android
+          strip_components: 1
+
+      # 先把后端二进制放到版本目录，上传完成后才进行 current 切换和服务重启。
+      - name: Upload versioned Go server
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USERNAME }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT }}
+          source: bin/Leave
+          target: ${{ secrets.SERVER_APP_ROOT }}/releases/v${{ steps.app-version.outputs.version_name }}
+          strip_components: 1
+
+      # 该步骤必须最后执行：复制配置、切换 current、重启并验证目标服务。
+      # SERVICE_NAME 必须是服务器上已确认的目标服务名，不能填写通用进程名。
+      - name: Switch release and restart Go service
+        uses: appleboy/ssh-action@v1
+        env:
+          APP_ROOT: ${{ secrets.SERVER_APP_ROOT }}
+          VERSION_NAME: ${{ steps.app-version.outputs.version_name }}
+          SERVICE_NAME: ${{ secrets.SERVER_SERVICE_NAME }}
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USERNAME }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT }}
+          envs: APP_ROOT,VERSION_NAME,SERVICE_NAME
+          script_stop: true
+          script: |
+            set -eu
+
+            test -n "$APP_ROOT"
+            test -n "$VERSION_NAME"
+            test -n "$SERVICE_NAME"
+            release_dir="$APP_ROOT/releases/v$VERSION_NAME"
+            current_dir="$APP_ROOT/current"
+            binary="$release_dir/Leave"
+
+            test -f "$binary"
+            test -f "$current_dir/config/config.yaml"
+
+            # 每个版本保留运行所需配置；不上传或处理 scripts、backups。
+            mkdir -p "$release_dir/config"
+            cp -p "$current_dir/config/config.yaml" "$release_dir/config/config.yaml"
+            chmod 0755 "$binary"
+
+            # current 是 systemd 的 WorkingDirectory/ExecStart 所使用的实际路径。
+            ln -sfn "$release_dir" "$current_dir"
+
+            # 只重启指定的 Go 服务，绝不使用 pkill/killall。
+            systemctl restart "$SERVICE_NAME"
+            systemctl is-active --quiet "$SERVICE_NAME"
+            systemctl show "$SERVICE_NAME" --property=ActiveState,MainPID,ExecMainStartTimestamp
