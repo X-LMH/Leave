@@ -75,6 +75,16 @@ GitHub Actions 的 `Leave CD` 工作流在 `deploy` 分支更新后执行以下�
 
 本流程不处理 `backups/`。`manifest.json` 和 `android.yaml` 只在 GitHub Actions 中读取，不上传服务器。部署脚本统一放在服务器的 `scripts/`，每个 release 保存程序和本次发布 SQL；数据库 migration 统一保存在根目录，并且只新增、不修改历史文件。APK 必须放在 `deploy/releases/`，原始文件名可以是任意名称；如果目录中存在多个 APK，使用最后修改时间最新的一个，并在上传前统一重命名为 `leave-{platform}-{versionCode}-{versionName}.apk`。配置统一使用项目根目录的 `config/config.yaml` 和 `.env`。
 
+每次 CD 会覆盖服务器 `scripts/` 目录中的同名文件：
+
+    deploy-release.sh
+    run-migrations.sh
+    publish-version.sh
+    switch-and-restart.sh
+    migrate
+
+服务器 `scripts/` 中其他未被上传的脚本不会被删除。根目录 `database/migrations/` 会接收本次提交中的 migration 文件；已存在的同名文件可能被覆盖，但服务器中其他历史 migration 不会被删除。
+
 ## GitHub Secrets
 
 需要配置以下 Secrets：
