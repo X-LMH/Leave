@@ -7,9 +7,7 @@ import (
 )
 
 func HealthHandler(c *gin.Context) {
-	// TODO: version is test 字段
 	response.Success(c, gin.H{
-		"status":  "ok",
-		"version": "1",
+		"status": "ok",
 	})
 }

@@ -2,6 +2,7 @@ package router
 
 import (
 	"backend/internal/controller"
+	appcontroller "backend/internal/controller/app"
 	"backend/internal/middleware"
 
 	"github.com/gin-gonic/gin"
@@ -20,36 +21,36 @@ func SetupRouter() *gin.Engine {
 	api.GET("/health", controller.HealthHandler)
 
 	// 版本接口必须不受版本校验保护，旧客户端才能获取更新信息。
-	api.GET("/app-version", controller.GetCurrentAppVersionHandler)
-	api.GET("/app-download", controller.DownloadCurrentAppHandler)
-	api.HEAD("/app-download", controller.DownloadCurrentAppHandler)
+	api.GET("/app-version", appcontroller.GetCurrentAppVersionHandler)
+	api.GET("/app-download", appcontroller.DownloadCurrentAppHandler)
+	api.HEAD("/app-download", appcontroller.DownloadCurrentAppHandler)
 	api.Use(middleware.AppVersionMiddleware())
 
 	// 公共接口
 	{
-		api.POST("/register", controller.RegisterHandler)
-		api.POST("/login", controller.LoginHandler)
+		api.POST("/register", appcontroller.RegisterHandler)
+		api.POST("/login", appcontroller.LoginHandler)
 	}
 
 	auth := api.Group("")
 	auth.Use(middleware.JWTAuthMiddleware())
 	{
-		auth.POST("/logout", controller.LogoutHandler)
-		auth.POST("/client-info", controller.UpdateAppInfoHandler)
-		auth.POST("/profile", controller.ProfileHandler)
-		auth.POST("/password", controller.ChangePasswordHandler)
-		auth.GET("/profile", controller.GetProfileHandler)
+		auth.POST("/logout", appcontroller.LogoutHandler)
+		auth.POST("/client-info", appcontroller.UpdateAppInfoHandler)
+		auth.POST("/profile", appcontroller.ProfileHandler)
+		auth.POST("/password", appcontroller.ChangePasswordHandler)
+		auth.GET("/profile", appcontroller.GetProfileHandler)
 
-		auth.GET("/classes", controller.GetClassOptionsHandler)
-		auth.GET("/apartments", controller.GetApartmentOptionsHandler)
-		auth.GET("/leave-types", controller.GetLeaveTypeOptionsHandler)
+		auth.GET("/classes", appcontroller.GetClassOptionsHandler)
+		auth.GET("/apartments", appcontroller.GetApartmentOptionsHandler)
+		auth.GET("/leave-types", appcontroller.GetLeaveTypeOptionsHandler)
 
-		auth.POST("/record", controller.CreateRecordHandler)
-		auth.GET("/record/:id", controller.GetRecordHandler)
-		auth.GET("/records", controller.GetRecordsLIstHandler)
-		auth.DELETE("/record/:id", controller.DeleteRecordHandler)
+		auth.POST("/record", appcontroller.CreateRecordHandler)
+		auth.GET("/record/:id", appcontroller.GetRecordHandler)
+		auth.GET("/records", appcontroller.GetRecordsLIstHandler)
+		auth.DELETE("/record/:id", appcontroller.DeleteRecordHandler)
 
-		auth.POST("/feedback", controller.CreateFeedbackHandler)
+		auth.POST("/feedback", appcontroller.CreateFeedbackHandler)
 	}
 
 	return r
