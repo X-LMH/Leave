@@ -44,3 +44,18 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+
+# 管理后台 / SoybeanAdmin
+admin/node_modules/
+admin/dist/
+admin/dist-ssr/
+admin/coverage/
+admin/.vite/
+admin/*.local
+admin/cypress/videos/
+admin/cypress/screenshots/
+admin/.VSCodeCounter
+admin/src-tauri/target/
+admin/.codegraph
+admin/package-lock.json
+admin/yarn.lock
