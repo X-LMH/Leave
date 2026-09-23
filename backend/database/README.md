@@ -36,7 +36,10 @@ tables/app_versions.sql
 ```text
 seed/leave_types.sql
 seed/app_versions.sql
+seed/admin.sql
 ```
+
+`admin.sql` 创建默认管理员账号：账号 `admin`，初始密码 `admin123`。首次登录后请立即修改密码。
 
 数据初始化脚本和表结构脚本分开维护。除非数据本身就是系统必要的基础配置，否则不要把业务数据写入 `tables/`。
 

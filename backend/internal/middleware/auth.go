@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"backend/internal/dao/mysql"
+	"backend/internal/models"
 	"backend/internal/request"
 	"backend/internal/response"
 	"backend/internal/utils/jwt"
@@ -46,9 +47,23 @@ func JWTAuthMiddleware() gin.HandlerFunc {
 		}
 
 		// 令牌验证通过，将用户信息存入上下文
-		c.Set(request.CtxStuID, claims.StudentID) // 存储用户名，供后续处理函数使用
+		c.Set(request.CtxStuID, claims.StudentID)
+		c.Set(request.CtxRole, claims.Role)
 
 		// 继续执行后续的处理函数（如业务逻辑）
+		c.Next()
+	}
+}
+
+// AdminAuthMiddleware 仅允许管理员访问受保护的管理端接口。
+func AdminAuthMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		role, err := request.GetCurrentRole(c)
+		if err != nil || role != models.RoleAdmin {
+			response.Error(c, response.CodeNeedLogin)
+			c.Abort()
+			return
+		}
 		c.Next()
 	}
 }

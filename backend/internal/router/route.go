@@ -20,7 +20,6 @@ func SetupRouter() *gin.Engine {
 
 	// 健康检查接口
 	api.GET("/health", controller.HealthHandler)
-	api.GET("/admin/classes", admincontroller.GetClassesHandler)
 
 	// 版本接口必须不受版本校验保护，旧客户端才能获取更新信息。
 	api.GET("/app-version", appcontroller.GetCurrentAppVersionHandler)
@@ -53,6 +52,12 @@ func SetupRouter() *gin.Engine {
 		auth.DELETE("/record/:id", appcontroller.DeleteRecordHandler)
 
 		auth.POST("/feedback", appcontroller.CreateFeedbackHandler)
+	}
+
+	admin := api.Group("/admin")
+	admin.Use(middleware.JWTAuthMiddleware(), middleware.AdminAuthMiddleware())
+	{
+		admin.GET("/classes", admincontroller.GetClassesHandler)
 	}
 
 	return r
