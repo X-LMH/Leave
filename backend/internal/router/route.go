@@ -29,29 +29,30 @@ func SetupRouter() *gin.Engine {
 
 	// 公共接口
 	{
-		api.POST("/register", appcontroller.RegisterHandler)
-		api.POST("/login", appcontroller.LoginHandler)
+		auth := api.Group("/auth")
+		auth.POST("/register", appcontroller.RegisterHandler)
+		auth.POST("/login", appcontroller.LoginHandler)
 	}
 
-	auth := api.Group("")
-	auth.Use(middleware.JWTAuthMiddleware())
+	user := api.Group("")
+	user.Use(middleware.JWTAuthMiddleware())
 	{
-		auth.POST("/logout", appcontroller.LogoutHandler)
-		auth.POST("/client-info", appcontroller.UpdateAppInfoHandler)
-		auth.POST("/profile", appcontroller.ProfileHandler)
-		auth.POST("/password", appcontroller.ChangePasswordHandler)
-		auth.GET("/profile", appcontroller.GetProfileHandler)
+		user.POST("/logout", appcontroller.LogoutHandler)
+		user.POST("/client-info", appcontroller.UpdateAppInfoHandler)
+		user.POST("/profile", appcontroller.ProfileHandler)
+		user.POST("/password", appcontroller.ChangePasswordHandler)
+		user.GET("/profile", appcontroller.GetProfileHandler)
 
-		auth.GET("/class-options", appcontroller.GetClassOptionsHandler)
-		auth.GET("/apartments", appcontroller.GetApartmentOptionsHandler)
-		auth.GET("/leave-types", appcontroller.GetLeaveTypeOptionsHandler)
+		user.GET("/class-options", appcontroller.GetClassOptionsHandler)
+		user.GET("/apartments", appcontroller.GetApartmentOptionsHandler)
+		user.GET("/leave-types", appcontroller.GetLeaveTypeOptionsHandler)
 
-		auth.POST("/record", appcontroller.CreateRecordHandler)
-		auth.GET("/record/:id", appcontroller.GetRecordHandler)
-		auth.GET("/records", appcontroller.GetRecordsLIstHandler)
-		auth.DELETE("/record/:id", appcontroller.DeleteRecordHandler)
+		user.POST("/record", appcontroller.CreateRecordHandler)
+		user.GET("/record/:id", appcontroller.GetRecordHandler)
+		user.GET("/records", appcontroller.GetRecordsLIstHandler)
+		user.DELETE("/record/:id", appcontroller.DeleteRecordHandler)
 
-		auth.POST("/feedback", appcontroller.CreateFeedbackHandler)
+		user.POST("/feedback", appcontroller.CreateFeedbackHandler)
 	}
 
 	admin := api.Group("/admin")
