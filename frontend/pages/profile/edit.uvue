@@ -19,7 +19,7 @@
 <script setup lang="uts">
 import { computed, ref } from 'vue'
 import ProfilePageShell from '@/components/ProfilePageShell.uvue'
-import { ApartmentOption, ClassOption, getApartments, getClasses, getCurrentUser, getProfile, ProfileData, saveProfile, updateCurrentUser } from '@/utils/api.uts'
+import { ApartmentOption, ClassOption, getApartments, getClassOptions, getCurrentUser, getProfile, ProfileData, saveProfile, updateCurrentUser } from '@/utils/api.uts'
 
 const studentID = ref('')
 const classOptions = ref<ClassOption[]>([])
@@ -105,7 +105,7 @@ function fillProfile(profile: ProfileData) {
 
 async function loadPage() {
 	try {
-		classOptions.value = await getClasses()
+		classOptions.value = await getClassOptions()
 		const profile = await getProfile()
 		if (profile != null) {
 			fillProfile(profile)

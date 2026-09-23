@@ -2,6 +2,7 @@ package router
 
 import (
 	"backend/internal/controller"
+	admincontroller "backend/internal/controller/admin"
 	appcontroller "backend/internal/controller/app"
 	"backend/internal/middleware"
 
@@ -19,6 +20,7 @@ func SetupRouter() *gin.Engine {
 
 	// 健康检查接口
 	api.GET("/health", controller.HealthHandler)
+	api.GET("/admin/classes", admincontroller.GetClassesHandler)
 
 	// 版本接口必须不受版本校验保护，旧客户端才能获取更新信息。
 	api.GET("/app-version", appcontroller.GetCurrentAppVersionHandler)
@@ -41,7 +43,7 @@ func SetupRouter() *gin.Engine {
 		auth.POST("/password", appcontroller.ChangePasswordHandler)
 		auth.GET("/profile", appcontroller.GetProfileHandler)
 
-		auth.GET("/classes", appcontroller.GetClassOptionsHandler)
+		auth.GET("/class-options", appcontroller.GetClassOptionsHandler)
 		auth.GET("/apartments", appcontroller.GetApartmentOptionsHandler)
 		auth.GET("/leave-types", appcontroller.GetLeaveTypeOptionsHandler)
 

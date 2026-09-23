@@ -438,8 +438,8 @@ export function saveProfile(payload: ProfilePayload): Promise<void> {
 	return request<void>('/profile', 'POST', payload, true)
 }
 
-export async function getClasses(): Promise<ClassOption[]> {
-	const data = await request<UTSJSONObject[]>('/classes', 'GET', null, true)
+export async function getClassOptions(): Promise<ClassOption[]> {
+	const data = await request<UTSJSONObject[]>('/class-options', 'GET', null, true)
 	return data.map((item): ClassOption => {
 		return {
 			id: item['id'] as number,

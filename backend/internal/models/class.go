@@ -7,6 +7,7 @@ type Class struct {
 	College   string    `gorm:"column:college"`
 	Major     string    `gorm:"column:major"`
 	ClassName string    `gorm:"column:class_name"`
+	IsEnabled bool      `gorm:"column:is_enabled"`
 	CreatedAt time.Time `gorm:"column:created_at"`
 	UpdatedAt time.Time `gorm:"column:updated_at"`
 }

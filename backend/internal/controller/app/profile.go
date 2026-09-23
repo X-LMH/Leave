@@ -60,7 +60,7 @@ func GetProfileHandler(c *gin.Context) {
 
 // GetClassOptionsHandler returns classes for the profile form selector.
 func GetClassOptionsHandler(c *gin.Context) {
-	data, err := service.GetClasses()
+	data, err := service.GetClassOptions()
 	if err != nil {
 		response.Error(c, response.CodeServerBusy)
 		return

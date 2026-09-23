@@ -39,22 +39,6 @@ func GetProfileByStuID(studentID string) (data *models.Profile, err error) {
 	return
 }
 
-func GetClassByID(classID uint) (*models.Class, error) {
-	class := new(models.Class)
-	if err := db.Where("id = ?", classID).First(class).Error; err != nil {
-		return nil, err
-	}
-	return class, nil
-}
-
-func GetClasses() ([]*models.Class, error) {
-	classes := make([]*models.Class, 0)
-	err := db.Select("id", "college", "major", "class_name").
-		Order("college ASC, major ASC, class_name ASC, id ASC").
-		Find(&classes).Error
-	return classes, err
-}
-
 func GetApartmentByID(apartmentID uint) (*models.Apartment, error) {
 	apartment := new(models.Apartment)
 	if err := db.Where("id = ?", apartmentID).First(apartment).Error; err != nil {

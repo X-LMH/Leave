@@ -58,7 +58,7 @@ func getProfileAndClass(studentID string) (*models.Profile, *models.Class, error
 }
 
 // GetClasses returns class options for profile selectors.
-func GetClasses() ([]*dto.ClassOption, error) {
+func GetClassOptions() ([]*dto.ClassOption, error) {
 	classes, err := mysql.GetClasses()
 	if err != nil {
 		return nil, err
@@ -71,6 +71,32 @@ func GetClasses() ([]*dto.ClassOption, error) {
 		})
 	}
 	return options, nil
+}
+
+func GetAdminClasses(query dto.AdminClassListQuery) (*dto.AdminClassListResponse, error) {
+	classes, total, err := mysql.GetAdminClasses(query)
+	if err != nil {
+		return nil, err
+	}
+
+	items := make([]*dto.AdminClassListItem, 0, len(classes))
+	for _, class := range classes {
+		items = append(items, &dto.AdminClassListItem{
+			ID:        class.ID,
+			College:   class.College,
+			Major:     class.Major,
+			ClassName: class.ClassName,
+			IsEnabled: class.IsEnabled,
+			CreatedAt: class.CreatedAt,
+			UpdatedAt: class.UpdatedAt,
+		})
+	}
+	return &dto.AdminClassListResponse{
+		Items:    items,
+		Total:    total,
+		Page:     query.Page,
+		PageSize: query.PageSize,
+	}, nil
 }
 
 // GetApartments returns enabled apartment options for profile selectors.
