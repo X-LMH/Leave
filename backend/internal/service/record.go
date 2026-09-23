@@ -41,6 +41,7 @@ func CreateRecord(studentID string, request *dto.RecordCreateRequest) (*dto.Reco
 	record := &models.Record{
 		StudentID:      studentID,
 		Name:           profile.Name,
+		Gender:         profile.Gender,
 		ParentName:     profile.ParentName,
 		ParentPhone:    profile.ParentPhone,
 		TeacherName:    profile.TeacherName,
@@ -55,6 +56,7 @@ func CreateRecord(studentID string, request *dto.RecordCreateRequest) (*dto.Reco
 		IsLeaveSchool:  *request.IsLeaveSchool,
 		LeaveReason:    request.LeaveReason,
 		TravelWay:      request.TravelWay,
+		Destination:    request.Destination,
 		AppliedAt:      request.AppliedAt,
 		ApprovedAt:     &request.ApprovedAt,
 	}
@@ -118,8 +120,12 @@ func validateAndNormalizeRecordRequest(request *dto.RecordCreateRequest) bool {
 	request.AffectedCourse = strings.TrimSpace(request.AffectedCourse)
 	request.LeaveReason = strings.TrimSpace(request.LeaveReason)
 	request.TravelWay = strings.TrimSpace(request.TravelWay)
+	request.Destination = strings.TrimSpace(request.Destination)
 
 	if request.LeaveTypeID == 0 || request.IsLeaveSchool == nil || request.LeaveReason == "" {
+		return false
+	}
+	if *request.IsLeaveSchool && request.Destination == "" {
 		return false
 	}
 	if request.StartTime.IsZero() || request.EndTime.IsZero() || request.AppliedAt.IsZero() || request.ApprovedAt.IsZero() {
@@ -147,6 +153,7 @@ func toRecordResponse(record *models.Record) *dto.RecordResponse {
 		StudentID: record.StudentID,
 		ApplicantInfo: dto.RecordApplicantInfo{
 			Name:        record.Name,
+			Gender:      record.Gender,
 			ParentName:  record.ParentName,
 			ParentPhone: record.ParentPhone,
 			TeacherName: record.TeacherName,
@@ -165,6 +172,7 @@ func toRecordResponse(record *models.Record) *dto.RecordResponse {
 		IsLeaveSchool:  record.IsLeaveSchool,
 		LeaveReason:    record.LeaveReason,
 		TravelWay:      record.TravelWay,
+		Destination:    record.Destination,
 		AppliedAt:      record.AppliedAt,
 	}
 	if record.ApprovedAt != nil {

@@ -12,12 +12,14 @@ type RecordCreateRequest struct {
 	IsLeaveSchool  *bool     `json:"is_leave_school"`
 	LeaveReason    string    `json:"leave_reason"`
 	TravelWay      string    `json:"travel_way"`
+	Destination    string    `json:"destination"`
 	AppliedAt      time.Time `json:"applied_at"`
 	ApprovedAt     time.Time `json:"approved_at"`
 }
 
 type RecordApplicantInfo struct {
 	Name        string `json:"name"`
+	Gender      string `json:"gender"`
 	ParentName  string `json:"parent_name"`
 	ParentPhone string `json:"parent_phone"`
 	TeacherName string `json:"teacher_name"`
@@ -38,6 +40,7 @@ type RecordResponse struct {
 	IsLeaveSchool  bool                `json:"is_leave_school"`
 	LeaveReason    string              `json:"leave_reason"`
 	TravelWay      string              `json:"travel_way"`
+	Destination    string              `json:"destination"`
 	AppliedAt      time.Time           `json:"applied_at"`
 	ApprovedAt     time.Time           `json:"approved_at"`
 }

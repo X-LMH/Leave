@@ -14,6 +14,7 @@ type Record struct {
 	ID             uint           `gorm:"column:id;primaryKey;autoIncrement"`
 	StudentID      string         `gorm:"column:student_id"`
 	Name           string         `gorm:"column:name"`
+	Gender         string         `gorm:"column:gender"`
 	ParentName     string         `gorm:"column:parent_name"`
 	ParentPhone    string         `gorm:"column:parent_phone"`
 	TeacherName    string         `gorm:"column:teacher_name"`
@@ -28,6 +29,7 @@ type Record struct {
 	IsLeaveSchool  bool           `gorm:"column:is_leave_school"` // LeaveSchoolNo 或 LeaveSchoolYes
 	LeaveReason    string         `gorm:"column:leave_reason"`
 	TravelWay      string         `gorm:"column:travel_way"`
+	Destination    string         `gorm:"column:destination"`
 	AppliedAt      time.Time      `gorm:"column:applied_at"`
 	ApprovedAt     *time.Time     `gorm:"column:approved_at"`
 	CreatedAt      time.Time      `gorm:"column:created_at"`

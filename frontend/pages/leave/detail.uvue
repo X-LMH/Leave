@@ -34,6 +34,7 @@ function formatTime(value: string): string {
 function detailApplication(record: RecordDetail): string {
 	return JSON.stringify({
 		studentName: record.applicant_info.name,
+		gender: record.applicant_info.gender,
 		parentName: record.applicant_info.parent_name,
 		parentPhone: record.applicant_info.parent_phone,
 		teacherName: record.applicant_info.teacher_name,
@@ -48,7 +49,7 @@ function detailApplication(record: RecordDetail): string {
 		leaveSchool: record.is_leave_school ? '是' : '否',
 		reason: record.leave_reason,
 		travel: record.travel_way,
-		destination: '内蒙古自治区,呼和浩特市,土默特左旗',
+		destination: record.destination,
 		submitTime: formatTime(record.applied_at),
 		approvalTime: formatTime(record.approved_at)
 	})

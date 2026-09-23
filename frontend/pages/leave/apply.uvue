@@ -98,6 +98,20 @@
 						</view>
 					</view>
 				</view>
+				<view v-if="leaveSchool == '是'" class="form-card single-card destination-card">
+					<picker class="field-picker destination-picker" mode="multiSelector" :range="destinationRegionOptions" :value="destinationRegionIndex" @columnchange="destinationRegionColumnChange" @change="destinationChange">
+						<view class="destination-content">
+							<view class="label-wrap">
+								<text class="field-label">请假去向</text>
+								<text class="required">*</text>
+							</view>
+							<view class="destination-value-row">
+								<text :class="destination == '' ? 'field-placeholder destination-value' : 'field-value destination-value'">{{ destination == '' ? '请选择省 / 市 / 区县' : destination }}</text>
+								<view class="destination-arrow"></view>
+							</view>
+						</view>
+					</picker>
+				</view>
 				<view class="form-card reason-card">
 					<view class="label-wrap reason-label">
 						<text class="field-label">请假理由</text>
@@ -129,6 +143,13 @@
 import { computed, ref } from 'vue'
 import PageTransition from '@/components/PageTransition.uvue'
 import { createRecord, getLeaveTypes, LeaveTypeOption } from '@/utils/api.uts'
+import { cityData } from '@/data/city.uts'
+
+type RegionItem = {
+	title: string
+	id: string
+	children: RegionItem[]
+}
 
 const leaveTypes = ref<LeaveTypeOption[]>([])
 const leaveType = ref('')
@@ -137,6 +158,10 @@ const leaveSchool = ref('是')
 const course = ref('')
 const reason = ref('')
 const travel = ref('')
+const destination = ref('')
+const destinationRegionIndex = ref<number[]>([0, 0, 0])
+const destinationRegionOptions = ref<string[][]>([[], [], []])
+const administrativeRegions = JSON.parse<RegionItem[]>(cityData)!
 const startDate = ref('')
 const endDate = ref('')
 const isSubmitting = ref(false)
@@ -187,6 +212,81 @@ function setLeaveSchool(value: string) {
 	leaveSchool.value = value
 }
 
+function setDestinationRegionOptions(provinceIndex: number, cityIndex: number) {
+	const province = administrativeRegions[provinceIndex]
+	if (province == null) return
+	const cities = province.children
+	destinationRegionOptions.value[1] = cities.map((item): string => item.title)
+	const city = cities[cityIndex]
+	destinationRegionOptions.value[2] = city == null ? [] : city.children.map((item): string => item.title)
+}
+
+function destinationRegionColumnChange(e: UniPickerColumnChangeEvent) {
+	const column = e.detail.column
+	const selectedIndex = e.detail.value
+	destinationRegionIndex.value[column] = selectedIndex
+	if (column == 0) {
+		destinationRegionIndex.value[1] = 0
+		destinationRegionIndex.value[2] = 0
+		setDestinationRegionOptions(selectedIndex, 0)
+		return
+	}
+	if (column == 1) {
+		destinationRegionIndex.value[2] = 0
+		setDestinationRegionOptions(destinationRegionIndex.value[0], selectedIndex)
+	}
+}
+
+function destinationChange(e: UniPickerChangeEvent) {
+	const selected = e.detail.value as number[]
+	if (selected.length < 3) return
+	destinationRegionIndex.value = selected
+	const province = administrativeRegions[selected[0]]
+	const city = province == null ? null : province.children[selected[1]]
+	const district = city == null ? null : city.children[selected[2]]
+	if (province == null || city == null || district == null) return
+	destination.value = `${province.title},${city.title},${district.title}`
+}
+
+function initializeDestinationRegion() {
+	const provinceName = '内蒙古自治区'
+	const cityName = '呼和浩特市'
+	const districtName = '土默特左旗'
+	let provinceIndex = 0
+	let cityIndex = 0
+	let districtIndex = 0
+	for (let i = 0; i < administrativeRegions.length; i++) {
+		if (administrativeRegions[i].title == provinceName) {
+			provinceIndex = i
+			break
+		}
+	}
+	const province = administrativeRegions[provinceIndex]
+	if (province != null) {
+		for (let i = 0; i < province.children.length; i++) {
+			if (province.children[i].title == cityName) {
+				cityIndex = i
+				break
+			}
+		}
+		const city = province.children[cityIndex]
+		if (city != null) {
+			for (let i = 0; i < city.children.length; i++) {
+				if (city.children[i].title == districtName) {
+					districtIndex = i
+					break
+				}
+			}
+		}
+	}
+	destinationRegionIndex.value = [provinceIndex, cityIndex, districtIndex]
+	destinationRegionOptions.value[0] = administrativeRegions.map((item): string => item.title)
+	setDestinationRegionOptions(provinceIndex, cityIndex)
+	destination.value = `${provinceName},${cityName},${districtName}`
+}
+
+initializeDestinationRegion()
+
 function goHome() {
 	uni.reLaunch({ url: '/pages/home/index' })
 }
@@ -224,6 +324,10 @@ async function submit() {
 		uni.showToast({ title: '请填写请假理由', icon: 'none' })
 		return
 	}
+	if (leaveSchool.value == '是' && destination.value == '') {
+		uni.showToast({ title: '请选择请假去向', icon: 'none' })
+		return
+	}
 	isSubmitting.value = true
 	try {
 		const now = new Date().toISOString()
@@ -235,6 +339,7 @@ async function submit() {
 			is_leave_school: leaveSchool.value == '是',
 			leave_reason: reason.value,
 			travel_way: travel.value,
+			destination: leaveSchool.value == '是' ? destination.value : '',
 			applied_at: appliedAt.value,
 			approved_at: now
 		})
@@ -539,6 +644,41 @@ onLoad(() => {
 }
 .travel-card {
 	margin-bottom:50rpx
+}
+.destination-card {
+	height:156rpx;
+	padding-top:14rpx;
+	padding-bottom:14rpx
+}
+.destination-picker {
+	height:100%
+}
+.destination-content {
+	height:100%;
+	flex-direction:column;
+	justify-content:center
+}
+.destination-value-row {
+	flex-direction:row;
+	align-items:center;
+	margin-top:4rpx
+}
+.destination-value {
+	flex:1;
+	font-size:27rpx;
+	line-height:38rpx
+}
+.destination-arrow {
+	width:12rpx;
+	height:12rpx;
+	margin-left:16rpx;
+	margin-right:8rpx;
+	border-right-width:3rpx;
+	border-bottom-width:3rpx;
+	border-right-style:solid;
+	border-bottom-style:solid;
+	border-color:#7188b5;
+	transform:rotate(45deg)
 }
 .submit-button {
 	height:110rpx;

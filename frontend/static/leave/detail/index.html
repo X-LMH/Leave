@@ -12500,6 +12500,7 @@ body {
 // 页面由 uvue 容器加载记录详情后，将展示数据作为 application 参数传入。
 const pageData = {
   studentName: '',
+  gender: 'male',
   parentName: '',
   parentPhone: '',
   teacherName: '',
@@ -12536,6 +12537,7 @@ const applicationValue = function (key, fallback) {
 const hasSubmittedApplication = submittedApplication !== null;
 if (hasSubmittedApplication) {
   pageData.studentName = applicationValue('studentName', '-');
+  pageData.gender = applicationValue('gender', 'male');
   pageData.parentName = applicationValue('parentName', '-');
   pageData.parentPhone = applicationValue('parentPhone', '-');
   pageData.teacherName = applicationValue('teacherName', '-');
@@ -12559,6 +12561,11 @@ document.querySelectorAll('[data-field]').forEach(function (node) {
   if (key && Object.prototype.hasOwnProperty.call(pageData, key)) {
     node.textContent = pageData[key];
   }
+});
+
+const avatarIcon = pageData.gender === 'female' ? '#icon-female' : '#icon-male';
+document.querySelectorAll('.gender-icon use, .avatar-icon use').forEach(function (node) {
+  node.setAttribute('xlink:href', avatarIcon);
 });
 
 // 详情卡片支持独立折叠：收起时箭头由上向下逆时针旋转 180 度。
