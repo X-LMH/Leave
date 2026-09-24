@@ -98,19 +98,17 @@
 						</view>
 					</view>
 				</view>
-				<view v-if="leaveSchool == '是'" class="form-card single-card destination-card">
-					<picker class="field-picker destination-picker" mode="multiSelector" :range="destinationRegionOptions" :value="destinationRegionIndex" @columnchange="destinationRegionColumnChange" @change="destinationChange">
-						<view class="destination-content">
-							<view class="label-wrap">
-								<text class="field-label">请假去向</text>
-								<text class="required">*</text>
-							</view>
-							<view class="destination-value-row">
-								<text :class="destination == '' ? 'field-placeholder destination-value' : 'field-value destination-value'">{{ destination == '' ? '请选择省 / 市 / 区县' : destination }}</text>
-								<view class="destination-arrow"></view>
-							</view>
+				<view v-if="leaveSchool == '是'" class="form-card single-card destination-card" @click="openDestinationPicker">
+					<view class="destination-content">
+						<view class="label-wrap">
+							<text class="field-label" @click="openDestinationPicker">请假去向</text>
+							<text class="required" @click="openDestinationPicker">*</text>
 						</view>
-					</picker>
+						<view class="destination-value-row">
+							<text :class="destination == '' ? 'field-placeholder destination-value' : 'field-value destination-value'" @click="openDestinationPicker">{{ destination == '' ? '请选择省 / 市 / 区县' : destination }}</text>
+							<view class="destination-arrow" @click="openDestinationPicker"></view>
+						</view>
+					</view>
 				</view>
 				<view class="form-card reason-card">
 					<view class="label-wrap reason-label">
@@ -135,6 +133,31 @@
 				</view>
 			</view>
 		</scroll-view>
+		<page-container :show="showDestinationPicker" position="bottom" @clickoverlay="cancelDestinationPicker">
+			<view class="destination-panel">
+				<view class="destination-panel-actions">
+					<text class="destination-panel-cancel" @click="cancelDestinationPicker">取消</text>
+					<text class="destination-panel-confirm" @click="confirmDestinationPicker">确定</text>
+				</view>
+				<picker-view class="destination-picker-view" :value="pendingDestinationRegionIndex" indicator-style="height:72rpx" @change="destinationRegionViewChange">
+					<picker-view-column>
+						<view v-for="(name, index) in destinationRegionOptions[0]" :key="index" class="destination-picker-item">
+							<text class="destination-picker-item-text">{{ name }}</text>
+						</view>
+					</picker-view-column>
+					<picker-view-column>
+						<view v-for="(name, index) in destinationRegionOptions[1]" :key="index" class="destination-picker-item">
+							<text class="destination-picker-item-text">{{ name }}</text>
+						</view>
+					</picker-view-column>
+					<picker-view-column>
+						<view v-for="(name, index) in destinationRegionOptions[2]" :key="index" class="destination-picker-item">
+							<text class="destination-picker-item-text">{{ name }}</text>
+						</view>
+					</picker-view-column>
+				</picker-view>
+			</view>
+		</page-container>
 	</view>
 	</PageTransition>
 </template>
@@ -160,6 +183,8 @@ const reason = ref('')
 const travel = ref('')
 const destination = ref('')
 const destinationRegionIndex = ref<number[]>([0, 0, 0])
+const pendingDestinationRegionIndex = ref<number[]>([0, 0, 0])
+const showDestinationPicker = ref(false)
 const destinationRegionOptions = ref<string[][]>([[], [], []])
 const administrativeRegions = JSON.parse<RegionItem[]>(cityData)!
 const startDate = ref('')
@@ -221,31 +246,44 @@ function setDestinationRegionOptions(provinceIndex: number, cityIndex: number) {
 	destinationRegionOptions.value[2] = city == null ? [] : city.children.map((item): string => item.title)
 }
 
-function destinationRegionColumnChange(e: UniPickerColumnChangeEvent) {
-	const column = e.detail.column
-	const selectedIndex = e.detail.value
-	destinationRegionIndex.value[column] = selectedIndex
-	if (column == 0) {
-		destinationRegionIndex.value[1] = 0
-		destinationRegionIndex.value[2] = 0
-		setDestinationRegionOptions(selectedIndex, 0)
-		return
-	}
-	if (column == 1) {
-		destinationRegionIndex.value[2] = 0
-		setDestinationRegionOptions(destinationRegionIndex.value[0], selectedIndex)
-	}
+function openDestinationPicker() {
+	if (showDestinationPicker.value) return
+	pendingDestinationRegionIndex.value = [...destinationRegionIndex.value]
+	setDestinationRegionOptions(pendingDestinationRegionIndex.value[0], pendingDestinationRegionIndex.value[1])
+	showDestinationPicker.value = true
 }
 
-function destinationChange(e: UniPickerChangeEvent) {
-	const selected = e.detail.value as number[]
+function cancelDestinationPicker() {
+	showDestinationPicker.value = false
+}
+
+function destinationRegionViewChange(e: UniPickerViewChangeEvent) {
+	const selected = e.detail.value
 	if (selected.length < 3) return
-	destinationRegionIndex.value = selected
+	const previous = pendingDestinationRegionIndex.value
+	// 上级地区变化时，下级索引必须回到新列表的首项。
+	if (selected[0] != previous[0]) {
+		pendingDestinationRegionIndex.value = [selected[0], 0, 0]
+		setDestinationRegionOptions(selected[0], 0)
+		return
+	}
+	if (selected[1] != previous[1]) {
+		pendingDestinationRegionIndex.value = [selected[0], selected[1], 0]
+		setDestinationRegionOptions(selected[0], selected[1])
+		return
+	}
+	pendingDestinationRegionIndex.value = selected
+}
+
+function confirmDestinationPicker() {
+	const selected = pendingDestinationRegionIndex.value
 	const province = administrativeRegions[selected[0]]
 	const city = province == null ? null : province.children[selected[1]]
 	const district = city == null ? null : city.children[selected[2]]
 	if (province == null || city == null || district == null) return
+	destinationRegionIndex.value = [...selected]
 	destination.value = `${province.title},${city.title},${district.title}`
+	showDestinationPicker.value = false
 }
 
 function initializeDestinationRegion() {
@@ -648,10 +686,9 @@ onLoad(() => {
 .destination-card {
 	height:156rpx;
 	padding-top:14rpx;
-	padding-bottom:14rpx
-}
-.destination-picker {
-	height:100%
+	padding-bottom:14rpx;
+	position:relative;
+	z-index:2
 }
 .destination-content {
 	height:100%;
@@ -679,6 +716,40 @@ onLoad(() => {
 	border-bottom-style:solid;
 	border-color:#7188b5;
 	transform:rotate(45deg)
+}
+.destination-panel {
+	background-color:#ffffff
+}
+.destination-panel-actions {
+	height:88rpx;
+	padding:0 36rpx;
+	flex-direction:row;
+	align-items:center;
+	justify-content:space-between;
+	border-bottom-width:1rpx;
+	border-bottom-style:solid;
+	border-color:#eef0f5
+}
+.destination-panel-cancel {
+	color:#333333;
+	font-size:30rpx
+}
+.destination-panel-confirm {
+	color:#3d8bff;
+	font-size:30rpx
+}
+.destination-picker-view {
+	width:100%;
+	height:432rpx
+}
+.destination-picker-item {
+	height:72rpx;
+	align-items:center;
+	justify-content:center
+}
+.destination-picker-item-text {
+	font-size:30rpx;
+	color:#333333
 }
 .submit-button {
 	height:110rpx;
