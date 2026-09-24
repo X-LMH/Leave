@@ -33,12 +33,7 @@
 
 ## 运行方式
 
-Leave 通过 current 软链接启动 Go 服务：
-
-    WorkingDirectory=/www/wwwroot/Leave
-    ExecStart=/www/wwwroot/Leave/current/Leave
-
-WorkingDirectory 必须设置为项目根目录，因为程序会读取：
+Leave 使用 current 软链接保存当前发布版本。宝塔面板中的 Go 项目名为 `Leave`，由宝塔项目启动脚本管理。部署会按 `Leave` 项目的 PID 文件停止旧进程，切换 `current` 后执行该项目的启动脚本。启动文件默认是 `/www/wwwroot/Leave/current/Leave`；工作目录设置为项目根目录，因为程序会读取：
 
     ./config/config.yaml
     ./database/migrations
@@ -69,9 +64,13 @@ GitHub Actions 的 `Leave CD` 工作流在推送 `v*` 版本标签后执行以�
         ↓
     migrate 成功后执行 app-version.sql，更新 app_versions
         ↓
+    按 Leave 项目的 PID 停止旧进程
+        ↓
     将 current 统一切换为相对路径 releases/v{versionName} 的软链接
         ↓
-    从 current/Leave 启动 Leave，并检查健康接口
+    切换 current 并执行 Leave 项目启动脚本
+        ↓
+    检查配置端口的健康接口
 
 本流程不处理 `backups/`。`manifest.json` 和 `android.yaml` 只在 GitHub Actions 中读取，不上传服务器。部署脚本统一放在服务器的 `scripts/`，每个 release 保存程序和本次发布 SQL；数据库 migration 统一保存在根目录，并且只新增、不修改历史文件。APK 必须放在 `deploy/releases/`，原始文件名可以是任意名称；如果目录中存在多个 APK，使用最后修改时间最新的一个，并在上传前统一重命名为 `leave-{platform}-{versionCode}-{versionName}.apk`。配置统一使用项目根目录的 `config/config.yaml` 和 `.env`。
 
@@ -90,6 +89,6 @@ GitHub Actions 的 `Leave CD` 工作流在推送 `v*` 版本标签后执行以�
 需要配置以下 Secrets：
 
 - `SERVER_HOST`、`SERVER_PORT`、`SERVER_USERNAME`、`SERVER_SSH_KEY`
-项目目录固定为 `/www/wwwroot/Leave`，运行文件固定为 `/www/wwwroot/Leave/current/Leave`。工作流只停止占用 `config/config.yaml` 中 `app.port` 端口的旧进程，不生成 `Leave.log` 或 `Leave.pid`，将 `current` 统一切换为项目内相对软链接 `releases/v{version}`；如果旧 `current` 是实体目录，会先移到 `.current-directory-{version}` 保留，不会直接删除。随后通过 `current/Leave` 启动程序，并检查对应端口的 `/api/v1/health`。不会使用 `pkill` 或 `killall`，也不会停止其他 Go 进程。
+项目目录固定为 `/www/wwwroot/Leave`。宝塔 Go 项目名为 `Leave`，默认启动文件 `/www/wwwroot/Leave/current/Leave`、PID 文件 `/var/tmp/gopids/Leave.pid`、启动脚本 `/www/server/go_project/vhost/scripts/Leave.sh`。如服务器中的宝塔脚本或 PID 路径不同，可在服务器 `/www/wwwroot/Leave/.env` 中设置 `BAOTA_GO_PID_FILE` 和 `BAOTA_GO_START_SCRIPT` 覆盖默认值。部署会先验证 PID 对应进程确实运行该启动文件，再停止它；之后切换 `current`、执行 Leave 项目的宝塔启动脚本，并同时核验宝塔 PID、运行中的二进制版本和配置端口的 `/api/v1/health`。不会通过端口批量杀进程，也不会绕过宝塔另行 `nohup` 启动服务。
 
 回滚时，将 current 重新指向上一个 releases 目录，然后重启服务。

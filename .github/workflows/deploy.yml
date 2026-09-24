@@ -191,7 +191,7 @@ jobs:
           target: ${{ secrets.SERVER_APP_ROOT }}/scripts
           strip_components: 1
 
-      - name: Replace current and restart Leave
+      - name: Replace current and restart Baota Go project
         uses: appleboy/ssh-action@v1
         env:
           APP_ROOT: ${{ secrets.SERVER_APP_ROOT }}
