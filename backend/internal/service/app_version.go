@@ -50,13 +50,13 @@ func GetCurrentAppPackage(platform string) (*models.AppVersion, error) {
 	return version, err
 }
 
-// IsCurrentAppVersion reports whether a client is running the current published version.
+// IsCurrentAppVersion reports whether a client meets the minimum supported version.
 func IsCurrentAppVersion(platform string, versionCode int) (*dto.AppVersionResponse, bool, error) {
 	current, err := GetCurrentAppVersion(platform, versionCode)
 	if err != nil {
 		return nil, false, err
 	}
-	return current, current.LatestVersionCode == versionCode, nil
+	return current, versionCode >= current.LatestVersionCode, nil
 }
 
 func releaseNotes(value string) []string {

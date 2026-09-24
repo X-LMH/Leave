@@ -14,7 +14,7 @@ const (
 	appVersionCodeHeader = "X-App-Version-Code"
 )
 
-// AppVersionMiddleware only permits the current published client version.
+// AppVersionMiddleware only permits clients at or above the current published version.
 func AppVersionMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		platform := strings.TrimSpace(c.GetHeader(appPlatformHeader))
