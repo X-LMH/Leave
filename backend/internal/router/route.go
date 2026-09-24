@@ -25,16 +25,19 @@ func SetupRouter() *gin.Engine {
 	api.GET("/app-version", appcontroller.GetCurrentAppVersionHandler)
 	api.GET("/app-download", appcontroller.DownloadCurrentAppHandler)
 	api.HEAD("/app-download", appcontroller.DownloadCurrentAppHandler)
-	api.Use(middleware.AppVersionMiddleware())
 
-	// 公共接口
+	// App 接口需要校验客户端版本；管理平台不受 App 版本限制。
+	app := api.Group("")
+	app.Use(middleware.AppVersionMiddleware())
+
+	// App 公共接口
 	{
-		auth := api.Group("/auth")
+		auth := app.Group("/auth")
 		auth.POST("/register", appcontroller.RegisterHandler)
 		auth.POST("/login", appcontroller.LoginHandler)
 	}
 
-	user := api.Group("")
+	user := app.Group("")
 	user.Use(middleware.JWTAuthMiddleware())
 	{
 		user.POST("/logout", appcontroller.LogoutHandler)
@@ -57,6 +60,9 @@ func SetupRouter() *gin.Engine {
 	}
 
 	admin := api.Group("/admin")
+	adminAuth := admin.Group("/auth")
+	adminAuth.POST("/login", admincontroller.LoginHandler)
+
 	admin.Use(middleware.JWTAuthMiddleware(), middleware.AdminAuthMiddleware())
 	{
 		admin.GET("/classes", admincontroller.GetClassesHandler)

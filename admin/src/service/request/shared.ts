@@ -18,7 +18,11 @@ async function handleRefreshToken() {
   const { error, data } = await fetchRefreshToken(rToken);
   if (!error) {
     localStg.set('token', data.token);
-    localStg.set('refreshToken', data.refreshToken);
+    if (data.refreshToken) {
+      localStg.set('refreshToken', data.refreshToken);
+    } else {
+      localStg.remove('refreshToken');
+    }
     return true;
   }
 
