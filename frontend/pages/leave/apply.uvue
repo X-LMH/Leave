@@ -37,7 +37,7 @@
 					</picker>
 				</view>
 				<view class="form-card time-card">
-					<picker class="field-picker picker-row time-picker-row" mode="date" :value="startPickerDate" @change="startDateChange">
+					<view class="field-picker picker-row time-picker-row" @click="openDatePicker('start')">
 						<view class="field-row time-row">
 							<view class="label-wrap">
 								<text class="field-label">开始时间</text>
@@ -49,10 +49,10 @@
 								</view>
 							</view>
 						</view>
-					</picker>
+					</view>
 					<view class="time-divider">
 					</view>
-					<picker class="field-picker picker-row time-picker-row" mode="date" :value="endPickerDate" @change="endDateChange">
+					<view class="field-picker picker-row time-picker-row" @click="openDatePicker('end')">
 						<view class="field-row time-row">
 							<view class="label-wrap">
 								<text class="field-label">结束时间</text>
@@ -64,7 +64,7 @@
 								</view>
 							</view>
 						</view>
-					</picker>
+					</view>
 					<view class="time-divider">
 					</view>
 					<view class="field-row duration-row">
@@ -158,6 +158,31 @@
 				</picker-view>
 			</view>
 		</page-container>
+		<page-container :show="showDatePicker" position="bottom" @clickoverlay="cancelDatePicker">
+			<view class="destination-panel">
+				<view class="destination-panel-actions">
+					<text class="destination-panel-cancel" @click="cancelDatePicker">取消</text>
+					<text class="destination-panel-confirm" @click="confirmDatePicker">确定</text>
+				</view>
+				<picker-view class="destination-picker-view" :value="pendingDateIndex" indicator-style="height:72rpx" @change="dateViewChange">
+					<picker-view-column>
+						<view v-for="(year, index) in dateYears" :key="index" class="destination-picker-item">
+							<text class="destination-picker-item-text">{{ year }}年</text>
+						</view>
+					</picker-view-column>
+					<picker-view-column>
+						<view v-for="(month, index) in dateMonths" :key="index" class="destination-picker-item">
+							<text class="destination-picker-item-text">{{ twoDigits(month) }}月</text>
+						</view>
+					</picker-view-column>
+					<picker-view-column>
+						<view v-for="(day, index) in dateDays" :key="index" class="destination-picker-item">
+							<text class="destination-picker-item-text">{{ twoDigits(day) }}日</text>
+						</view>
+					</picker-view-column>
+				</picker-view>
+			</view>
+		</page-container>
 	</view>
 	</PageTransition>
 </template>
@@ -189,6 +214,16 @@ const destinationRegionOptions = ref<string[][]>([[], [], []])
 const administrativeRegions = JSON.parse<RegionItem[]>(cityData)!
 const startDate = ref('')
 const endDate = ref('')
+const showDatePicker = ref(false)
+const editingDate = ref('start')
+const pendingDateIndex = ref<number[]>([0, 0, 0])
+const dateYears: number[] = []
+const dateMonths: number[] = []
+// App 的长年份滚轮在初次定位时会出现选中行偏移，限制在请假业务所需的年份范围内。
+const firstDateYear = new Date().getFullYear() - 5
+for (let year = firstDateYear; year <= firstDateYear + 20; year++) dateYears.push(year)
+for (let month = 1; month <= 12; month++) dateMonths.push(month)
+const dateDays = ref<number[]>([])
 const isSubmitting = ref(false)
 const appliedAt = ref('')
 function twoDigits(value: number): string {
@@ -204,8 +239,6 @@ function withTime(dateValue: string, time: Date): string {
 	return `${dateValue} ${formatTime(time)}`
 }
 const advanceMilliseconds = randomInteger(60 * 60, 2 * 60 * 60) * 1000
-const startPickerDate = computed((): string => startDate.value == '' ? '' : startDate.value.slice(0, 10))
-const endPickerDate = computed((): string => endDate.value == '' ? '' : endDate.value.slice(0, 10))
 const leaveTypeNames = computed((): string[] => leaveTypes.value.map((item): string => item.name))
 const durationHours = computed((): number => {
 	if (startDate.value == '' || endDate.value == '') return 0
@@ -223,14 +256,50 @@ function leaveTypeChange(e: UniPickerChangeEvent) {
 	leaveTypeID.value = selected.id
 }
 
-function startDateChange(e: UniPickerChangeEvent) {
-	const earlierTime = new Date(Date.now() - advanceMilliseconds)
-	startDate.value = withTime(e.detail.value as string, earlierTime)
+function updateDateDays(yearIndex: number, monthIndex: number) {
+	const count = new Date(dateYears[yearIndex], monthIndex + 1, 0).getDate()
+	const days: number[] = []
+	for (let day = 1; day <= count; day++) days.push(day)
+	dateDays.value = days
 }
 
-function endDateChange(e: UniPickerChangeEvent) {
+function openDatePicker(field: string) {
+	editingDate.value = field
+	const saved = field == 'start' ? startDate.value : endDate.value
+	const today = new Date()
+	const year = saved == '' ? today.getFullYear() : parseInt(saved.slice(0, 4))
+	const month = saved == '' ? today.getMonth() + 1 : parseInt(saved.slice(5, 7))
+	const day = saved == '' ? today.getDate() : parseInt(saved.slice(8, 10))
+	const yearIndex = Math.max(0, Math.min(dateYears.length - 1, year - firstDateYear))
+	const monthIndex = Math.max(0, Math.min(11, month - 1))
+	updateDateDays(yearIndex, monthIndex)
+	pendingDateIndex.value = [yearIndex, monthIndex, Math.min(day - 1, dateDays.value.length - 1)]
+	showDatePicker.value = true
+}
+
+function cancelDatePicker() {
+	showDatePicker.value = false
+}
+
+function dateViewChange(e: UniPickerViewChangeEvent) {
+	const selected = e.detail.value
+	if (selected.length < 3) return
+	if (selected[0] != pendingDateIndex.value[0] || selected[1] != pendingDateIndex.value[1]) {
+		updateDateDays(selected[0], selected[1])
+	}
+	pendingDateIndex.value = [selected[0], selected[1], Math.min(selected[2], dateDays.value.length - 1)]
+}
+
+function confirmDatePicker() {
+	const selected = pendingDateIndex.value
+	const date = `${dateYears[selected[0]]}-${twoDigits(selected[1] + 1)}-${twoDigits(selected[2] + 1)}`
 	const earlierTime = new Date(Date.now() - advanceMilliseconds)
-	endDate.value = withTime(e.detail.value as string, earlierTime)
+	if (editingDate.value == 'start') {
+		startDate.value = withTime(date, earlierTime)
+	} else {
+		endDate.value = withTime(date, earlierTime)
+	}
+	showDatePicker.value = false
 }
 
 function setLeaveSchool(value: string) {
