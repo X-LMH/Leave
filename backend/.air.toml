@@ -2,8 +2,8 @@ root = "."
 tmp_dir = "tmp"
 
 [build]
-bin = "tmp/main"
-cmd = "go build -o ./tmp/main ./cmd/server"
+bin = "tmp/main.exe"
+cmd = "go build -o ./tmp/main.exe ./cmd/server"
 full_bin = ""
 delay = 1000
 stop_on_error = true

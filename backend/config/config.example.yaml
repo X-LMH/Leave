@@ -1,7 +1,7 @@
 # APK 不应部署在 Web 服务器的静态目录；此路径可为相对 backend 工作目录的路径。
 app:
   # HTTP 服务监听端口，未配置时默认为 10000。
-  port: 10000
+  port: 8080
   # 服务器上用于存放已发布 APK 的绝对目录。
   package_dir: "/www/wwwroot/Leave/packages"
 
