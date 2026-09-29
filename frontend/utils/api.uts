@@ -2,7 +2,7 @@ import { getAppVersionCode } from '@/utils/device.uts'
 
 // HBuilderX“运行”是 development，“发行/打包”是 production。
 export const API_BASE_URL = process.env.NODE_ENV === 'development'
-	? 'http://192.168.0.86:8080/api/v1'
+	? 'http://127.0.0.1:8080/api/v1'
 	: 'http://leave.mhspace.dpdns.org/api/v1'
 
 export const STORAGE_TOKEN_KEY = 'leave_token'

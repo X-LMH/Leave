@@ -161,26 +161,45 @@
 		<page-container :show="showDatePicker" position="bottom" @clickoverlay="cancelDatePicker">
 			<view class="destination-panel">
 				<view class="destination-panel-actions">
-					<text class="destination-panel-cancel" @click="cancelDatePicker">取消</text>
-					<text class="destination-panel-confirm" @click="confirmDatePicker">确定</text>
+					<text class="destination-panel-cancel" @click="datePickerBack">{{ datePickerStep == 'date' ? '取消' : '上一步' }}</text>
+					<text class="destination-panel-confirm" @click="advanceDatePicker">{{ datePickerStep == 'date' ? '下一步' : '确定' }}</text>
 				</view>
-				<picker-view class="destination-picker-view" :value="pendingDateIndex" indicator-style="height:72rpx" @change="dateViewChange">
-					<picker-view-column>
-						<view v-for="(year, index) in dateYears" :key="index" class="destination-picker-item">
-							<text class="destination-picker-item-text">{{ year }}年</text>
-						</view>
-					</picker-view-column>
-					<picker-view-column>
-						<view v-for="(month, index) in dateMonths" :key="index" class="destination-picker-item">
-							<text class="destination-picker-item-text">{{ twoDigits(month) }}月</text>
-						</view>
-					</picker-view-column>
-					<picker-view-column>
-						<view v-for="(day, index) in dateDays" :key="index" class="destination-picker-item">
-							<text class="destination-picker-item-text">{{ twoDigits(day) }}日</text>
-						</view>
-					</picker-view-column>
-				</picker-view>
+				<view class="date-picker-wheel-wrap">
+					<picker-view :class="datePickerStep == 'date' ? 'date-picker-wheel date-picker-wheel-active' : 'date-picker-wheel'" :value="pendingDateIndex" indicator-style="height:36px" @change="dateViewChange">
+						<picker-view-column>
+							<view v-for="(year, index) in dateYears" :key="index" class="date-picker-item">
+								<text class="destination-picker-item-text">{{ year }}年</text>
+							</view>
+						</picker-view-column>
+						<picker-view-column>
+							<view v-for="(month, index) in dateMonths" :key="index" class="date-picker-item">
+								<text class="destination-picker-item-text">{{ twoDigits(month) }}月</text>
+							</view>
+						</picker-view-column>
+						<picker-view-column>
+							<view v-for="(day, index) in dateDays" :key="index" class="date-picker-item">
+								<text class="destination-picker-item-text">{{ twoDigits(day) }}日</text>
+							</view>
+						</picker-view-column>
+					</picker-view>
+					<picker-view :class="datePickerStep == 'time' ? 'date-picker-wheel date-picker-wheel-active' : 'date-picker-wheel'" :value="pendingTimeIndex" indicator-style="height:36px" @change="timeViewChange">
+						<picker-view-column>
+							<view v-for="(hour, index) in timeHours" :key="index" class="date-picker-item">
+								<text class="destination-picker-item-text">{{ twoDigits(hour) }}时</text>
+							</view>
+						</picker-view-column>
+						<picker-view-column>
+							<view v-for="(minute, index) in timeMinutes" :key="index" class="date-picker-item">
+								<text class="destination-picker-item-text">{{ twoDigits(minute) }}分</text>
+							</view>
+						</picker-view-column>
+						<picker-view-column>
+							<view v-for="(second, index) in timeSeconds" :key="index" class="date-picker-item">
+								<text class="destination-picker-item-text">{{ twoDigits(second) }}秒</text>
+							</view>
+						</picker-view-column>
+					</picker-view>
+				</view>
 			</view>
 		</page-container>
 	</view>
@@ -216,13 +235,25 @@ const startDate = ref('')
 const endDate = ref('')
 const showDatePicker = ref(false)
 const editingDate = ref('start')
+const datePickerStep = ref('date')
 const pendingDateIndex = ref<number[]>([0, 0, 0])
+// 时间滚轮常驻弹层内，先以当前时间定位，打开字段时再刷新为点击时刻。
+const initialPickerTime = new Date()
+const pendingTimeIndex = ref<number[]>([initialPickerTime.getHours(), initialPickerTime.getMinutes(), initialPickerTime.getSeconds()])
 const dateYears: number[] = []
 const dateMonths: number[] = []
+const timeHours: number[] = []
+const timeMinutes: number[] = []
+const timeSeconds: number[] = []
 // App 的长年份滚轮在初次定位时会出现选中行偏移，限制在请假业务所需的年份范围内。
 const firstDateYear = new Date().getFullYear() - 5
 for (let year = firstDateYear; year <= firstDateYear + 20; year++) dateYears.push(year)
 for (let month = 1; month <= 12; month++) dateMonths.push(month)
+for (let hour = 0; hour < 24; hour++) timeHours.push(hour)
+for (let value = 0; value < 60; value++) {
+	timeMinutes.push(value)
+	timeSeconds.push(value)
+}
 const dateDays = ref<number[]>([])
 const isSubmitting = ref(false)
 const appliedAt = ref('')
@@ -231,12 +262,6 @@ function twoDigits(value: number): string {
 }
 function randomInteger(min: number, max: number): number {
 	return Math.floor(Math.random() * (max - min + 1)) + min
-}
-function formatTime(date: Date): string {
-	return `${twoDigits(date.getHours())}:${twoDigits(date.getMinutes())}:${twoDigits(date.getSeconds())}`
-}
-function withTime(dateValue: string, time: Date): string {
-	return `${dateValue} ${formatTime(time)}`
 }
 const advanceMilliseconds = randomInteger(60 * 60, 2 * 60 * 60) * 1000
 const leaveTypeNames = computed((): string[] => leaveTypes.value.map((item): string => item.name))
@@ -266,14 +291,20 @@ function updateDateDays(yearIndex: number, monthIndex: number) {
 function openDatePicker(field: string) {
 	editingDate.value = field
 	const saved = field == 'start' ? startDate.value : endDate.value
-	const today = new Date()
-	const year = saved == '' ? today.getFullYear() : parseInt(saved.slice(0, 4))
-	const month = saved == '' ? today.getMonth() + 1 : parseInt(saved.slice(5, 7))
-	const day = saved == '' ? today.getDate() : parseInt(saved.slice(8, 10))
+	const now = new Date()
+	const year = saved == '' ? now.getFullYear() : parseInt(saved.slice(0, 4))
+	const month = saved == '' ? now.getMonth() + 1 : parseInt(saved.slice(5, 7))
+	const day = saved == '' ? now.getDate() : parseInt(saved.slice(8, 10))
 	const yearIndex = Math.max(0, Math.min(dateYears.length - 1, year - firstDateYear))
 	const monthIndex = Math.max(0, Math.min(11, month - 1))
 	updateDateDays(yearIndex, monthIndex)
 	pendingDateIndex.value = [yearIndex, monthIndex, Math.min(day - 1, dateDays.value.length - 1)]
+	if (saved == '') {
+		pendingTimeIndex.value = [now.getHours(), now.getMinutes(), now.getSeconds()]
+	} else {
+		pendingTimeIndex.value = [parseInt(saved.slice(11, 13)), parseInt(saved.slice(14, 16)), parseInt(saved.slice(17, 19))]
+	}
+	datePickerStep.value = 'date'
 	showDatePicker.value = true
 }
 
@@ -281,7 +312,16 @@ function cancelDatePicker() {
 	showDatePicker.value = false
 }
 
+function datePickerBack() {
+	if (datePickerStep.value == 'time') {
+		datePickerStep.value = 'date'
+		return
+	}
+	cancelDatePicker()
+}
+
 function dateViewChange(e: UniPickerViewChangeEvent) {
+	if (datePickerStep.value != 'date') return
 	const selected = e.detail.value
 	if (selected.length < 3) return
 	if (selected[0] != pendingDateIndex.value[0] || selected[1] != pendingDateIndex.value[1]) {
@@ -290,14 +330,43 @@ function dateViewChange(e: UniPickerViewChangeEvent) {
 	pendingDateIndex.value = [selected[0], selected[1], Math.min(selected[2], dateDays.value.length - 1)]
 }
 
-function confirmDatePicker() {
-	const selected = pendingDateIndex.value
-	const date = `${dateYears[selected[0]]}-${twoDigits(selected[1] + 1)}-${twoDigits(selected[2] + 1)}`
-	const earlierTime = new Date(Date.now() - advanceMilliseconds)
+function timeViewChange(e: UniPickerViewChangeEvent) {
+	if (datePickerStep.value != 'time') return
+	const selected = e.detail.value
+	if (selected.length < 3) return
+	pendingTimeIndex.value = [selected[0], selected[1], selected[2]]
+}
+
+function advanceDatePicker() {
+	const date = pendingDateIndex.value
+	const selectedDate = `${dateYears[date[0]]}-${twoDigits(date[1] + 1)}-${twoDigits(date[2] + 1)}`
+	if (datePickerStep.value == 'date') {
+		if (editingDate.value == 'end' && startDate.value != '' && selectedDate < startDate.value.slice(0, 10)) {
+			uni.showToast({ title: '结束时间必须晚于开始时间', icon: 'none' })
+			return
+		}
+		if (editingDate.value == 'start' && endDate.value != '' && selectedDate > endDate.value.slice(0, 10)) {
+			uni.showToast({ title: '开始时间必须早于结束时间', icon: 'none' })
+			return
+		}
+		datePickerStep.value = 'time'
+		return
+	}
+	const time = pendingTimeIndex.value
+	// 两步都完成后才更新表单，取消或返回时保留原值。
+	const value = `${selectedDate} ${twoDigits(time[0])}:${twoDigits(time[1])}:${twoDigits(time[2])}`
 	if (editingDate.value == 'start') {
-		startDate.value = withTime(date, earlierTime)
+		if (endDate.value != '' && value >= endDate.value) {
+			uni.showToast({ title: '开始时间必须早于结束时间', icon: 'none' })
+			return
+		}
+		startDate.value = value
 	} else {
-		endDate.value = withTime(date, earlierTime)
+		if (startDate.value != '' && value <= startDate.value) {
+			uni.showToast({ title: '结束时间必须晚于开始时间', icon: 'none' })
+			return
+		}
+		endDate.value = value
 	}
 	showDatePicker.value = false
 }
@@ -811,8 +880,29 @@ onLoad(() => {
 	width:100%;
 	height:432rpx
 }
+.date-picker-wheel-wrap {
+	position:relative;
+	height:432rpx
+}
+.date-picker-wheel {
+	position:absolute;
+	top:0;
+	left:0;
+	z-index:0;
+	width:100%;
+	height:432rpx;
+	background-color:#ffffff
+}
+.date-picker-wheel-active {
+	z-index:1
+}
 .destination-picker-item {
 	height:72rpx;
+	align-items:center;
+	justify-content:center
+}
+.date-picker-item {
+	height:36px;
 	align-items:center;
 	justify-content:center
 }
