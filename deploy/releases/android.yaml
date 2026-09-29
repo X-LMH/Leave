@@ -1,4 +1,4 @@
 # 本文件只维护客户端发布时需要人工填写的内容。
 # version_code、version_name 和 APK 文件名由发布脚本自动读取和生成。
 release_notes:
-  - 修复了时间选择、地区选择的bug
+  - 开始、结束时间添加了时分秒的功能
