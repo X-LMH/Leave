@@ -5,7 +5,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 APP_ROOT="${APP_ROOT:-$PROJECT_DIR}"
-CONFIG_FILE="${CONFIG_FILE:-$APP_ROOT/config/config.yaml}"
+CONFIG_FILE="${CONFIG_FILE:-$APP_ROOT/config/config.server.yaml}"
 RELEASE_SQL="${RELEASE_SQL:?RELEASE_SQL is required}"
 
 command -v mysql >/dev/null 2>&1 || { echo "mysql client is required" >&2; exit 1; }

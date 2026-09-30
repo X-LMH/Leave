@@ -6,10 +6,10 @@ app:
   package_dir: "/www/wwwroot/Leave/packages"
 
 mysql:
-  host: "localhost"
+  host: localhost
   port: 3306
-  database: "leave_list"
-  user: "root"
+  database: leave_list
+  user: root"
   password: ""
 
 # JWT 签名密钥；生产环境建议使用 JWT_SECRET 环境变量覆盖

@@ -1,4 +1,4 @@
 .PHONY: migrate
 
 migrate:
-	cd backend && go run ./cmd/migrate -config ./config/config.yaml
+	cd backend && go run ./cmd/migrate -config ./config/config.local.yaml

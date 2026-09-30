@@ -32,7 +32,7 @@ func main() {
 	loadDotEnv()
 
 	// 允许通过命令行指定配置文件路径。
-	configPath := flag.String("config", "./config/config.yaml", "path to the YAML configuration file")
+	configPath := flag.String("config", "./config/config.local.yaml", "path to the YAML configuration file")
 	migrationsPath := flag.String("migrations", "./database/migrations", "path to the migration files")
 	flag.Parse()
 

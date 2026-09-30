@@ -16,6 +16,7 @@ Thumbs.db
 !.env.example
 backend/config/config.yaml
 backend/config/config.local.yaml
+backend/config/config.server.yaml
 
 # Go 后端
 backend/tmp/
@@ -59,3 +60,6 @@ admin/src-tauri/target/
 admin/.codegraph
 admin/package-lock.json
 admin/yarn.lock
+
+# 本地测试的一些东西
+uploads/

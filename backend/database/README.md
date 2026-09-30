@@ -71,7 +71,7 @@ migrations/
 已有数据库升级时，在 `backend/` 目录运行：
 
 ```text
-go run ./cmd/migrate -config ./config/config.yaml
+go run ./cmd/migrate -config ./config/config.local.yaml
 ```
 
 也可以在项目根目录直接运行：

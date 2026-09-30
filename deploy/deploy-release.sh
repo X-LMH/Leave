@@ -12,7 +12,7 @@ switch_script="$APP_ROOT/scripts/switch-and-restart.sh"
 
 test -f "$release_binary"
 test -r "$APP_ROOT/.env" || { echo "Environment file not readable: $APP_ROOT/.env" >&2; exit 1; }
-test -r "$APP_ROOT/config/config.yaml" || { echo "Shared config is not readable: $APP_ROOT/config/config.yaml" >&2; exit 1; }
+test -r "$APP_ROOT/config/config.server.yaml" || { echo "Server config is not readable: $APP_ROOT/config/config.server.yaml" >&2; exit 1; }
 test -f "$migration_script" || { echo "Migration script not found: $migration_script" >&2; exit 1; }
 test -f "$publish_script" || { echo "Publish script not found: $publish_script" >&2; exit 1; }
 test -f "$switch_script" || { echo "Switch script not found: $switch_script" >&2; exit 1; }
@@ -26,11 +26,11 @@ test -n "${MYSQL_PASSWORD:-}" || { echo "MYSQL_PASSWORD is empty in $APP_ROOT/.e
 chmod 0755 "$migration_script" "$publish_script" "$switch_script"
 
 APP_ROOT="$APP_ROOT" \
-CONFIG_FILE="$APP_ROOT/config/config.yaml" \
+CONFIG_FILE="$APP_ROOT/config/config.server.yaml" \
   "$migration_script"
 
 APP_ROOT="$APP_ROOT" \
-CONFIG_FILE="$APP_ROOT/config/config.yaml" \
+CONFIG_FILE="$APP_ROOT/config/config.server.yaml" \
 RELEASE_SQL="$RELEASE_SQL" \
   "$publish_script"
 

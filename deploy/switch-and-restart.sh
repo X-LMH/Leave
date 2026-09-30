@@ -9,8 +9,8 @@ old_current_dir="$APP_ROOT/.current-directory-$VERSION_NAME"
 
 test -f "$release_dir/Leave"
 test -r "$APP_ROOT/.env" || { echo "Environment file not readable: $APP_ROOT/.env" >&2; exit 1; }
-test -r "$APP_ROOT/config/config.yaml" || { echo "Shared config is not readable: $APP_ROOT/config/config.yaml" >&2; exit 1; }
-app_port=$(awk -F': *' '$1 == "  port" {print $2; exit}' "$APP_ROOT/config/config.yaml")
+test -r "$APP_ROOT/config/config.server.yaml" || { echo "Server config is not readable: $APP_ROOT/config/config.server.yaml" >&2; exit 1; }
+app_port=$(awk -F': *' '$1 == "  port" {print $2; exit}' "$APP_ROOT/config/config.server.yaml")
 app_port=${app_port//\"/}
 app_port="${APP_PORT:-${app_port:-10000}}"
 case "$app_port" in

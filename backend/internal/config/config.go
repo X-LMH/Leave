@@ -37,16 +37,24 @@ func Init() error {
 		return fmt.Errorf("加载环境变量文件失败: %w", err)
 	}
 
-	// 按运行目录查找配置文件：本地从 backend/config 读取，服务器从 release 目录的上两级读取。
+	// 支持在 backend 目录本地运行，以及在服务器项目根目录或 release 目录运行。
 	configPaths := []string{
-		"./config/config.yaml",
-		"../../config/config.yaml",
+		"./config/config.local.yaml",
+		"./config/config.server.yaml",
+		"../../config/config.server.yaml",
 	}
+	configFound := false
 	for _, configPath := range configPaths {
 		if _, err := os.Stat(configPath); err == nil {
 			viper.SetConfigFile(configPath)
+			configFound = true
 			break
+		} else if !os.IsNotExist(err) {
+			return fmt.Errorf("检查配置文件 %q 失败: %w", configPath, err)
 		}
+	}
+	if !configFound {
+		return fmt.Errorf("未找到配置文件，请提供 config.local.yaml 或 config.server.yaml")
 	}
 	viper.AllowEmptyEnv(true)
 	viper.SetDefault("app.port", 10000)

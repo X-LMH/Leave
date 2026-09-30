@@ -6,7 +6,7 @@
 
     /www/wwwroot/Leave
     ├── config/
-    │   └── config.yaml
+    │   └── config.server.yaml
     ├── .env
     ├── current -> releases/v0.0.3/
     ├── releases/
@@ -35,12 +35,12 @@
 
 Leave 使用 current 软链接保存当前发布版本。宝塔面板中的 Go 项目名为 `Leave`，由宝塔项目启动脚本管理。部署会按 `Leave` 项目的 PID 文件停止旧进程，切换 `current` 后执行该项目的启动脚本。启动文件默认是 `/www/wwwroot/Leave/current/Leave`；工作目录设置为项目根目录，因为程序会读取：
 
-    ./config/config.yaml
+    ./config/config.server.yaml
     ./database/migrations
 
-所有 release 共用 `/www/wwwroot/Leave/config/config.yaml`、`/www/wwwroot/Leave/.env` 和根目录下的 `database/migrations/`，新版本目录不再复制这些文件。
+所有 release 共用 `/www/wwwroot/Leave/config/config.server.yaml`、`/www/wwwroot/Leave/.env` 和根目录下的 `database/migrations/`，新版本目录不再复制这些文件。修改服务器配置后，需要手动上传到该路径。
 
-Go 服务监听 `config/config.yaml` 中 `app.port` 配置的本机端口，Nginx 负责 HTTPS 和反向代理。
+Go 服务监听 `config/config.server.yaml` 中 `app.port` 配置的本机端口，Nginx 负责 HTTPS 和反向代理。
 
 ## CD 发布流程
 

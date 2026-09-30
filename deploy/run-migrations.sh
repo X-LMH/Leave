@@ -3,7 +3,7 @@
 set -euo pipefail
 
 APP_ROOT="${APP_ROOT:?APP_ROOT is required}"
-CONFIG_FILE="${CONFIG_FILE:-$APP_ROOT/config/config.yaml}"
+CONFIG_FILE="${CONFIG_FILE:-$APP_ROOT/config/config.server.yaml}"
 MIGRATE_BINARY="${MIGRATE_BINARY:-$APP_ROOT/scripts/migrate}"
 MIGRATIONS_DIR="${MIGRATIONS_DIR:-$APP_ROOT/database/migrations}"
 
