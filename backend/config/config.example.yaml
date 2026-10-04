@@ -5,6 +5,12 @@ app:
   # 服务器上用于存放已发布 APK 的绝对目录。
   package_dir: "/www/wwwroot/Leave/packages"
 
+storage:
+  # 上传文件的持久化根目录，应与 Nginx 静态文件目录一致。
+  root_dir: "/www/wwwroot/Leave/uploads"
+  # 替换为实际文件访问前缀；后端拼接数据库中的相对路径生成访问地址。
+  base_url: "https://example.com/api/v1/uploads"
+
 mysql:
   host: localhost
   port: 3306

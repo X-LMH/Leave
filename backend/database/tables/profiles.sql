@@ -12,6 +12,7 @@ CREATE TABLE `profiles`
     `apartment_id`      INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '关联的公寓ID',
     `dormitory_number`  VARCHAR(32)  NOT NULL DEFAULT '' COMMENT '宿舍号',
     `teacher_name`      VARCHAR(64)  NULL     DEFAULT NULL COMMENT '辅导员姓名',
+    `avatar_url`   VARCHAR(512) NOT NULL DEFAULT '' COMMENT '头像相对路径（相对于上传文件根目录，如 avatars/abc123.jpg）',
     `created_at`    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `updated_at`   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted_at`   DATETIME     NULL     DEFAULT NULL COMMENT '软删除时间，NULL表示未删除',

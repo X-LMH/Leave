@@ -1,0 +1,2 @@
+ALTER TABLE `profiles`
+    MODIFY COLUMN `avatar_url` VARCHAR(512) NOT NULL DEFAULT '' COMMENT '头像访问地址';
