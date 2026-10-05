@@ -23,6 +23,7 @@ type Profile struct {
 	ApartmentID     uint           `gorm:"column:apartment_id"`
 	DormitoryNumber string         `gorm:"column:dormitory_number"`
 	TeacherName     string         `gorm:"column:teacher_name"`
+	AvatarURL       string         `gorm:"column:avatar_url"` // 保存相对路径，访问地址由 Service 拼接。
 	CreatedAt       time.Time      `gorm:"column:created_at"`
 	UpdatedAt       time.Time      `gorm:"column:updated_at"`
 	DeletedAt       gorm.DeletedAt `gorm:"column:deleted_at"`

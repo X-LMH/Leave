@@ -28,6 +28,7 @@ type ProfileApartmentInfo struct {
 
 // ProfileResponse is the profile data returned by the profile endpoint.
 type ProfileResponse struct {
+	AvatarURL     string               `json:"avatar_url"`
 	StudentID     string               `json:"student_id"`
 	Name          string               `json:"name"`
 	Phone         string               `json:"phone"`
@@ -39,4 +40,8 @@ type ProfileResponse struct {
 	ApartmentID   uint                 `json:"apartment_id"`
 	ClassInfo     ProfileClassInfo     `json:"class_info"`
 	ApartmentInfo ProfileApartmentInfo `json:"apartment_info"`
+}
+
+type AvatarUploadResponse struct {
+	AvatarURL string `json:"avatar_url"`
 }

@@ -26,6 +26,10 @@ type Config struct {
 		PackageDir string `yaml:"package_dir"`
 		Port       int    `yaml:"port"`
 	} `yaml:"app"`
+	Storage struct {
+		RootDir string `yaml:"root_dir"`
+		BaseURL string `yaml:"base_url"`
+	} `yaml:"storage"`
 }
 
 // Cfg 全局配置实例，供外部调用
@@ -75,6 +79,9 @@ func Init() error {
 	Cfg.Mysql.Password = viper.GetString("mysql.password")
 	Cfg.App.PackageDir = strings.TrimSpace(viper.GetString("app.package_dir"))
 	Cfg.App.Port = viper.GetInt("app.port")
+	Cfg.Storage.RootDir = strings.TrimSpace(viper.GetString("storage.root_dir"))
+	Cfg.Storage.BaseURL = strings.TrimSpace(viper.GetString("storage.base_url"))
+
 	if Cfg.Mysql.Password == "" {
 		return fmt.Errorf("MySQL password cannot be empty; configure MYSQL_PASSWORD")
 	}
@@ -86,6 +93,12 @@ func Init() error {
 	}
 	if Cfg.App.Port <= 0 || Cfg.App.Port > 65535 {
 		return fmt.Errorf("app.port must be between 1 and 65535")
+	}
+	if Cfg.Storage.RootDir == "" {
+		return fmt.Errorf("storage.root_dir cannot be empty")
+	}
+	if Cfg.Storage.BaseURL == "" {
+		return fmt.Errorf("storage.base_url cannot be empty")
 	}
 
 	return nil

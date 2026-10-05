@@ -113,11 +113,16 @@ jobs:
             current_dir="$APP_ROOT/current"
             test ! -e "$release_dir" || { echo "Release appeared during build: $release_dir" >&2; exit 1; }
             mkdir -p "$APP_ROOT/config" "$APP_ROOT/scripts" "$APP_ROOT/database/migrations" "$APP_ROOT/packages/android" "$release_dir"
-            if [ ! -f "$APP_ROOT/config/config.yaml" ] && [ -f "$current_dir/config/config.yaml" ]; then
-              cp -p "$current_dir/config/config.yaml" "$APP_ROOT/config/config.yaml"
+            if [ ! -f "$APP_ROOT/config/config.server.yaml" ]; then
+              for source_config in "$current_dir/config/config.server.yaml" "$APP_ROOT/config/config.yaml" "$current_dir/config/config.yaml"; do
+                if [ -f "$source_config" ]; then
+                  cp -p "$source_config" "$APP_ROOT/config/config.server.yaml"
+                  break
+                fi
+              done
             fi
-            test -r "$APP_ROOT/config/config.yaml" || {
-              echo "Shared config is not readable: $APP_ROOT/config/config.yaml" >&2
+            test -r "$APP_ROOT/config/config.server.yaml" || {
+              echo "Shared config is not readable: $APP_ROOT/config/config.server.yaml" >&2
               exit 1
             }
 

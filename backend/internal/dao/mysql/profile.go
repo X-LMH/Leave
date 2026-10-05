@@ -39,6 +39,20 @@ func GetProfileByStuID(studentID string) (data *models.Profile, err error) {
 	return
 }
 
+func UpdateProfileAvatar(studentID, key string) error {
+	result := db.Model(&models.Profile{}).
+		Where("student_id = ?", studentID).
+		Update("avatar_url", key)
+	if result.Error != nil {
+		return result.Error
+	}
+	// 新头像使用随机路径，未更新任何行意味着用户资料不存在。
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
+}
+
 func GetApartmentByID(apartmentID uint) (*models.Apartment, error) {
 	apartment := new(models.Apartment)
 	if err := db.Where("id = ?", apartmentID).First(apartment).Error; err != nil {

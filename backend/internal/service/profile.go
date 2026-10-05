@@ -1,13 +1,17 @@
 package service
 
 import (
+	"backend/internal/config"
 	"backend/internal/dao/mysql"
 	"backend/internal/dto"
 	"backend/internal/models"
+	"backend/internal/utils/file"
 	"errors"
 )
 
 var ErrorInvalidApartmentGender = errors.New("invalid apartment gender")
+
+const defaultAvatarPath = "avatars/default.jpg"
 
 func Profile(p *dto.ProfileRequest, studentID string) (err error) {
 	student := &models.Profile{
@@ -42,7 +46,16 @@ func GetProfile(studentID string) (*dto.ProfileResponse, error) {
 		}
 	}
 
-	return toProfileResponse(profile, class, apartment), nil
+	data := toProfileResponse(profile, class, apartment)
+	avatarPath := profile.AvatarURL
+	if avatarPath == "" {
+		avatarPath = defaultAvatarPath
+	}
+	data.AvatarURL, err = file.AccessURL(config.Cfg.Storage.BaseURL, avatarPath)
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
 }
 
 func getProfileAndClass(studentID string) (*models.Profile, *models.Class, error) {

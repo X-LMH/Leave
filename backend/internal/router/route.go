@@ -40,6 +40,7 @@ func SetupRouter() *gin.Engine {
 		user.POST("/logout", appcontroller.LogoutHandler)
 		user.POST("/client-info", appcontroller.UpdateAppInfoHandler)
 		user.POST("/profile", appcontroller.ProfileHandler)
+		user.POST("/profile/avatar", appcontroller.UploadAvatarHandler)
 		user.POST("/password", appcontroller.ChangePasswordHandler)
 		user.GET("/profile", appcontroller.GetProfileHandler)
 

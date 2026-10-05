@@ -1,5 +1,26 @@
 # AGENTS.md
 
+## 项目概览
+
+本项目是请销假管理系统，包含 uni-app x 客户端、Web 管理端和 Go 后端。主要业务围绕用户账号、个人资料、请假申请及记录展开，并包含意见反馈和客户端版本更新等功能。
+
+客户端 App 主要运行在 Android 平台。涉及平台 API、权限、文件路径、安装包更新和页面交互时，优先考虑 Android 的实际行为与兼容性；其他平台的适配以具体任务要求为准。
+
+### 目录与技术栈
+
+* `frontend/`：uni-app x 客户端，使用 UTS 和 uvue，包含登录注册、请假申请、请假详情、请假记录、个人中心和版本更新等页面。页面注册位于 `frontend/pages.json`，应用配置位于 `frontend/manifest.json`。
+* `admin/`：基于 Soybean Admin 的 Web 管理端，使用 Vue 3、TypeScript、Vite、Naive UI 和 UnoCSS。修改该目录时，同时遵循 `admin/AGENTS.md` 中的规范。
+* `backend/`：Go 后端，使用 Gin 提供 HTTP 接口，使用 GORM 操作 MySQL。命令入口位于 `backend/cmd/`，配置文件位于 `backend/config/`。
+* `backend/internal/`：后端主要代码。`controller/` 对应 Handler 层，`service/` 处理业务逻辑，`dao/` 处理数据库操作；`router/` 管理路由，`middleware/` 管理中间件，`models/` 定义数据模型，`dto/` 定义请求和响应结构。
+* `backend/database/`：数据库相关文件。`tables/` 保存当前完整表结构，`seed/` 保存初始化数据，`migrations/` 保存增量变更。具体操作参见 `backend/database/README.md`。
+* `deploy/`：构建、部署、数据库迁移和客户端版本发布脚本；部署说明位于 `deploy/DEPLOYMENT.md`，客户端发布配置位于 `deploy/releases/`。
+
+### 当前开发边界
+
+* 客户端、管理端和后端是独立的开发模块，修改前先确认需求涉及哪个模块。
+* 当前前后端仍分别开发，不要仅因存在后端接口就将前端数据替换为真实请求；接口联调应以明确的任务要求为准。
+* 开发时以现有代码和配置为准；项目概览仅用于定位模块，不代表所有页面或业务流程已经完成。
+
 ## 基本原则
 
 * 优先保证代码正确、清晰、可维护。
