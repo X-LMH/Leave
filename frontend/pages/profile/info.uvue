@@ -1,51 +1,77 @@
 <template>
 	<ProfilePageShell ref="pageShell" title="个人信息" subtitle="查看您的个人资料" :scrollable="true" :logout-on-back="false">
-		<view class="info-card first-card">
-			<view class="card-title-row">
-				<view class="title-icon-wrap">
-					<image class="title-icon" src="/static/my/info/gerenxinxi.svg" mode="aspectFit"></image>
+		<view class="info-content">
+			<view class="avatar-section">
+				<view class="avatar-frame" @click.stop="openAvatar">
+					<image
+						v-if="avatarURL != '' && !avatarLoadFailed"
+						class="profile-avatar"
+						:src="avatarURL"
+						mode="aspectFill"
+						@error="handleAvatarError"
+					></image>
+					<view v-else class="profile-avatar avatar-placeholder">
+						<text v-if="avatarLoadFailed" class="avatar-placeholder-text">加载失败</text>
+					</view>
 				</view>
-				<text class="card-title">学生信息</text>
 			</view>
-			<view class="info-row"><text class="info-label">学号</text><text class="info-value">{{ profile.student_id }}</text></view>
-			<view class="divider"></view>
-			<view class="info-row"><text class="info-label">班级</text><text class="info-value">{{ profile.class_info.class_name }}</text></view>
-			<view class="divider"></view>
-			<view class="info-row"><text class="info-label">姓名</text><text class="info-value">{{ profile.name }}</text></view>
-			<view class="divider"></view>
-			<view class="info-row"><text class="info-label">手机号</text><text class="info-value">{{ formatPhone(profile.phone) }}</text></view>
-			<view class="divider"></view>
-			<view class="info-row"><text class="info-label">性别</text><text class="info-value">{{ profile.gender == 'male' ? '男' : '女' }}</text></view>
-		</view>
-
-		<view class="info-card second-card">
-			<view class="card-title-row">
-				<view class="title-icon-wrap">
-					<image class="title-icon" src="/static/my/info/zhuzhi.svg" mode="aspectFit"></image>
+			<view class="info-card first-card">
+				<view class="card-title-row">
+					<view class="title-icon-wrap">
+						<image class="title-icon" src="/static/my/info/gerenxinxi.svg" mode="aspectFit"></image>
+					</view>
+					<text class="card-title">学生信息</text>
 				</view>
-				<text class="card-title">其他信息</text>
+				<view class="info-row"><text class="info-label">学号</text><text class="info-value">{{ profile.student_id }}</text></view>
+				<view class="divider"></view>
+				<view class="info-row"><text class="info-label">班级</text><text class="info-value">{{ profile.class_info.class_name }}</text></view>
+				<view class="divider"></view>
+				<view class="info-row"><text class="info-label">姓名</text><text class="info-value">{{ profile.name }}</text></view>
+				<view class="divider"></view>
+				<view class="info-row"><text class="info-label">手机号</text><text class="info-value">{{ formatPhone(profile.phone) }}</text></view>
+				<view class="divider"></view>
+				<view class="info-row"><text class="info-label">性别</text><text class="info-value">{{ profile.gender == 'male' ? '男' : '女' }}</text></view>
 			</view>
-			<view class="info-row"><text class="info-label">家长姓名</text><text class="info-value">{{ profile.parent_name }}</text></view>
-			<view class="divider"></view>
-			<view class="info-row"><text class="info-label">家长电话</text><text class="info-value">{{ formatPhone(profile.parent_phone) }}</text></view>
-			<view class="divider"></view>
-			<view class="info-row"><text class="info-label">公寓名称</text><text class="info-value">{{ profile.apartment_info.apartment_name == '' ? '未填写' : profile.apartment_info.apartment_name }}</text></view>
-			<view class="divider"></view>
-			<view class="info-row"><text class="info-label">宿舍号</text><text class="info-value">{{ profile.apartment_info.dormitory_number == '' ? '未填写' : profile.apartment_info.dormitory_number }}</text></view>
-			<view class="divider"></view>
-			<view class="info-row"><text class="info-label">导员姓名</text><text class="info-value">{{ profile.teacher_name }}</text></view>
-		</view>
 
-		<view class="primary-button" @click="editProfile"><text class="primary-button-text">修改个人信息</text></view>
+			<view class="info-card second-card">
+				<view class="card-title-row">
+					<view class="title-icon-wrap">
+						<image class="title-icon" src="/static/my/info/zhuzhi.svg" mode="aspectFit"></image>
+					</view>
+					<text class="card-title">其他信息</text>
+				</view>
+				<view class="info-row"><text class="info-label">家长姓名</text><text class="info-value">{{ profile.parent_name }}</text></view>
+				<view class="divider"></view>
+				<view class="info-row"><text class="info-label">家长电话</text><text class="info-value">{{ formatPhone(profile.parent_phone) }}</text></view>
+				<view class="divider"></view>
+				<view class="info-row"><text class="info-label">公寓名称</text><text class="info-value">{{ profile.apartment_info.apartment_name == '' ? '未填写' : profile.apartment_info.apartment_name }}</text></view>
+				<view class="divider"></view>
+				<view class="info-row"><text class="info-label">宿舍号</text><text class="info-value">{{ profile.apartment_info.dormitory_number == '' ? '未填写' : profile.apartment_info.dormitory_number }}</text></view>
+				<view class="divider"></view>
+				<view class="info-row"><text class="info-label">导员姓名</text><text class="info-value">{{ profile.teacher_name }}</text></view>
+			</view>
+
+			<view class="primary-button" @click="editProfile"><text class="primary-button-text">修改个人信息</text></view>
+		</view>
 	</ProfilePageShell>
 </template>
 
 <script setup lang="uts">
 import ProfilePageShell from '@/components/ProfilePageShell.uvue'
 import { ref } from 'vue'
-import { getProfile, ProfileData } from '@/utils/api.uts'
+import { getCurrentUser, getProfile, getStoredAvatarURL, ProfileData, uploadAvatar, AvatarUploadError } from '@/utils/api.uts'
+import { cacheAvatarFile, clearAvatarFileCache, getCachedAvatarSource } from '@/utils/avatar-cache.uts'
+import { chooseAvatarImage } from '@/utils/avatar-picker.uts'
+
+const avatarURL = ref(getCachedAvatarSource(getCurrentUser().student_id, getStoredAvatarURL()))
+const avatarLoadFailed = ref(false)
+const changingAvatar = ref(false)
+const avatarMenuOpen = ref(false)
+let avatarUpdateVersion = 0
+let pageActive = true
 
 const profile = ref<ProfileData>({
+	avatar_url: '',
 	student_id: '', name: '', phone: '', gender: '', parent_name: '', parent_phone: '', teacher_name: '', class_id: 0, apartment_id: 0,
 	class_info: { college: '', major: '', class_name: '' },
 	apartment_info: { apartment_name: '', dormitory_number: '' }
@@ -53,20 +79,113 @@ const profile = ref<ProfileData>({
 
 function editProfile() { uni.navigateTo({ url: '/pages/profile/edit' }) }
 
+function handleAvatarError() {
+	const remoteURL = getStoredAvatarURL()
+	if (remoteURL != '' && avatarURL.value != remoteURL) {
+		clearAvatarFileCache(getCurrentUser().student_id)
+		avatarURL.value = remoteURL
+		return
+	}
+	avatarLoadFailed.value = true
+}
+
+async function changeAvatar(): Promise<void> {
+	if (changingAvatar.value) return
+	changingAvatar.value = true
+	const currentStudentID = getCurrentUser().student_id
+	let uploading = false
+	try {
+		const path = await chooseAvatarImage()
+		if (path == '' || !pageActive || currentStudentID != getCurrentUser().student_id) return
+		// 上传期间使旧的头像加载任务失效，避免覆盖新头像。
+		avatarUpdateVersion++
+		uploading = true
+		uni.showLoading({ title: '正在上传…', mask: true })
+		const remoteURL = await uploadAvatar(path)
+		if (!pageActive || currentStudentID != getCurrentUser().student_id) return
+		avatarLoadFailed.value = false
+		avatarURL.value = remoteURL
+		const source = await cacheAvatarFile(currentStudentID, remoteURL)
+		if (!pageActive || currentStudentID != getCurrentUser().student_id || remoteURL != getStoredAvatarURL()) return
+		avatarLoadFailed.value = false
+		avatarURL.value = source
+		uni.hideLoading()
+		uploading = false
+		uni.showToast({ title: '头像更新成功', icon: 'success' })
+	} catch (error) {
+		if (uploading) {
+			uni.hideLoading()
+			uploading = false
+		}
+		if (!pageActive || currentStudentID != getCurrentUser().student_id) return
+		if (error instanceof AvatarUploadError) return
+		const message = (error as Error).message
+		if (message == '请先完善个人信息') {
+			uni.reLaunch({ url: '/pages/profile/edit?first=1' })
+			return
+		}
+		uni.showToast({ title: message == null || message == '' ? '头像上传失败，请重试' : message, icon: 'none' })
+	} finally {
+		if (uploading) uni.hideLoading()
+		changingAvatar.value = false
+	}
+}
+
+function openAvatar() {
+	if (changingAvatar.value || avatarMenuOpen.value) return
+	avatarMenuOpen.value = true
+	const currentStudentID = getCurrentUser().student_id
+	uni.showActionSheet({
+		itemList: ['查看头像', '更换头像'],
+		success: (result) => {
+			if (!pageActive || currentStudentID != getCurrentUser().student_id) return
+			if (result.tapIndex == 1) {
+				changeAvatar()
+				return
+			}
+			if (result.tapIndex != 0) return
+			const source = avatarLoadFailed.value ? getStoredAvatarURL() : avatarURL.value
+			if (source == '') {
+				uni.showToast({ title: '暂无可查看的头像', icon: 'none' })
+				return
+			}
+			uni.previewImage({
+				urls: [source],
+				current: source,
+				fail: (_) => {
+					uni.showToast({ title: '头像预览失败，请重试', icon: 'none' })
+				}
+			})
+		},
+		complete: (_) => { avatarMenuOpen.value = false }
+	})
+}
+
 function formatPhone(value: string): string {
 	if (value.length != 11) return value
 	return value.slice(0, 3) + ' ' + value.slice(3, 7) + ' ' + value.slice(7)
 }
 
 async function loadProfile() {
+	const updateVersion = avatarUpdateVersion
+	const studentID = getCurrentUser().student_id
 	try {
 		const data = await getProfile()
+		if (!pageActive || studentID != getCurrentUser().student_id) return
 		if (data == null) {
 			uni.reLaunch({ url: '/pages/profile/edit?first=1' })
 			return
 		}
 		profile.value = data
+		// 复用“我的”页面的头像缓存，返回本页时也使用上传后的最新地址。
+		const cachedURL = getStoredAvatarURL()
+		const remoteURL = cachedURL == '' ? data.avatar_url : cachedURL
+		const source = await cacheAvatarFile(studentID, remoteURL)
+		if (!pageActive || changingAvatar.value || updateVersion != avatarUpdateVersion || studentID != getCurrentUser().student_id || remoteURL != getStoredAvatarURL()) return
+		avatarLoadFailed.value = false
+		avatarURL.value = source
 	} catch (error) {
+		if (!pageActive || studentID != getCurrentUser().student_id) return
 		const message = (error as Error).message
 		if (message == '请先完善个人信息') {
 			uni.reLaunch({ url: '/pages/profile/edit?first=1' })
@@ -77,22 +196,123 @@ async function loadProfile() {
 }
 
 onShow(() => {
+	const source = getCachedAvatarSource(getCurrentUser().student_id, getStoredAvatarURL())
+	if (source != avatarURL.value) {
+		avatarLoadFailed.value = false
+		avatarURL.value = source
+	}
 	loadProfile()
 })
+onUnload(() => { pageActive = false })
 </script>
 
 <style>
-.info-card { padding: 28rpx 42rpx 8rpx; border-radius: 30rpx; background-color: rgba(255,255,255,0.87); box-shadow: 0 14rpx 34rpx rgba(92,126,190,0.11); }
-.first-card { margin-top: 44rpx; }
-.second-card { margin-top: 28rpx; }
-.card-title-row { height: 100rpx; margin-bottom: -24rpx; flex-direction: row; align-items: flex-start; }
-.title-icon-wrap { width: 64rpx; height: 64rpx; border-radius: 32rpx; background-color: #e0eaff; justify-content: center; align-items: center; box-shadow: 0 9rpx 22rpx rgba(71, 111, 220, 0.16); }
-.title-icon { width: 42rpx; height: 42rpx; opacity: 1; }
-.card-title { margin-top: 13rpx; margin-left: 20rpx; color: #123b78; font-size: 30rpx; font-weight: 700; }
-.info-row { height: 82rpx; flex-direction: row; align-items: center; justify-content: space-between; }
-.info-label { color: #7188b5; font-size: 26rpx; }
-.info-value { color: #506d9f; font-size: 26rpx; }
-.divider { height: 1rpx; background-color: rgba(112,143,202,0.18); }
-.primary-button { height: 94rpx; margin: 48rpx 14rpx 0; border-radius: 47rpx; background-color: #527df3; justify-content: center; align-items: center; box-shadow: 0 12rpx 26rpx rgba(65,102,224,0.25); }
-.primary-button-text { color: #ffffff; font-size: 29rpx; font-weight: 500; }
+.info-content {
+	width: 100%;
+}
+.avatar-section {
+	padding: 36rpx 0 32rpx;
+	align-items: center;
+}
+.avatar-frame {
+	box-sizing: border-box;
+	width: 168rpx;
+	height: 168rpx;
+	border-radius: 84rpx;
+	border-width: 8rpx;
+	border-style: solid;
+	border-color: rgba(255, 255, 255, 0.8);
+	box-shadow: 0 8rpx 24rpx rgba(89, 119, 205, 0.18);
+	background-color: #ffffff;
+}
+.profile-avatar {
+	width: 152rpx;
+	height: 152rpx;
+	border-radius: 76rpx;
+}
+.avatar-placeholder {
+	background-color: #edf2fc;
+	align-items: center;
+	justify-content: center;
+}
+.avatar-placeholder-text {
+	font-size: 24rpx;
+	color: #7890bc;
+}
+.info-card {
+	padding: 28rpx 32rpx 12rpx;
+	border-radius: 30rpx;
+	background-color: rgba(255, 255, 255, 0.87);
+	box-shadow: 0 14rpx 34rpx rgba(92, 126, 190, 0.11);
+}
+.first-card {
+	margin-top: 8rpx;
+}
+.second-card {
+	margin-top: 28rpx;
+}
+.card-title-row {
+	margin-bottom: 16rpx;
+	flex-direction: row;
+	align-items: center;
+}
+.title-icon-wrap {
+	width: 60rpx;
+	height: 60rpx;
+	border-radius: 30rpx;
+	background-color: #e0eaff;
+	justify-content: center;
+	align-items: center;
+}
+.title-icon {
+	width: 38rpx;
+	height: 38rpx;
+}
+.card-title {
+	margin-left: 18rpx;
+	color: #123b78;
+	font-size: 30rpx;
+	font-weight: 700;
+}
+.info-row {
+	min-height: 84rpx;
+	padding: 20rpx 0;
+	box-sizing: border-box;
+	flex-direction: row;
+	align-items: center;
+}
+.info-label {
+	width: 120rpx;
+	flex-shrink: 0;
+	color: #7188b5;
+	font-size: 26rpx;
+	line-height: 38rpx;
+}
+.info-value {
+	flex: 1;
+	min-width: 0;
+	margin-left: 20rpx;
+	color: #506d9f;
+	font-size: 26rpx;
+	line-height: 38rpx;
+	text-align: right;
+}
+.divider {
+	height: 1rpx;
+	background-color: rgba(112, 143, 202, 0.14);
+}
+.primary-button {
+	height: 94rpx;
+	margin-top: 36rpx;
+	border-radius: 47rpx;
+	background-color: #527df3;
+	justify-content: center;
+	align-items: center;
+	box-shadow: 0 12rpx 26rpx rgba(65, 102, 224, 0.25);
+}
+.primary-button-text {
+	color: #ffffff;
+	font-size: 29rpx;
+	font-weight: 500;
+}
 </style>

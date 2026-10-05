@@ -1,0 +1,52 @@
+// 两个头像入口共用选图和校验，取消或校验失败时返回空路径。
+export function chooseAvatarImage(): Promise<string> {
+	return new Promise<string>((resolve) => {
+		uni.chooseImage({
+			count: 1,
+			sizeType: ['original'],
+			sourceType: ['album', 'camera'],
+			success: (result) => {
+				if (result.tempFiles.length == 0 || result.tempFilePaths.length == 0) {
+					resolve('')
+					return
+				}
+				if (result.tempFiles[0].size > 5 * 1024 * 1024) {
+					uni.showToast({ title: '头像不能超过 5 MiB', icon: 'none' })
+					resolve('')
+					return
+				}
+				const path = result.tempFilePaths[0]
+				uni.getImageInfo({
+					src: path,
+					success: (info) => {
+						if (info.width <= 0 || info.height <= 0 || info.width > 4096 || info.height > 4096) {
+							uni.showToast({ title: '图片宽高不能超过 4096 像素', icon: 'none' })
+							resolve('')
+							return
+						}
+						const format = info.type
+						if (format != null && format != '' && format.toLowerCase() != 'jpeg' && format.toLowerCase() != 'jpg' && format.toLowerCase() != 'png') {
+							uni.showToast({ title: '请选择 JPEG 或 PNG 图片', icon: 'none' })
+							resolve('')
+							return
+						}
+						resolve(path)
+					},
+					fail: (_) => {
+						uni.showToast({ title: '图片读取失败，请重新选择', icon: 'none' })
+						resolve('')
+					}
+				})
+			},
+			fail: (error) => {
+				if (error.errCode != 1101001) {
+					uni.showToast({
+						title: error.errCode == 1101005 ? '请允许访问相册或相机后重试' : '选择图片失败，请重试',
+						icon: 'none'
+					})
+				}
+				resolve('')
+			}
+		})
+	})
+}

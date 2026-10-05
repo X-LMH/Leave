@@ -1,25 +1,48 @@
 <template>
 	<ProfilePageShell :title="firstProfile ? '完善个人信息' : '修改个人信息'" :subtitle="firstProfile ? '请先完善您的个人信息' : '修改您的个人信息'" :scrollable="true" :logout-on-back="firstProfile">
-		<view class="form-card">
-			<view class="form-row"><view class="required-label"><text class="required-field-label">学号</text><text class="required">*</text></view><view class="field-box field-disabled"><text class="disabled-text">{{ studentID }}</text></view></view>
-			<view class="form-row"><view class="required-label"><text class="required-field-label">班级</text><text class="required">*</text></view><picker class="field-picker" :range="classLabels" :value="pickerClassIndex" @change="classChange"><view class="field-box picker-box"><text :class="className == '' ? 'picker-placeholder' : 'picker-value'">{{ className == '' ? '请选择班级' : className }}</text><text class="picker-arrow">⌄</text></view></picker></view>
-			<view class="form-row"><view class="required-label"><text class="required-field-label">姓名</text><text class="required">*</text></view><view class="field-box"><input class="field-input" v-model="name" maxlength="20" /></view></view>
-			<view class="form-row"><view class="required-label"><text class="required-field-label">手机号</text><text class="required">*</text></view><view class="field-box"><input class="field-input" v-model="phone" type="number" maxlength="11" /></view></view>
-			<view class="form-row"><view class="required-label"><text class="required-field-label">性别</text><text class="required">*</text></view><view class="gender-group"><view :class="gender == '男' ? 'gender-item gender-active' : 'gender-item'" @click="setGender('男')"><text :class="gender == '男' ? 'gender-text gender-text-active' : 'gender-text'">男</text></view><view :class="gender == '女' ? 'gender-item gender-active' : 'gender-item'" @click="setGender('女')"><text :class="gender == '女' ? 'gender-text gender-text-active' : 'gender-text'">女</text></view></view></view>
-			<view class="form-row"><view class="required-label"><text class="required-field-label">家长姓名</text><text class="required">*</text></view><view class="field-box"><input class="field-input" v-model="parentName" maxlength="20" /></view></view>
-			<view class="form-row"><view class="required-label"><text class="required-field-label">家长电话</text><text class="required">*</text></view><view class="field-box"><input class="field-input" v-model="parentPhone" type="number" maxlength="11" /></view></view>
-			<view class="form-row"><text class="field-label">公寓名称</text><picker class="field-picker" :range="apartmentLabels" :value="apartmentIndex" @change="apartmentChange"><view class="field-box picker-box"><text :class="apartment == '' ? 'picker-placeholder' : 'picker-value'">{{ apartment == '' ? '请选择公寓名称' : apartment }}</text><text class="picker-arrow">⌄</text></view></picker></view>
-			<view class="form-row"><text class="field-label">宿舍号</text><view class="field-box"><input class="field-input" v-model="dormNumber" maxlength="20" placeholder="请输入宿舍号" placeholder-class="input-placeholder" /></view></view>
-			<view class="form-row"><view class="required-label"><text class="required-field-label">导员姓名</text><text class="required">*</text></view><view class="field-box"><input class="field-input" v-model="counselor" maxlength="20" /></view></view>
+		<view class="edit-content">
+		<view v-if="firstProfile" class="avatar-card">
+			<AvatarPicker
+				:avatar-url="avatarURL"
+				:file-path="selectedPath"
+				:disabled="submitting || avatarRetryPending"
+				:compact="true"
+				@select="selectAvatar"
+				@busy="setChoosing"
+				@preview-error="handleAvatarError"
+			/>
 		</view>
-		<view class="primary-button" @click="save"><text class="primary-button-text">{{ firstProfile ? '完成并保存' : '保存修改' }}</text></view>
+		<view class="form-card">
+			<view v-if="!avatarRetryPending">
+				<view class="form-row"><view class="required-label"><text class="required-field-label">学号</text><text class="required">*</text></view><view class="field-box field-disabled"><text class="disabled-text">{{ studentID }}</text></view></view>
+				<view class="form-row"><view class="required-label"><text class="required-field-label">班级</text><text class="required">*</text></view><picker class="field-picker" :range="classLabels" :value="pickerClassIndex" @change="classChange"><view class="field-box picker-box"><text :class="className == '' ? 'picker-placeholder' : 'picker-value'">{{ className == '' ? '请选择班级' : className }}</text><text class="picker-arrow">⌄</text></view></picker></view>
+				<view class="form-row"><view class="required-label"><text class="required-field-label">姓名</text><text class="required">*</text></view><view class="field-box"><input class="field-input" v-model="name" maxlength="20" /></view></view>
+				<view class="form-row"><view class="required-label"><text class="required-field-label">手机号</text><text class="required">*</text></view><view class="field-box"><input class="field-input" v-model="phone" type="number" maxlength="11" /></view></view>
+				<view class="form-row"><view class="required-label"><text class="required-field-label">性别</text><text class="required">*</text></view><view class="gender-group"><view :class="gender == '男' ? 'gender-item gender-active' : 'gender-item'" @click="setGender('男')"><text :class="gender == '男' ? 'gender-text gender-text-active' : 'gender-text'">男</text></view><view :class="gender == '女' ? 'gender-item gender-active' : 'gender-item'" @click="setGender('女')"><text :class="gender == '女' ? 'gender-text gender-text-active' : 'gender-text'">女</text></view></view></view>
+				<view class="form-row"><view class="required-label"><text class="required-field-label">家长姓名</text><text class="required">*</text></view><view class="field-box"><input class="field-input" v-model="parentName" maxlength="20" /></view></view>
+				<view class="form-row"><view class="required-label"><text class="required-field-label">家长电话</text><text class="required">*</text></view><view class="field-box"><input class="field-input" v-model="parentPhone" type="number" maxlength="11" /></view></view>
+				<view class="form-row"><text class="field-label">公寓名称</text><picker class="field-picker" :range="apartmentLabels" :value="apartmentIndex" @change="apartmentChange"><view class="field-box picker-box"><text :class="apartment == '' ? 'picker-placeholder' : 'picker-value'">{{ apartment == '' ? '请选择公寓名称' : apartment }}</text><text class="picker-arrow">⌄</text></view></picker></view>
+				<view class="form-row"><text class="field-label">宿舍号</text><view class="field-box"><input class="field-input" v-model="dormNumber" maxlength="20" placeholder="请输入宿舍号" placeholder-class="input-placeholder" /></view></view>
+				<view class="form-row"><view class="required-label"><text class="required-field-label">导员姓名</text><text class="required">*</text></view><view class="field-box"><input class="field-input" v-model="counselor" maxlength="20" /></view></view>
+			</view>
+		</view>
+		<view v-if="avatarRetryPending" class="avatar-retry-card">
+			<text class="avatar-retry-message">资料已保存，头像上传失败</text>
+			<text class="avatar-retry-detail">{{ avatarError }}</text>
+			<view class="avatar-retry-action" @click="retryAvatar"><text class="avatar-retry-text">{{ submitting ? '正在上传…' : '重试上传' }}</text></view>
+			<view class="avatar-retry-action" @click="continueWithoutAvatar"><text class="avatar-retry-text">暂不上传，继续</text></view>
+		</view>
+		<view v-else class="primary-button" @click="save"><text class="primary-button-text">{{ submitting ? '正在保存…' : firstProfile ? '完成并保存' : '保存修改' }}</text></view>
+		</view>
 	</ProfilePageShell>
 </template>
 
 <script setup lang="uts">
 import { computed, ref } from 'vue'
 import ProfilePageShell from '@/components/ProfilePageShell.uvue'
-import { ApartmentOption, ClassOption, getApartments, getClassOptions, getCurrentUser, getProfile, ProfileData, saveProfile, updateCurrentUser } from '@/utils/api.uts'
+import AvatarPicker from '@/components/AvatarPicker.uvue'
+import { ApartmentOption, ClassOption, getApartments, getClassOptions, getCurrentUser, getProfile, getStoredAvatarURL, ProfileData, saveProfile, updateCurrentUser, uploadAvatar, AvatarUploadError } from '@/utils/api.uts'
+import { cacheAvatarFile, clearAvatarFileCache, getCachedAvatarSource } from '@/utils/avatar-cache.uts'
 
 const studentID = ref('')
 const classOptions = ref<ClassOption[]>([])
@@ -35,6 +58,61 @@ const dormNumber = ref('')
 const counselor = ref('')
 const firstProfile = ref(false)
 const submitting = ref(false)
+const avatarURL = ref(getCachedAvatarSource(getCurrentUser().student_id, getStoredAvatarURL()))
+const selectedPath = ref('')
+const choosing = ref(false)
+const avatarRetryPending = ref(false)
+const avatarError = ref('')
+let pageActive = true
+
+function selectAvatar(path: string) { selectedPath.value = path }
+function setChoosing(value: boolean) { choosing.value = value }
+
+function handleAvatarError() {
+	const remoteURL = getStoredAvatarURL()
+	if (remoteURL == '' || avatarURL.value == remoteURL) return
+	clearAvatarFileCache(getCurrentUser().student_id)
+	avatarURL.value = remoteURL
+}
+
+function finishSave() {
+	if (!pageActive) return
+	uni.showToast({ title: '保存成功', icon: 'success' })
+	if (firstProfile.value) uni.reLaunch({ url: '/pages/home/index' })
+	else uni.navigateBack({})
+}
+
+function continueWithoutAvatar() {
+	if (submitting.value) return
+	finishSave()
+}
+
+async function saveSelectedAvatar(): Promise<boolean> {
+	try {
+		avatarURL.value = await uploadAvatar(selectedPath.value)
+		selectedPath.value = ''
+		avatarRetryPending.value = false
+		return true
+	} catch (error) {
+		if (!pageActive) return false
+		if (error instanceof AvatarUploadError) return false
+		const message = (error as Error).message
+		avatarError.value = message == null || message == '' ? '请检查网络后重试' : message
+		avatarRetryPending.value = true
+		return false
+	}
+}
+
+async function retryAvatar() {
+	if (submitting.value || choosing.value) return
+	submitting.value = true
+	try {
+		// 资料已保存，重试时只上传头像，避免重复提交个人资料。
+		if (await saveSelectedAvatar()) finishSave()
+	} finally {
+		submitting.value = false
+	}
+}
 
 function formatClass(item: ClassOption): string {
 	return item.class_name
@@ -91,6 +169,8 @@ function phoneIsValid(value: string): boolean {
 }
 
 function fillProfile(profile: ProfileData) {
+	const storedURL = getStoredAvatarURL()
+	avatarURL.value = getCachedAvatarSource(profile.student_id, storedURL == '' ? profile.avatar_url : storedURL)
 	studentID.value = profile.student_id
 	name.value = profile.name
 	phone.value = profile.phone
@@ -104,22 +184,30 @@ function fillProfile(profile: ProfileData) {
 }
 
 async function loadPage() {
+	const currentStudentID = getCurrentUser().student_id
 	try {
 		classOptions.value = await getClassOptions()
 		const profile = await getProfile()
+		if (!pageActive || currentStudentID != getCurrentUser().student_id) return
 		if (profile != null) {
 			fillProfile(profile)
+			const storedURL = getStoredAvatarURL()
+			const remoteURL = storedURL == '' ? profile.avatar_url : storedURL
+			const source = await cacheAvatarFile(currentStudentID, remoteURL)
+			if (pageActive && currentStudentID == getCurrentUser().student_id && remoteURL == getStoredAvatarURL()) avatarURL.value = source
 			return
 		}
 		studentID.value = getCurrentUser().student_id
 	} catch (error) {
+		if (!pageActive || currentStudentID != getCurrentUser().student_id) return
 		const message = (error as Error).message
+		if (firstProfile.value && message == '请先完善个人信息') return
 		uni.showToast({ title: message == null || message == '' ? '个人资料加载失败' : message, icon: 'none' })
 	}
 }
 
 async function save() {
-	if (submitting.value) return
+	if (submitting.value || choosing.value || avatarRetryPending.value) return
 	if (name.value.trim() == '' || phone.value.trim() == '' || gender.value == '' || parentName.value.trim() == '' || parentPhone.value.trim() == '' || counselor.value.trim() == '' || classIndex.value < 0) {
 		uni.showToast({ title: '请完整填写必填信息', icon: 'none' })
 		return
@@ -142,17 +230,15 @@ async function save() {
 			dormitory_number: dormNumber.value.trim(),
 			teacher_name: counselor.value.trim()
 		})
+		if (!pageActive) return
 		const currentUser = getCurrentUser()
 		updateCurrentUser({
 			student_id: currentUser.student_id,
 			name: name.value.trim(),
 			class_name: classOptions.value[classIndex.value].class_name
 		})
-		uni.showToast({ title: '保存成功', icon: 'success' })
-		setTimeout(() => {
-			if (firstProfile.value) uni.reLaunch({ url: '/pages/home/index' })
-			else uni.navigateBack({})
-		}, 1000)
+		if (selectedPath.value != '' && !await saveSelectedAvatar()) return
+		finishSave()
 	} catch (error) {
 		const message = (error as Error).message
 		uni.showToast({ title: message == null || message == '' ? '保存失败' : message, icon: 'none' })
@@ -166,29 +252,177 @@ onLoad((options) => {
 	studentID.value = getCurrentUser().student_id
 	loadPage()
 })
+
+onUnload(() => { pageActive = false })
 </script>
 
 <style>
-.form-card { margin-top: 38rpx; padding: 22rpx 26rpx; border-radius: 30rpx; background-color: rgba(255,255,255,0.88); box-shadow: 0 14rpx 34rpx rgba(92,126,190,0.11); }
-.form-row { min-height: 104rpx; flex-direction: row; align-items: center; }
-.required-label { width: 148rpx; flex-direction: row; align-items: center; }
-.field-label { width: 148rpx; color: #123b78; font-size: 25rpx; font-weight: 600; }
-.required-field-label { color: #123b78; font-size: 25rpx; font-weight: 600; }
-.required { margin-left: 8rpx; color: #f04f48; font-size: 26rpx; }
-.field-box { flex: 1; height: 68rpx; padding: 0 22rpx; border-width: 1rpx; border-style: solid; border-color: #d9e2f4; border-radius: 16rpx; justify-content: center; background-color: rgba(255,255,255,0.55); }
-.field-picker { flex: 1; }
-.picker-box { flex-direction: row; align-items: center; }
-.picker-arrow { margin-left: auto; color: #7188b5; font-size: 32rpx; line-height: 32rpx; }
-.picker-value { color: #506d9f; font-size: 25rpx; line-height: 68rpx; }
-.picker-placeholder, .input-placeholder { color: #9aabd0; font-size: 25rpx; line-height: 68rpx; }
-.field-disabled { background-color: rgba(236,240,248,0.75); }
-.disabled-text { color: #9aabd0; font-size: 25rpx; }
-.field-input { height: 66rpx; color: #506d9f; font-size: 25rpx; }
-.gender-group { flex: 1; height: 68rpx; flex-direction: row; }
-.gender-item { flex: 1; border-width: 1rpx; border-style: solid; border-color: #d9e2f4; border-radius: 16rpx; justify-content: center; align-items: center; }
-.gender-active { border-color: #4676ff; background-color: rgba(235,241,255,0.6); }
-.gender-text { color: #536d9e; font-size: 25rpx; }
-.gender-text-active { color: #245cf0; }
-.primary-button { height: 94rpx; margin: 48rpx 14rpx 20rpx; border-radius: 47rpx; background-color: #527df3; justify-content: center; align-items: center; box-shadow: 0 12rpx 26rpx rgba(65,102,224,0.25); }
-.primary-button-text { color: #ffffff; font-size: 29rpx; font-weight: 500; }
+.edit-content {
+	width: 100%;
+	box-sizing: border-box;
+	/* 留出按钮阴影的空间，避免 Android 容器在底部裁切。 */
+	padding-bottom: 40rpx;
+}
+.avatar-card {
+	margin-top: 28rpx;
+	padding: 12rpx 16rpx;
+	border-radius: 30rpx;
+	background-color: rgba(255,255,255,0.88);
+}
+.form-card {
+	margin-top: 28rpx;
+	padding: 22rpx 32rpx;
+	border-radius: 30rpx;
+	background-color: rgba(255,255,255,0.88);
+	box-shadow: 0 14rpx 34rpx rgba(92,126,190,0.11);
+}
+.form-row {
+	min-height: 104rpx;
+	padding: 12rpx 0;
+	box-sizing: border-box;
+	flex-direction: row;
+	align-items: center;
+}
+.required-label {
+	width: 132rpx;
+	flex-shrink: 0;
+	flex-direction: row;
+	align-items: center;
+}
+.field-label {
+	width: 132rpx;
+	flex-shrink: 0;
+	color: #123b78;
+	font-size: 25rpx;
+	font-weight: 600;
+}
+.required-field-label {
+	color: #123b78;
+	font-size: 25rpx;
+	font-weight: 600;
+}
+.required {
+	margin-left: 8rpx;
+	color: #f04f48;
+	font-size: 26rpx;
+}
+.field-box {
+	flex: 1;
+	min-width: 0;
+	min-height: 76rpx;
+	padding: 0 16rpx;
+	border-width: 1rpx;
+	border-style: solid;
+	border-color: #d9e2f4;
+	border-radius: 16rpx;
+	justify-content: center;
+	background-color: rgba(255,255,255,0.55);
+}
+.field-picker {
+	flex: 1;
+	min-width: 0;
+}
+.picker-box {
+	padding: 16rpx;
+	flex-direction: row;
+	align-items: center;
+}
+.picker-arrow {
+	margin-left: 12rpx;
+	flex-shrink: 0;
+	color: #7188b5;
+	font-size: 32rpx;
+	line-height: 32rpx;
+}
+.picker-value {
+	flex: 1;
+	min-width: 0;
+	color: #506d9f;
+	font-size: 25rpx;
+	line-height: 38rpx;
+}
+.picker-placeholder, .input-placeholder {
+	flex: 1;
+	color: #9aabd0;
+	font-size: 25rpx;
+	line-height: 38rpx;
+}
+.field-disabled {
+	background-color: rgba(236,240,248,0.75);
+}
+.disabled-text {
+	color: #9aabd0;
+	font-size: 25rpx;
+}
+.field-input {
+	height: 74rpx;
+	color: #506d9f;
+	font-size: 25rpx;
+}
+.gender-group {
+	flex: 1;
+	height: 76rpx;
+	padding: 4rpx;
+	border-radius: 18rpx;
+	background-color: #edf2fc;
+	flex-direction: row;
+}
+.gender-item {
+	flex: 1;
+	border-width: 1rpx;
+	border-style: solid;
+	border-color: #d9e2f4;
+	border-radius: 16rpx;
+	justify-content: center;
+	align-items: center;
+}
+.gender-active {
+	border-color: #4676ff;
+	background-color: rgba(235,241,255,0.6);
+}
+.gender-text {
+	color: #536d9e;
+	font-size: 25rpx;
+}
+.gender-text-active {
+	color: #245cf0;
+}
+.primary-button {
+	height: 94rpx;
+	margin: 36rpx 0 20rpx;
+	border-radius: 47rpx;
+	background-color: #527df3;
+	justify-content: center;
+	align-items: center;
+	box-shadow: 0 12rpx 26rpx rgba(65,102,224,0.25);
+}
+.primary-button-text {
+	color: #ffffff;
+	font-size: 29rpx;
+	font-weight: 500;
+}
+.avatar-retry-card {
+	margin-top: 28rpx;
+	padding: 24rpx;
+	border-radius: 20rpx;
+	background-color: #ffffff;
+}
+.avatar-retry-message {
+	color: #123b78;
+	font-size: 27rpx;
+}
+.avatar-retry-detail {
+	margin-top: 12rpx;
+	color: #7890bc;
+	font-size: 24rpx;
+}
+.avatar-retry-action {
+	margin-top: 18rpx;
+	padding: 16rpx;
+	align-items: center;
+}
+.avatar-retry-text {
+	color: #245cf0;
+	font-size: 27rpx;
+}
 </style>

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Bugfix · uni-app USB 本地连接"
+  short_description: "排查 Android 真机通过 USB 访问本地后端失败，检查 ADB 转发并验证连接"
+  default_prompt: "使用 $bugfix-uniapp-usb-localhost 排查 uni-app x 真机无法访问电脑本地后端的问题，保留现有配置并验证手机侧连接。"

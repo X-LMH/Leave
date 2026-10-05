@@ -1,9 +1,15 @@
 import { getAppVersionCode } from '@/utils/device.uts'
+import { cacheAvatarFile, clearAvatarFileCache } from '@/utils/avatar-cache.uts'
 
 // HBuilderX“运行”是 development，“发行/打包”是 production。
 export const API_BASE_URL = process.env.NODE_ENV === 'development'
 	? 'http://127.0.0.1:8080/api/v1'
 	: 'http://leave.mhspace.dpdns.org/api/v1'
+
+// 本地头像由 8081 端口的 Nginx 提供，生产环境沿用站点的静态文件路径。
+export const DEFAULT_AVATAR_URL = process.env.NODE_ENV === 'development'
+	? 'http://127.0.0.1:8081/api/v1/uploads/avatars/default.png'
+	: API_BASE_URL + '/uploads/avatars/default.png'
 
 export const STORAGE_TOKEN_KEY = 'leave_token'
 export const STORAGE_STUDENT_ID_KEY = 'leave_student_id'
@@ -11,6 +17,8 @@ export const STORAGE_NAME_KEY = 'leave_name'
 export const STORAGE_CLASS_NAME_KEY = 'leave_class_name'
 export const STORAGE_DEVICE_NAME_KEY = 'leave_device_name'
 export const STORAGE_UPDATE_INFO_KEY = 'leave_update_info'
+const STORAGE_AVATAR_KEY_PREFIX = 'leave_avatar_'
+let avatarCacheVersion = 0
 export const APP_PLATFORM = 'android'
 
 export type ApiResponse<T> = {
@@ -63,6 +71,7 @@ export type ProfileApartmentInfo = {
 
 export type ProfileData = {
 	student_id: string
+	avatar_url: string
 	name: string
 	phone: string
 	gender: string
@@ -168,11 +177,30 @@ export type FeedbackResponse = {
 }
 
 function clearSession() {
+	const studentID = getCurrentUser().student_id
+	if (studentID != '') {
+		clearAvatarFileCache(studentID)
+		uni.removeStorageSync(STORAGE_AVATAR_KEY_PREFIX + studentID)
+	}
+	avatarCacheVersion++
 	uni.removeStorageSync(STORAGE_TOKEN_KEY)
 	uni.removeStorageSync(STORAGE_STUDENT_ID_KEY)
 	uni.removeStorageSync(STORAGE_NAME_KEY)
 	uni.removeStorageSync(STORAGE_CLASS_NAME_KEY)
 	uni.removeStorageSync(STORAGE_DEVICE_NAME_KEY)
+}
+
+export function getStoredAvatarURL(): string {
+	const studentID = getCurrentUser().student_id
+	if (studentID == '') return ''
+	const storedURL = uni.getStorageSync(STORAGE_AVATAR_KEY_PREFIX + studentID)
+	return typeof storedURL == 'string' ? storedURL : ''
+}
+
+function cacheAvatarURL(studentID: string, avatarURL: string) {
+	if (studentID == '' || avatarURL == '' || studentID != getCurrentUser().student_id) return
+	uni.setStorageSync(STORAGE_AVATAR_KEY_PREFIX + studentID, avatarURL)
+	cacheAvatarFile(studentID, avatarURL)
 }
 
 export function getStoredName(): string {
@@ -203,6 +231,12 @@ export function getStoredDeviceName(): string {
 }
 
 export function saveSession(studentID: string, data: LoginData, deviceName: string = '') {
+	const previousStudentID = getCurrentUser().student_id
+	if (previousStudentID != '' && previousStudentID != data.user.student_id) {
+		clearAvatarFileCache(previousStudentID)
+		uni.removeStorageSync(STORAGE_AVATAR_KEY_PREFIX + previousStudentID)
+	}
+	avatarCacheVersion++
 	uni.setStorageSync(STORAGE_TOKEN_KEY, data.token)
 	uni.setStorageSync(STORAGE_STUDENT_ID_KEY, data.user.student_id)
 	uni.setStorageSync(STORAGE_NAME_KEY, data.user.name)
@@ -401,10 +435,12 @@ export async function login(studentID: string, password: string, deviceName: str
 }
 
 export async function getProfile(): Promise<ProfileData | null> {
+	const cacheVersion = avatarCacheVersion
 	const data = await request<UTSJSONObject | null>('/profile', 'GET', null, true)
 	if (data == null) return null
 	const profile = {
 		student_id: data['student_id'] as string,
+		avatar_url: (data['avatar_url'] as string | null) ?? '',
 		name: data['name'] as string,
 		phone: data['phone'] as string,
 		gender: data['gender'] as string,
@@ -434,11 +470,91 @@ export async function getProfile(): Promise<ProfileData | null> {
 		apartment_name: apartmentInfo['apartment_name'] as string,
 		dormitory_number: apartmentInfo['dormitory_number'] as string
 	}
+	// 上传成功或会话切换后，忽略此前发起的资料请求对头像缓存的更新。
+	if (cacheVersion == avatarCacheVersion) cacheAvatarURL(profile.student_id, profile.avatar_url)
 	return profile
 }
 
 export function saveProfile(payload: ProfilePayload): Promise<void> {
 	return request<void>('/profile', 'POST', payload, true)
+}
+
+// 页面遇到登录或版本跳转时，不再弹出重试对话框覆盖目标页面。
+export class AvatarUploadError extends Error {
+	constructor(message: string) {
+		super(message)
+	}
+}
+
+// 上传响应是字符串，不能复用 JSON 请求的 Content-Type 和响应泛型。
+export function uploadAvatar(filePath: string): Promise<string> {
+	const studentID = getCurrentUser().student_id
+	return new Promise((resolve, reject) => {
+		const storedToken = uni.getStorageSync(STORAGE_TOKEN_KEY)
+		const token = typeof storedToken == 'string' ? storedToken : ''
+		if (token == '') {
+			handleUnauthorized()
+			reject(new AvatarUploadError('请先登录'))
+			return
+		}
+		const header = {
+			'Authorization': 'Bearer ' + token,
+			'X-App-Platform': APP_PLATFORM,
+			'X-App-Version-Code': getAppVersionCode().toString()
+		} as UTSJSONObject
+		uni.uploadFile({
+			url: API_BASE_URL + '/profile/avatar',
+			filePath: filePath,
+			name: 'file',
+			header: header,
+			timeout: 60000,
+			success: (response) => {
+				try {
+					const body = JSON.parse<UTSJSONObject>(response.data)
+					if (body == null || typeof body['code'] != 'number') {
+						reject(new Error('服务器未返回有效数据'))
+						return
+					}
+					const code = body['code'] as number
+					if (code == 1004 || code == 1005) {
+						handleUnauthorized()
+						reject(new AvatarUploadError('请重新登录'))
+						return
+					}
+					if (code == 5002) {
+						handleForceUpdate(body['data'] as UTSJSONObject | null)
+						reject(new AvatarUploadError('请更新应用'))
+						return
+					}
+					if (code != 0 || response.statusCode < 200 || response.statusCode >= 300) {
+						const message = body['message'] as string | null
+						reject(new Error(message == null || message == '' ? '头像上传失败' : message))
+						return
+					}
+					const data = body['data'] as UTSJSONObject | null
+					if (data == null || typeof data['avatar_url'] != 'string') {
+						reject(new Error('服务器未返回有效头像地址'))
+						return
+					}
+					const avatarURL = data['avatar_url'] as string
+					if (avatarURL == '') {
+						reject(new Error('服务器未返回有效头像地址'))
+						return
+					}
+					if (uni.getStorageSync(STORAGE_TOKEN_KEY) == token && getCurrentUser().student_id == studentID) {
+						avatarCacheVersion++
+						cacheAvatarURL(studentID, avatarURL)
+					}
+					resolve(avatarURL)
+				} catch (_) {
+					reject(new Error('服务器未返回有效数据'))
+				}
+			},
+			fail: (_) => {
+				reject(new Error('头像上传失败，请检查网络后重试'))
+			}
+		})
+	})
 }
 
 export async function getClassOptions(): Promise<ClassOption[]> {

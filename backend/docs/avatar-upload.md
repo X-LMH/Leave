@@ -27,7 +27,7 @@
 ## 配置与部署
 
 配置 `storage.root_dir` 为持久化文件根目录，`storage.base_url` 为文件访问前缀。
-默认头像图片需放在 `storage.root_dir` 下的 `avatars/default.jpg`。
+默认头像图片需放在 `storage.root_dir` 下的 `avatars/default.png`。
 本地应从 `backend` 目录启动（`go run ./cmd/server`），配置 `root_dir: "../uploads"` 指向项目根目录的 `uploads`，Nginx 应挂载此目录。
 本地配置已提供；服务器需参照 `config.example.yaml` 补充这两个配置项。
 存储根目录或访问前缀为空时，配置初始化失败，程序终止启动。

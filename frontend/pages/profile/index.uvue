@@ -9,7 +9,10 @@
 						<text class="page-subtitle">管理个人信息与请假记录</text>
 					</view>
 					<view class="profile-card" @click="openInfo">
-						<image class="profile-avatar" src="/static/common/avatar.png" mode="aspectFill"></image>
+						<image v-if="avatarURL != '' && !avatarLoadFailed" class="profile-avatar" :src="avatarURL" mode="aspectFill" @click.stop="openAvatar" @error="handleAvatarError"></image>
+						<view v-else class="profile-avatar profile-avatar-placeholder" @click.stop="openAvatar">
+							<text v-if="avatarLoadFailed" class="profile-avatar-hint">加载失败</text>
+						</view>
 						<view class="profile-details">
 							<view class="profile-name-row">
 								<text class="profile-name">{{ profileName == '' ? '未完善资料' : profileName }}</text>
@@ -85,11 +88,131 @@
 import BottomNavigation from '@/components/BottomNavigation.uvue'
 import PageTransition from '@/components/PageTransition.uvue'
 import { ref } from 'vue'
-import { getCurrentUser, logout as clearSession, logoutRequest } from '@/utils/api.uts'
+import { cacheAvatarFile, clearAvatarFileCache, getCachedAvatarSource } from '@/utils/avatar-cache.uts'
+import { getCurrentUser, getProfile, getStoredAvatarURL, uploadAvatar, AvatarUploadError, logout as clearSession, logoutRequest } from '@/utils/api.uts'
+import { chooseAvatarImage } from '@/utils/avatar-picker.uts'
 
 const profileName = ref(getCurrentUser().name)
 const studentID = ref(getCurrentUser().student_id)
 const className = ref(getCurrentUser().class_name)
+const avatarURL = ref(getCachedAvatarSource(getCurrentUser().student_id, getStoredAvatarURL()))
+const avatarLoadFailed = ref(false)
+const changingAvatar = ref(false)
+const avatarMenuOpen = ref(false)
+let avatarUpdateVersion = 0
+let pageActive = true
+
+function handleAvatarError() {
+	const remoteURL = getStoredAvatarURL()
+	if (remoteURL != '' && avatarURL.value != remoteURL) {
+		clearAvatarFileCache(getCurrentUser().student_id)
+		avatarURL.value = remoteURL
+		return
+	}
+	avatarLoadFailed.value = true
+}
+
+async function changeAvatar(): Promise<void> {
+	if (changingAvatar.value) return
+	changingAvatar.value = true
+	const currentStudentID = getCurrentUser().student_id
+	let uploading = false
+	try {
+		const path = await chooseAvatarImage()
+		if (path == '' || !pageActive || currentStudentID != getCurrentUser().student_id) return
+		// 上传期间使旧的头像加载任务失效，避免覆盖新头像。
+		avatarUpdateVersion++
+		uploading = true
+		uni.showLoading({ title: '正在上传…', mask: true })
+		const remoteURL = await uploadAvatar(path)
+		if (!pageActive || currentStudentID != getCurrentUser().student_id) return
+		avatarLoadFailed.value = false
+		avatarURL.value = remoteURL
+		const source = await cacheAvatarFile(currentStudentID, remoteURL)
+		if (!pageActive || currentStudentID != getCurrentUser().student_id || remoteURL != getStoredAvatarURL()) return
+		avatarLoadFailed.value = false
+		avatarURL.value = source
+		uni.hideLoading()
+		uploading = false
+		uni.showToast({ title: '头像更新成功', icon: 'success' })
+	} catch (error) {
+		if (uploading) {
+			uni.hideLoading()
+			uploading = false
+		}
+		if (!pageActive || currentStudentID != getCurrentUser().student_id) return
+		if (error instanceof AvatarUploadError) return
+		const message = (error as Error).message
+		if (message == '请先完善个人信息') {
+			uni.reLaunch({ url: '/pages/profile/edit?first=1' })
+			return
+		}
+		uni.showToast({ title: message == null || message == '' ? '头像上传失败，请重试' : message, icon: 'none' })
+	} finally {
+		if (uploading) uni.hideLoading()
+		changingAvatar.value = false
+	}
+}
+
+function openAvatar() {
+	if (changingAvatar.value || avatarMenuOpen.value) return
+	avatarMenuOpen.value = true
+	const currentStudentID = getCurrentUser().student_id
+	uni.showActionSheet({
+		itemList: ['查看头像', '更换头像'],
+		success: (result) => {
+			if (!pageActive || currentStudentID != getCurrentUser().student_id) return
+			if (result.tapIndex == 1) {
+				changeAvatar()
+				return
+			}
+			if (result.tapIndex != 0) return
+			const source = avatarLoadFailed.value ? getStoredAvatarURL() : avatarURL.value
+			if (source == '') {
+				uni.showToast({ title: '暂无可查看的头像', icon: 'none' })
+				return
+			}
+			uni.previewImage({
+				urls: [source],
+				current: source,
+				fail: (_) => {
+					uni.showToast({ title: '头像预览失败，请重试', icon: 'none' })
+				}
+			})
+		},
+		complete: (_) => { avatarMenuOpen.value = false }
+	})
+}
+
+async function loadAvatar() {
+	if (changingAvatar.value) return
+	const updateVersion = avatarUpdateVersion
+	const currentStudentID = getCurrentUser().student_id
+	try {
+		const profile = await getProfile()
+		if (!pageActive || currentStudentID != getCurrentUser().student_id || updateVersion != avatarUpdateVersion) return
+		if (profile == null) {
+			uni.reLaunch({ url: '/pages/profile/edit?first=1' })
+			return
+		}
+		const cachedURL = getStoredAvatarURL()
+		const remoteURL = cachedURL == '' ? profile.avatar_url : cachedURL
+		const latestURL = await cacheAvatarFile(currentStudentID, remoteURL)
+		if (!pageActive || currentStudentID != getCurrentUser().student_id || updateVersion != avatarUpdateVersion || remoteURL != getStoredAvatarURL()) return
+		if (latestURL != '' && (latestURL != avatarURL.value || avatarLoadFailed.value)) {
+			avatarLoadFailed.value = false
+			avatarURL.value = latestURL
+		}
+	} catch (error) {
+		if (!pageActive || currentStudentID != getCurrentUser().student_id || updateVersion != avatarUpdateVersion) return
+		const message = (error as Error).message
+		if (message == '请先完善个人信息') {
+			uni.reLaunch({ url: '/pages/profile/edit?first=1' })
+			return
+		}
+		uni.showToast({ title: message == null || message == '' ? '头像加载失败' : message, icon: 'none' })
+	}
+}
 
 
 function handleTabNavigation(url: string) {
@@ -133,7 +256,15 @@ onShow(() => {
 	profileName.value = user.name
 	studentID.value = user.student_id
 	className.value = user.class_name
+	const cachedURL = getStoredAvatarURL()
+	const cachedSource = getCachedAvatarSource(user.student_id, cachedURL)
+	if (cachedSource != '' && cachedSource != avatarURL.value) {
+		avatarLoadFailed.value = false
+		avatarURL.value = cachedSource
+	}
+	loadAvatar()
 })
+onUnload(() => { pageActive = false })
 </script>
 
 <style>
@@ -198,6 +329,15 @@ onShow(() => {
 	border-style: solid;
 	border-color: rgba(255, 255, 255, 0.8);
 	box-shadow: 0 8rpx 24rpx rgba(89, 119, 205, 0.18);
+}
+.profile-avatar-placeholder {
+	align-items: center;
+	justify-content: center;
+	background-color: #edf2fc;
+}
+.profile-avatar-hint {
+	font-size: 24rpx;
+	color: #7890bc;
 }
 .profile-details {
 	flex: 1;

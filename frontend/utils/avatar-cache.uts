@@ -1,0 +1,132 @@
+const AVATAR_FILE_KEY_PREFIX = 'leave_avatar_file_'
+const AVATAR_CACHE_MAX_AGE = 24 * 60 * 60 * 1000
+let cacheGeneration = 0
+let pendingKey = ''
+let pendingDownload: Promise<string> | null = null
+
+type AvatarFileCache = {
+	url: string
+	path: string
+	saved_at: number
+}
+
+function readAvatarCache(studentID: string): AvatarFileCache | null {
+	const stored = uni.getStorageSync(AVATAR_FILE_KEY_PREFIX + studentID)
+	if (typeof stored != 'string' || stored == '') return null
+	try {
+		const data = JSON.parse<UTSJSONObject>(stored)
+		if (data == null || typeof data['url'] != 'string' || typeof data['path'] != 'string' || typeof data['saved_at'] != 'number') return null
+		return {
+			url: data['url'] as string,
+			path: data['path'] as string,
+			saved_at: data['saved_at'] as number
+		}
+	} catch (_) {
+		return null
+	}
+}
+
+function deleteAvatarFile(path: string) {
+	if (path == '') return
+	uni.getFileSystemManager().unlink({
+		filePath: path,
+		fail: (error) => { console.warn('清理头像缓存失败: ' + error.errMsg) }
+	})
+}
+
+export function clearAvatarFileCache(studentID: string) {
+	// 使退出登录前的下载失效，避免回调重新写入缓存。
+	cacheGeneration++
+	pendingKey = ''
+	pendingDownload = null
+	const cached = readAvatarCache(studentID)
+	uni.removeStorageSync(AVATAR_FILE_KEY_PREFIX + studentID)
+	if (cached != null) deleteAvatarFile(cached.path)
+}
+
+export function getCachedAvatarSource(studentID: string, url: string): string {
+	if (studentID == '' || url == '') return url
+	const cached = readAvatarCache(studentID)
+	if (cached == null || cached.url != url) return url
+	try {
+		uni.getFileSystemManager().accessSync(cached.path)
+		return cached.path
+	} catch (_) {
+		uni.removeStorageSync(AVATAR_FILE_KEY_PREFIX + studentID)
+		return url
+	}
+}
+
+export function cacheAvatarFile(studentID: string, url: string): Promise<string> {
+	if (studentID == '' || url == '') return Promise.resolve(url)
+	const source = getCachedAvatarSource(studentID, url)
+	const cached = readAvatarCache(studentID)
+	if (source != url && cached != null && Date.now() - cached.saved_at < AVATAR_CACHE_MAX_AGE) {
+		return Promise.resolve(source)
+	}
+	const key = studentID + '|' + url
+	if (pendingKey == key && pendingDownload != null) return pendingDownload!
+	const generation = ++cacheGeneration
+	pendingKey = key
+	const download = new Promise<string>((resolve) => {
+		function finish(path: string) {
+			if (generation == cacheGeneration) {
+				pendingKey = ''
+				pendingDownload = null
+			}
+			resolve(path)
+		}
+		uni.downloadFile({
+			url: url,
+			timeout: 15000,
+			success: (response) => {
+				const temporaryPath = response.tempFilePath
+				if (response.statusCode != 200 || generation != cacheGeneration) {
+					deleteAvatarFile(temporaryPath)
+					finish(source)
+					return
+				}
+				// 验证下载结果可以解码，避免把代理错误页面保存为头像。
+				uni.getImageInfo({
+					src: temporaryPath,
+					success: (_) => {
+						if (generation != cacheGeneration) {
+							deleteAvatarFile(temporaryPath)
+							finish(source)
+							return
+						}
+						uni.getFileSystemManager().saveFile({
+							tempFilePath: temporaryPath,
+							success: (saved) => {
+								if (generation != cacheGeneration) {
+									deleteAvatarFile(saved.savedFilePath)
+									finish(source)
+									return
+								}
+								const previous = readAvatarCache(studentID)
+								uni.setStorageSync(AVATAR_FILE_KEY_PREFIX + studentID, JSON.stringify({
+									url: url,
+									path: saved.savedFilePath,
+									saved_at: Date.now()
+								}))
+								if (previous != null && previous.path != saved.savedFilePath) deleteAvatarFile(previous.path)
+								finish(saved.savedFilePath)
+							},
+							fail: (_) => {
+								deleteAvatarFile(temporaryPath)
+								finish(source)
+							}
+						})
+					},
+					fail: (_) => {
+						deleteAvatarFile(temporaryPath)
+						finish(source)
+					}
+				})
+			},
+			fail: (_) => { finish(source) }
+		})
+	})
+	pendingDownload = download
+	return download
+}

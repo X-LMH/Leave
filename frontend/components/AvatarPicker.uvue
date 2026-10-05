@@ -1,0 +1,125 @@
+<template>
+	<view class="avatar-picker">
+		<view :class="props.compact == true ? 'avatar-frame avatar-frame-compact' : 'avatar-frame'">
+		<image
+			v-if="previewURL != '' && !previewFailed"
+			:class="props.compact == true ? 'avatar-preview avatar-preview-compact' : 'avatar-preview'"
+			:src="previewURL"
+			mode="aspectFill"
+			@error="handlePreviewError"
+		/>
+		<view v-else :class="props.compact == true ? 'avatar-preview avatar-preview-compact avatar-placeholder' : 'avatar-preview avatar-placeholder'">
+			<text class="avatar-placeholder-text">{{ previewFailed ? '加载失败' : '选择头像' }}</text>
+		</view>
+		</view>
+		<view class="avatar-select" @click="choose">
+			<text class="avatar-select-text">{{ choosing ? '正在读取图片…' : '选择头像' }}</text>
+		</view>
+		<text v-if="props.compact != true" class="avatar-hint">支持相册或拍照，JPEG / PNG，不超过 5 MiB</text>
+		<text v-if="props.compact != true" class="avatar-hint">图片宽高分别不超过 4096 像素</text>
+	</view>
+</template>
+
+<script setup lang="uts">
+import { computed, ref, watch } from 'vue'
+import { chooseAvatarImage } from '@/utils/avatar-picker.uts'
+import { DEFAULT_AVATAR_URL } from '@/utils/api.uts'
+
+const props = defineProps<{
+	avatarUrl: string
+	filePath: string
+	disabled: boolean
+	compact?: boolean
+}>()
+const emit = defineEmits(['select', 'busy', 'previewError'])
+const choosing = ref(false)
+const previewFailed = ref(false)
+const previewURL = computed((): string => {
+	if (props.filePath != '') return props.filePath
+	// 首次完善资料还没有头像地址，直接展示 Nginx 的默认头像，不作为待上传文件。
+	return props.avatarUrl != '' ? props.avatarUrl : DEFAULT_AVATAR_URL
+})
+
+watch((): string => props.filePath, () => {
+	previewFailed.value = false
+})
+
+watch((): string => props.avatarUrl, () => {
+	previewFailed.value = false
+})
+
+function handlePreviewError() {
+	previewFailed.value = true
+	if (props.filePath == '') emit('previewError')
+}
+
+async function choose() {
+	if (props.disabled || choosing.value) return
+	choosing.value = true
+	emit('busy', true)
+	try {
+		const path = await chooseAvatarImage()
+		if (path != '') emit('select', path)
+	} finally {
+		choosing.value = false
+		emit('busy', false)
+	}
+}
+</script>
+
+<style>
+.avatar-picker {
+	padding: 30rpx 16rpx;
+	align-items: center;
+}
+.avatar-preview {
+	width: 180rpx;
+	height: 180rpx;
+	border-radius: 90rpx;
+	background-color: #edf2fc;
+}
+.avatar-frame {
+	width: 180rpx;
+	height: 180rpx;
+}
+.avatar-frame-compact {
+	box-sizing: border-box;
+	width: 136rpx;
+	height: 136rpx;
+	border-radius: 68rpx;
+	border-width: 8rpx;
+	border-style: solid;
+	border-color: rgba(255, 255, 255, 0.8);
+	background-color: #ffffff;
+	box-shadow: 0 8rpx 24rpx rgba(89, 119, 205, 0.18);
+}
+.avatar-preview-compact {
+	width: 120rpx;
+	height: 120rpx;
+	border-radius: 60rpx;
+}
+.avatar-placeholder {
+	align-items: center;
+	justify-content: center;
+}
+.avatar-placeholder-text {
+	font-size: 26rpx;
+	color: #7890bc;
+}
+.avatar-select {
+	margin-top: 24rpx;
+	padding: 16rpx 36rpx;
+	border-radius: 30rpx;
+	background-color: #edf2ff;
+}
+.avatar-select-text {
+	font-size: 27rpx;
+	color: #245cf0;
+}
+.avatar-hint {
+	margin-top: 14rpx;
+	font-size: 22rpx;
+	color: #7890bc;
+	text-align: center;
+}
+</style>

@@ -11,7 +11,7 @@ import (
 
 var ErrorInvalidApartmentGender = errors.New("invalid apartment gender")
 
-const defaultAvatarPath = "avatars/default.jpg"
+const defaultAvatarPath = "avatars/default.png"
 
 func Profile(p *dto.ProfileRequest, studentID string) (err error) {
 	student := &models.Profile{
