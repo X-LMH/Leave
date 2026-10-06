@@ -224,6 +224,8 @@ const local: App.I18n.Schema = {
     }
   },
   route: {
+    'leave-type': 'Leave Reason Management',
+    class: 'Class Management',
     login: 'Login',
     403: 'No Permission',
     404: 'Page Not Found',

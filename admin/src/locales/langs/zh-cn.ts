@@ -220,6 +220,8 @@ const local: App.I18n.Schema = {
     }
   },
   route: {
+    'leave-type': '请假原因管理',
+    class: '班级管理',
     login: '登录',
     403: '无权限',
     404: '页面不存在',

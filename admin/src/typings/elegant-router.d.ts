@@ -20,8 +20,10 @@ declare module "@elegant-router/types" {
     "403": "/403";
     "404": "/404";
     "500": "/500";
+    "class": "/class";
     "home": "/home";
     "iframe-page": "/iframe-page/:url";
+    "leave-type": "/leave-type";
     "login": "/login";
   };
 
@@ -57,8 +59,10 @@ declare module "@elegant-router/types" {
     | "403"
     | "404"
     | "500"
+    | "class"
     | "home"
     | "iframe-page"
+    | "leave-type"
     | "login"
   >;
 
@@ -81,7 +85,9 @@ declare module "@elegant-router/types" {
     | "500"
     | "iframe-page"
     | "login"
+    | "class"
     | "home"
+    | "leave-type"
   >;
 
   /**

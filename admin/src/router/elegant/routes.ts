@@ -40,6 +40,17 @@ export const generatedRoutes: GeneratedRoute[] = [
     }
   },
   {
+    name: 'class',
+    path: '/class',
+    component: 'layout.base$view.class',
+    meta: {
+      title: 'class',
+      i18nKey: 'route.class',
+      icon: 'mdi:google-classroom',
+      order: 3
+    }
+  },
+  {
     name: 'home',
     path: '/home',
     component: 'layout.base$view.home',
@@ -61,6 +72,17 @@ export const generatedRoutes: GeneratedRoute[] = [
       constant: true,
       hideInMenu: true,
       keepAlive: true
+    }
+  },
+  {
+    name: 'leave-type',
+    path: '/leave-type',
+    component: 'layout.base$view.leave-type',
+    meta: {
+      title: 'leave-type',
+      i18nKey: 'route.leave-type',
+      icon: 'mdi:format-list-bulleted',
+      order: 2
     }
   },
   {

@@ -27,6 +27,11 @@ export function setupElegantRouter() {
         i18nKey: `route.${key}` as App.I18n.I18nKey
       };
 
+      if (key === 'leave-type' || key === 'class') {
+        meta.icon = key === 'leave-type' ? 'mdi:format-list-bulleted' : 'mdi:google-classroom';
+        meta.order = key === 'leave-type' ? 2 : 3;
+      }
+
       if (constantRoutes.includes(key)) {
         meta.constant = true;
       }
