@@ -17,7 +17,8 @@ CREATE TABLE `profiles`
     `updated_at`   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted_at`   DATETIME     NULL     DEFAULT NULL COMMENT '软删除时间，NULL表示未删除',
     PRIMARY KEY (`id`),
-    UNIQUE KEY `uk_profiles_student_id` (`student_id`)
+    UNIQUE KEY `uk_profiles_student_id` (`student_id`),
+    KEY `idx_profiles_class_id` (`class_id`)
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_unicode_ci COMMENT ='用户个人信息表';

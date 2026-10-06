@@ -3,8 +3,8 @@ import { computed, h, nextTick, reactive, ref } from 'vue';
 import { NButton, NSpace, NTag } from 'naive-ui';
 import type { DataTableColumns, FormInst, FormRules } from 'naive-ui';
 import { useAppStore } from '@/store/modules/app';
-import { queryClasses, saveClass, deleteClass } from '@/service/mock/management';
-import type { ClassRecord } from '@/service/mock/management';
+import { queryClasses, saveClass, deleteClass } from '@/service/api/management';
+import type { ClassRecord } from '@/service/api/management';
 
 const appStore = useAppStore();
 const rows = ref<ClassRecord[]>([]);
@@ -22,27 +22,23 @@ const searchStatus = computed({
 });
 const page = ref(1);
 const pageSize = ref(10);
-const filteredRows = computed(() =>
-  rows.value.filter(
-    row =>
-      (['college', 'major', 'className'] as const).every(key =>
-        row[key].toLocaleLowerCase().includes(applied[key].trim().toLocaleLowerCase())
-      ) &&
-      (applied.isEnabled === null || row.isEnabled === applied.isEnabled)
-  )
-);
+const total = ref(0);
+const loading = ref(false);
+let querySequence = 0;
 const pagination = computed(() => ({
   page: page.value,
   pageSize: pageSize.value,
-  itemCount: filteredRows.value.length,
+  itemCount: total.value,
   showSizePicker: true,
   pageSizes: [10, 20, 50],
   onUpdatePage: (value: number) => {
     page.value = value;
+    void reload();
   },
   onUpdatePageSize: (value: number) => {
     pageSize.value = value;
     page.value = 1;
+    void reload();
   }
 }));
 const drawerVisible = ref(false);
@@ -71,26 +67,40 @@ const rules: FormRules = {
     trigger: ['blur', 'input']
   }
 };
-function showError(error: unknown) {
-  window.$message?.error(error instanceof Error ? error.message : '本地数据操作失败，请检查浏览器存储是否可用');
-}
-function reload() {
+async function reload(): Promise<void> {
+  const sequence = ++querySequence;
+  loading.value = true;
   try {
-    rows.value = queryClasses();
-    page.value = Math.min(page.value, Math.max(1, Math.ceil(filteredRows.value.length / pageSize.value)));
-  } catch (error) {
-    showError(error);
+    const { data, error } = await queryClasses({ ...applied, page: page.value, pageSize: pageSize.value });
+    if (sequence !== querySequence) return;
+    if (error) {
+      rows.value = [];
+      total.value = 0;
+      return;
+    }
+    total.value = data.total;
+    const lastPage = Math.max(1, Math.ceil(data.total / pageSize.value));
+    if (page.value > lastPage) {
+      page.value = lastPage;
+      await reload();
+      return;
+    }
+    rows.value = data.items;
+  } finally {
+    if (sequence === querySequence) loading.value = false;
   }
 }
 function applySearch() {
   Object.assign(applied, search);
   page.value = 1;
+  void reload();
 }
 function resetSearch() {
   Object.assign(search, { college: '', major: '', className: '', isEnabled: null as boolean | null });
   applySearch();
 }
 async function openForm(row?: ClassRecord) {
+  if (saving.value) return;
   editingId.value = row?.id;
   Object.assign(model, emptyModel());
   if (row) {
@@ -109,14 +119,14 @@ async function submit() {
   } catch {
     return;
   }
+  if (saving.value) return;
   saving.value = true;
   try {
-    saveClass(model, editingId.value);
+    const { error } = await saveClass(model, editingId.value);
+    if (error) return;
     drawerVisible.value = false;
-    reload();
+    await reload();
     window.$message?.success(editingId.value === undefined ? '新增成功' : '修改成功');
-  } catch (error) {
-    showError(error);
   } finally {
     saving.value = false;
   }
@@ -127,15 +137,11 @@ function confirmDelete(row: ClassRecord) {
     content: `确认删除“${row.className}”吗？`,
     positiveText: '删除',
     negativeText: '取消',
-    onPositiveClick: () => {
-      try {
-        deleteClass(row.id);
-        reload();
-        window.$message?.success('删除成功');
-      } catch (error) {
-        showError(error);
-        return false;
-      }
+    onPositiveClick: async () => {
+      const { error } = await deleteClass(row.id);
+      if (error) return false;
+      await reload();
+      window.$message?.success('删除成功');
       return true;
     }
   });
@@ -202,7 +208,7 @@ reload();
     <NCard title="班级管理" :bordered="false" size="small" class="card-wrapper">
       <template #header-extra>
         <NSpace align="center">
-          <span class="record-count">共 {{ filteredRows.length }} 条</span>
+          <span class="record-count">共 {{ total }} 条</span>
           <NButton type="primary" @click="openForm()">新增班级</NButton>
         </NSpace>
       </template>
@@ -211,7 +217,9 @@ reload();
         striped
         table-layout="fixed"
         :columns="columns"
-        :data="filteredRows"
+        :data="rows"
+        remote
+        :loading="loading"
         :row-key="row => row.id"
         :pagination="pagination"
         :scroll-x="1270"

@@ -66,6 +66,14 @@ func SetupRouter() *gin.Engine {
 	admin.Use(middleware.JWTAuthMiddleware(), middleware.AdminAuthMiddleware())
 	{
 		admin.GET("/classes", admincontroller.GetClassesHandler)
+		admin.POST("/classes", admincontroller.CreateClassHandler)
+		admin.PUT("/classes/:id", admincontroller.UpdateClassHandler)
+		admin.DELETE("/classes/:id", admincontroller.DeleteClassHandler)
+
+		admin.GET("/leave-types", admincontroller.GetLeaveTypesHandler)
+		admin.POST("/leave-types", admincontroller.CreateLeaveTypeHandler)
+		admin.PUT("/leave-types/:id", admincontroller.UpdateLeaveTypeHandler)
+		admin.DELETE("/leave-types/:id", admincontroller.DeleteLeaveTypeHandler)
 	}
 
 	return r

@@ -35,6 +35,10 @@ export const request = createFlatRequest(
     },
     async onBackendFail(response, instance) {
       const authStore = useAuthStore();
+      if (response.status === 401 && response.config.url?.startsWith('/admin/')) {
+        if (!response.config.url.startsWith('/admin/auth/')) await authStore.resetStore();
+        return null;
+      }
       const responseCode = String(response.data.code);
 
       function handleLogout() {
@@ -95,14 +99,21 @@ export const request = createFlatRequest(
 
       return null;
     },
-    onError(error) {
+    async onError(error) {
       // when the request is fail, you can show error message
 
       let message = error.message;
       let backendErrorCode = '';
 
+      // Management authentication has no refresh endpoint; never retry an expired admin session.
+      if (error.response?.status === 401 && error.config?.url?.startsWith('/admin/')) {
+        if (!error.config.url.startsWith('/admin/auth/')) await useAuthStore().resetStore();
+        showErrorMsg(request.state, error.response.data.message || message);
+        return;
+      }
+
       // get backend error message and code
-      if (error.code === BACKEND_ERROR_CODE) {
+      if (error.response?.data?.message) {
         message = error.response?.data?.message || message;
         backendErrorCode = String(error.response?.data?.code || '');
       }

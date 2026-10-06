@@ -20,10 +20,11 @@ func GetClassesHandler(c *gin.Context) {
 	}
 
 	query := dto.AdminClassListQuery{
-		Page:     pagination.Page,
-		PageSize: pagination.PageSize,
-		College:  strings.TrimSpace(c.Query("college")),
-		Major:    strings.TrimSpace(c.Query("major")),
+		Page:      pagination.Page,
+		PageSize:  pagination.PageSize,
+		College:   strings.TrimSpace(c.Query("college")),
+		Major:     strings.TrimSpace(c.Query("major")),
+		ClassName: strings.TrimSpace(c.Query("class_name")),
 	}
 	if value := c.Query("is_enabled"); value != "" {
 		enabled, err := strconv.ParseBool(value)

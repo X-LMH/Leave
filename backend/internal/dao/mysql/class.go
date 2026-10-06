@@ -31,6 +31,9 @@ func GetAdminClasses(query dto.AdminClassListQuery) ([]*models.Class, int64, err
 	if query.Major != "" {
 		dbQuery = dbQuery.Where("major LIKE ?", "%"+query.Major+"%")
 	}
+	if query.ClassName != "" {
+		dbQuery = dbQuery.Where("class_name LIKE ?", "%"+query.ClassName+"%")
+	}
 	if query.IsEnabled != nil {
 		dbQuery = dbQuery.Where("is_enabled = ?", *query.IsEnabled)
 	}

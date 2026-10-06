@@ -9,20 +9,29 @@ import (
 )
 
 func FinishProfile(s *models.Profile) error {
-	return db.Clauses(clause.OnConflict{
-		Columns: []clause.Column{{Name: "student_id"}},
-		DoUpdates: clause.Assignments(map[string]any{
-			"class_id":         s.ClassID,
-			"name":             s.Name,
-			"phone":            s.Phone,
-			"gender":           s.Gender,
-			"parent_name":      s.ParentName,
-			"parent_phone":     s.ParentPhone,
-			"apartment_id":     s.ApartmentID,
-			"dormitory_number": s.DormitoryNumber,
-			"teacher_name":     s.TeacherName,
-		}),
-	}).Create(s).Error
+	return db.Transaction(func(tx *gorm.DB) error {
+		// Serialize class assignment with management deletion to prevent orphaned profiles.
+		if s.ClassID != 0 {
+			var class models.Class
+			if err := tx.Clauses(clause.Locking{Strength: "SHARE"}).First(&class, s.ClassID).Error; err != nil {
+				return err
+			}
+		}
+		return tx.Clauses(clause.OnConflict{
+			Columns: []clause.Column{{Name: "student_id"}},
+			DoUpdates: clause.Assignments(map[string]any{
+				"class_id":         s.ClassID,
+				"name":             s.Name,
+				"phone":            s.Phone,
+				"gender":           s.Gender,
+				"parent_name":      s.ParentName,
+				"parent_phone":     s.ParentPhone,
+				"apartment_id":     s.ApartmentID,
+				"dormitory_number": s.DormitoryNumber,
+				"teacher_name":     s.TeacherName,
+			}),
+		}).Create(s).Error
+	})
 }
 
 func GetProfileByStuID(studentID string) (data *models.Profile, err error) {

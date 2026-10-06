@@ -23,11 +23,12 @@ const model: FormModel = reactive({
 
 const rules = computed<Record<keyof FormModel, App.Global.FormRule[]>>(() => {
   // inside computed to make locale reactive, if not apply i18n, you can define it without computed
-  const { formRules } = useFormRules();
+  const { formRules, createRequiredRule } = useFormRules();
 
   return {
     userName: formRules.userName,
-    password: formRules.pwd
+    // 登录只校验是否填写，密码格式及正确性交由后端验证。
+    password: [createRequiredRule($t('form.pwd.required'))]
   };
 });
 

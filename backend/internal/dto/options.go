@@ -11,6 +11,7 @@ type ClassOption struct {
 }
 
 type AdminClassListQuery struct {
+	ClassName string
 	Page      int
 	PageSize  int
 	College   string

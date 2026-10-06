@@ -10,8 +10,6 @@ declare namespace StorageType {
   }
 
   interface Local {
-    mockLeaveTypes: import('@/service/mock/management').MockStore<import('@/service/mock/management').LeaveTypeRecord>;
-    mockClasses: import('@/service/mock/management').MockStore<import('@/service/mock/management').ClassRecord>;
     /** The i18n language */
     lang: App.I18n.LangType;
     /** The token */
