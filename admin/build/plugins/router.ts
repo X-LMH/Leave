@@ -29,7 +29,12 @@ export function setupElegantRouter() {
 
       if (key === 'leave-type' || key === 'class') {
         meta.icon = key === 'leave-type' ? 'mdi:format-list-bulleted' : 'mdi:google-classroom';
-        meta.order = key === 'leave-type' ? 2 : 3;
+        meta.order = key === 'class' ? 4 : 5;
+      }
+
+      if (key === 'student' || key === 'leave-record') {
+        meta.icon = key === 'student' ? 'mdi:account-school' : 'mdi:clipboard-text-clock-outline';
+        meta.order = key === 'student' ? 2 : 3;
       }
 
       if (constantRoutes.includes(key)) {

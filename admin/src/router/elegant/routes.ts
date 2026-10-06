@@ -47,7 +47,7 @@ export const generatedRoutes: GeneratedRoute[] = [
       title: 'class',
       i18nKey: 'route.class',
       icon: 'mdi:google-classroom',
-      order: 3
+      order: 4
     }
   },
   {
@@ -75,6 +75,17 @@ export const generatedRoutes: GeneratedRoute[] = [
     }
   },
   {
+    name: 'leave-record',
+    path: '/leave-record',
+    component: 'layout.base$view.leave-record',
+    meta: {
+      title: 'leave-record',
+      i18nKey: 'route.leave-record',
+      icon: 'mdi:clipboard-text-clock-outline',
+      order: 3
+    }
+  },
+  {
     name: 'leave-type',
     path: '/leave-type',
     component: 'layout.base$view.leave-type',
@@ -82,7 +93,7 @@ export const generatedRoutes: GeneratedRoute[] = [
       title: 'leave-type',
       i18nKey: 'route.leave-type',
       icon: 'mdi:format-list-bulleted',
-      order: 2
+      order: 5
     }
   },
   {
@@ -94,6 +105,17 @@ export const generatedRoutes: GeneratedRoute[] = [
       i18nKey: 'route.login',
       constant: true,
       hideInMenu: true
+    }
+  },
+  {
+    name: 'student',
+    path: '/student',
+    component: 'layout.base$view.student',
+    meta: {
+      title: 'student',
+      i18nKey: 'route.student',
+      icon: 'mdi:account-school',
+      order: 2
     }
   }
 ];

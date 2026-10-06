@@ -22,5 +22,7 @@ export const views: Record<LastLevelRouteKey, RouteComponent | (() => Promise<Ro
   login: () => import("@/views/_builtin/login/index.vue"),
   class: () => import("@/views/class/index.vue"),
   home: () => import("@/views/home/index.vue"),
+  "leave-record": () => import("@/views/leave-record/index.vue"),
   "leave-type": () => import("@/views/leave-type/index.vue"),
+  student: () => import("@/views/student/index.vue"),
 };

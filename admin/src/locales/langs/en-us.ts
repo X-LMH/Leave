@@ -224,6 +224,8 @@ const local: App.I18n.Schema = {
     }
   },
   route: {
+    student: 'Student Management',
+    'leave-record': 'Leave Record Management',
     'leave-type': 'Leave Reason Management',
     class: 'Class Management',
     login: 'Login',

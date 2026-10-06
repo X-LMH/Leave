@@ -169,8 +169,10 @@ const routeMap: RouteMap = {
   "class": "/class",
   "home": "/home",
   "iframe-page": "/iframe-page/:url",
+  "leave-record": "/leave-record",
   "leave-type": "/leave-type",
-  "login": "/login"
+  "login": "/login",
+  "student": "/student"
 };
 
 /**

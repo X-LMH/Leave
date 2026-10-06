@@ -23,8 +23,10 @@ declare module "@elegant-router/types" {
     "class": "/class";
     "home": "/home";
     "iframe-page": "/iframe-page/:url";
+    "leave-record": "/leave-record";
     "leave-type": "/leave-type";
     "login": "/login";
+    "student": "/student";
   };
 
   /**
@@ -62,8 +64,10 @@ declare module "@elegant-router/types" {
     | "class"
     | "home"
     | "iframe-page"
+    | "leave-record"
     | "leave-type"
     | "login"
+    | "student"
   >;
 
   /**
@@ -87,7 +91,9 @@ declare module "@elegant-router/types" {
     | "login"
     | "class"
     | "home"
+    | "leave-record"
     | "leave-type"
+    | "student"
   >;
 
   /**
