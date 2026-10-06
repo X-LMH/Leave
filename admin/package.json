@@ -28,11 +28,10 @@
   "type": "module",
   "scripts": {
     "build": "vite build --mode prod",
-    "build:test": "vite build --mode test",
     "cleanup": "sa cleanup",
     "commit": "sa git-commit",
     "commit:zh": "sa git-commit -l=zh-cn",
-    "dev": "vite --mode test",
+    "dev": "vite",
     "dev:prod": "vite --mode prod",
     "fmt": "oxfmt",
     "gen-route": "sa gen-route",

@@ -9,31 +9,41 @@ Thumbs.db
 *.swp
 *.swo
 *.tmp
+*.suo
+*.ntvs*
+*.njsproj
 
 # 环境变量和本地配置
 .env
 .env.*
 !.env.example
+!.env.*.example
 backend/config/config.yaml
 backend/config/config.local.yaml
 backend/config/config.server.yaml
 
 # Go 后端
 backend/tmp/
-bin/
+/bin/
 backend/coverage.out
 backend/*.exe
 backend/*.test
 backend/main
 backend/local.air.toml
 
+# JavaScript 依赖和工具缓存（包含 workspace 子包）
+node_modules/
+.pnpm-store/
+.vite/
+.cache/
+*.tsbuildinfo
+
 # 前端 / uni-app
-frontend/node_modules/
+# 当前客户端没有 package.json，空的 npm 锁文件无需提交。
+frontend/package-lock.json
 frontend/unpackage/
 frontend/dist/
 frontend/.hbuilderx/
-frontend/.vite/
-frontend/.cache/
 frontend/coverage/
 
 # 日志和运行时文件
@@ -41,25 +51,35 @@ frontend/coverage/
 *.pid
 *.seed
 *.pid.lock
+lerna-debug.log*
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
 # 管理后台 / SoybeanAdmin
-admin/node_modules/
-admin/dist/
-admin/dist-ssr/
-admin/coverage/
-admin/.vite/
-admin/*.local
+# 参考 https://github.com/soybeanjs/soybean-admin/blob/main/.gitignore
+# build/ 和 packages/*/src/ 是源码，不能作为构建产物忽略。
+admin/**/logs/
+admin/**/dist/
+admin/**/dist-ssr/
+admin/**/coverage/
+admin/**/*.local
 admin/cypress/videos/
 admin/cypress/screenshots/
-admin/.VSCodeCounter
+admin/**/.VSCodeCounter/
 admin/src-tauri/target/
-admin/.codegraph
+admin/**/.codegraph/
+# 管理端使用 pnpm，保留 pnpm-lock.yaml。
 admin/package-lock.json
 admin/yarn.lock
 
-# 本地测试的一些东西
-uploads/
+# 按模板约定保留可共享的 VS Code 配置。
+!admin/.vscode/
+admin/.vscode/*
+!admin/.vscode/extensions.json
+!admin/.vscode/settings.json
+!admin/.vscode/launch.json
+
+# 本地上传文件
+/uploads/

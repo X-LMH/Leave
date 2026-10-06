@@ -18,9 +18,8 @@ admin/
 │   ├── views/              # 业务页面
 │   ├── locales/            # 国际化资源
 │   └── styles/             # 全局样式
-├── .env                   # 通用环境配置
-├── .env.test              # 开发/测试接口配置
-├── .env.prod              # 生产接口配置
+├── .env                   # 开发环境配置
+├── .env.prod              # 生产环境配置
 ├── package.json
 ├── pnpm-workspace.yaml
 └── vite.config.ts
@@ -33,7 +32,6 @@ admin/
 ```bash
 pnpm install       # 安装依赖
 pnpm dev           # 启动开发环境
-pnpm dev:prod      # 使用生产模式启动
 pnpm build         # 构建生产版本
 pnpm preview       # 预览构建结果
 pnpm typecheck     # TypeScript 类型检查
@@ -43,7 +41,7 @@ pnpm fmt           # 使用 oxfmt 格式化
 
 ## 环境配置
 
-接口地址在 `.env.test` 和 `.env.prod` 中配置，当前默认使用 SoybeanAdmin 的 Mock 服务。接入 Leave 的 Go 后端时，修改 `VITE_SERVICE_BASE_URL`，不要把接口地址硬编码到业务页面中。
+开发环境配置放在 `.env`，生产环境配置放在 `.env.prod`。当前默认使用 SoybeanAdmin 的 Mock 服务。接入 Leave 的 Go 后端时，修改 `VITE_SERVICE_BASE_URL`，不要把接口地址硬编码到业务页面中。
 
 环境文件包含本地配置，已由根目录 `.gitignore` 忽略；如需提供配置模板，应新增 `admin/.env.example`。
 
