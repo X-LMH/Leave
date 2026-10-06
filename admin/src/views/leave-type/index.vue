@@ -1,12 +1,21 @@
 <script setup lang="ts">
 import { computed, h, nextTick, reactive, ref } from 'vue';
-import { NButton, NSpace, NTag } from 'naive-ui';
+import { NButton, NSpace, NTag, useThemeVars } from 'naive-ui';
 import type { DataTableColumns, FormInst, FormRules } from 'naive-ui';
 import { useAppStore } from '@/store/modules/app';
 import { queryLeaveTypes, saveLeaveType, deleteLeaveType } from '@/service/api/management';
 import type { LeaveTypeRecord } from '@/service/api/management';
 
 const appStore = useAppStore();
+const themeVars = useThemeVars();
+const themeStyle = computed(() => ({
+  '--management-accent': themeVars.value.primaryColor,
+  '--management-text': themeVars.value.textColor1,
+  '--management-muted': themeVars.value.textColor3,
+  '--management-border': themeVars.value.dividerColor,
+  '--management-surface': themeVars.value.cardColor,
+  '--management-inset': themeVars.value.tableHeaderColor
+}));
 const rows = ref<LeaveTypeRecord[]>([]);
 const search = reactive({ name: '', isEnabled: null as boolean | null });
 const applied = reactive({ ...search });
@@ -140,10 +149,16 @@ function confirmDelete(row: LeaveTypeRecord) {
     }
   });
 }
-const formatTime = (value: string) => new Date(value).toLocaleString('zh-CN', { hour12: false });
+function renderTime(value: string) {
+  const date = new Date(value);
+  return h('div', { class: 'table-time' }, [
+    h('span', {}, date.toLocaleDateString('zh-CN')),
+    h('span', { class: 'table-time__clock' }, date.toLocaleTimeString('zh-CN', { hour12: false }))
+  ]);
+}
 const columns: DataTableColumns<LeaveTypeRecord> = [
-  { key: 'id', title: 'ID', width: 70, align: 'center' },
-  { key: 'name', title: '原因名称', width: 260, ellipsis: { tooltip: true } },
+  { key: 'id', title: 'ID', width: 70, align: 'center', className: 'table-id' },
+  { key: 'name', title: '原因名称', width: 220, ellipsis: { tooltip: true } },
   { key: 'sortOrder', title: '排序值', width: 100, align: 'center' },
   {
     key: 'isEnabled',
@@ -153,8 +168,8 @@ const columns: DataTableColumns<LeaveTypeRecord> = [
     render: row =>
       h(NTag, { type: row.isEnabled ? 'success' : 'default', bordered: false }, () => (row.isEnabled ? '启用' : '停用'))
   },
-  { key: 'createdAt', title: '创建时间', width: 180, render: row => formatTime(row.createdAt) },
-  { key: 'updatedAt', title: '更新时间', width: 180, render: row => formatTime(row.updatedAt) },
+  { key: 'createdAt', title: '创建时间', width: 130, render: row => renderTime(row.createdAt) },
+  { key: 'updatedAt', title: '更新时间', width: 130, render: row => renderTime(row.updatedAt) },
   {
     key: 'actions',
     title: '操作',
@@ -162,8 +177,12 @@ const columns: DataTableColumns<LeaveTypeRecord> = [
     fixed: 'right',
     render: row =>
       h(NSpace, {}, () => [
-        h(NButton, { size: 'small', onClick: () => openForm(row) }, () => '编辑'),
-        h(NButton, { size: 'small', type: 'error', ghost: true, onClick: () => confirmDelete(row) }, () => '删除')
+        h(
+          NButton,
+          { size: 'small', type: 'primary', secondary: true, class: 'table-edit-button', onClick: () => openForm(row) },
+          () => '编辑'
+        ),
+        h(NButton, { size: 'small', type: 'error', quaternary: true, onClick: () => confirmDelete(row) }, () => '删除')
       ])
   }
 ];
@@ -171,9 +190,36 @@ reload();
 </script>
 
 <template>
-  <div class="flex-col-stretch gap-16px">
-    <NCard title="查询条件" :bordered="false" size="small" class="card-wrapper">
-      <NForm :show-feedback="false" label-placement="top" class="search-form">
+  <div class="management-page management-page--leave-type" :style="themeStyle">
+    <header class="management-header">
+      <div class="management-header__intro">
+        <span class="management-header__icon" aria-hidden="true"><SvgIcon icon="mdi:format-list-bulleted" /></span>
+        <div>
+          <p class="management-header__eyebrow">教务管理 / 基础配置</p>
+          <h1 class="management-header__title">请假原因管理</h1>
+          <p class="management-header__description">维护请假原因选项、显示顺序与启用状态。</p>
+        </div>
+      </div>
+      <div class="management-header__count" aria-live="polite">
+        <span class="management-header__count-label">当前查询结果</span>
+        <span>
+          <strong>{{ total }}</strong>
+          项原因
+        </span>
+      </div>
+    </header>
+    <NCard
+      :bordered="false"
+      size="small"
+      class="management-card management-card--search management-card--compact-search"
+    >
+      <template #header>
+        <div class="section-heading">
+          <SvgIcon icon="mdi:filter-variant" aria-hidden="true" />
+          <span>筛选条件</span>
+        </div>
+      </template>
+      <NForm :show-feedback="false" label-placement="top" class="search-form search-form--compact">
         <NFormItem label="原因名称">
           <NInput v-model:value="search.name" clearable placeholder="请输入原因名称" @keyup.enter="applySearch" />
         </NFormItem>
@@ -186,22 +232,35 @@ reload();
             class="w-full"
           />
         </NFormItem>
-        <NSpace class="search-actions">
-          <NButton type="primary" @click="applySearch">查询</NButton>
-          <NButton @click="resetSearch">重置</NButton>
-        </NSpace>
+        <div class="search-actions">
+          <NButton type="primary" :loading="loading" @click="applySearch">
+            <template #icon><SvgIcon icon="mdi:magnify" /></template>
+            查询
+          </NButton>
+          <NButton @click="resetSearch">
+            <template #icon><SvgIcon icon="mdi:refresh" /></template>
+            重置
+          </NButton>
+        </div>
       </NForm>
     </NCard>
-    <NCard title="请假原因管理" :bordered="false" size="small" class="card-wrapper">
+    <NCard :bordered="false" size="small" class="management-card management-card--table">
+      <template #header>
+        <div class="section-heading">
+          <span>原因列表</span>
+          <span class="section-heading__badge">{{ total }}</span>
+        </div>
+      </template>
       <template #header-extra>
         <NSpace align="center">
-          <span class="record-count">共 {{ total }} 条</span>
-          <NButton type="primary" @click="openForm()">新增原因</NButton>
+          <NButton type="primary" @click="openForm()">
+            <template #icon><SvgIcon icon="mdi:plus" /></template>
+            新增原因
+          </NButton>
         </NSpace>
       </template>
       <NDataTable
         :bordered="false"
-        striped
         table-layout="fixed"
         :columns="columns"
         :data="rows"
@@ -209,93 +268,85 @@ reload();
         :loading="loading"
         :row-key="row => row.id"
         :pagination="pagination"
-        :scroll-x="1030"
-      />
+        :scroll-x="890"
+      >
+        <template #empty>
+          <div class="table-empty">
+            <SvgIcon icon="mdi:format-list-bulleted" aria-hidden="true" />
+            <strong>暂无原因数据</strong>
+            <span>可以调整筛选条件，或新增原因。</span>
+            <NButton size="small" @click="resetSearch">重置筛选</NButton>
+          </div>
+        </template>
+      </NDataTable>
     </NCard>
     <NDrawer
       v-model:show="drawerVisible"
-      :width="appStore.isMobile ? '100%' : 480"
+      :width="appStore.isMobile ? '100%' : 560"
       :close-on-esc="!saving"
       :mask-closable="!saving"
     >
       <NDrawerContent
+        class="management-drawer"
+        :style="themeStyle"
         :title="editingId === undefined ? '新增请假原因' : '编辑请假原因'"
         :closable="!saving"
         :native-scrollbar="false"
-        :body-content-style="{ padding: '24px' }"
       >
-        <NForm ref="formRef" :model="model" :rules="rules" label-placement="top" class="edit-form">
+        <div class="configuration-summary">
+          <span class="configuration-summary__icon" aria-hidden="true">
+            <SvgIcon icon="mdi:format-list-bulleted" />
+          </span>
+          <div>
+            <strong>{{ editingId === undefined ? '新增原因' : '编辑原因' }}</strong>
+            <p>设置原因名称、排序值与启用状态。</p>
+          </div>
+        </div>
+        <NForm
+          ref="formRef"
+          :model="model"
+          :rules="rules"
+          label-placement="top"
+          class="edit-form edit-form--configuration"
+        >
+          <div class="form-section-heading">
+            <span>01</span>
+            <h2>基础信息</h2>
+          </div>
           <NFormItem label="原因名称" path="name">
             <NInput v-model:value="model.name" :maxlength="32" show-count placeholder="请输入原因名称" />
           </NFormItem>
-          <NFormItem label="排序值" path="sortOrder">
+          <NFormItem label="排序值（越小越靠前）" path="sortOrder">
             <NInputNumber v-model:value="model.sortOrder" :min="0" :max="4294967295" :precision="0" class="w-full" />
           </NFormItem>
+          <div class="form-section-heading">
+            <span>02</span>
+            <h2>启用设置</h2>
+          </div>
           <NFormItem label="启用状态" path="isEnabled" :show-feedback="false">
-            <div class="status-control">
-              <NSwitch v-model:value="model.isEnabled" />
-              <span>{{ model.isEnabled ? '启用' : '停用' }}</span>
+            <div class="status-control status-control--configuration">
+              <div class="status-control__copy">
+                <strong>{{ model.isEnabled ? '已启用' : '已停用' }}</strong>
+                <span>控制该原因是否可用于新请假申请。</span>
+              </div>
+              <NSwitch v-model:value="model.isEnabled" aria-label="启用状态" />
             </div>
           </NFormItem>
         </NForm>
-        <div class="drawer-actions">
-          <NButton class="drawer-action-button" :disabled="saving" @click="drawerVisible = false">取消</NButton>
-          <NButton class="drawer-action-button" type="primary" :loading="saving" @click="submit">保存</NButton>
-        </div>
+        <template #footer>
+          <div class="drawer-footer">
+            <span class="drawer-footer__hint">确认信息后保存</span>
+            <div class="drawer-actions">
+              <NButton :disabled="saving" @click="drawerVisible = false">取消</NButton>
+              <NButton type="primary" :loading="saving" @click="submit">保存</NButton>
+            </div>
+          </div>
+        </template>
       </NDrawerContent>
     </NDrawer>
   </div>
 </template>
 
-<style scoped>
-.edit-form :deep(.n-form-item-label) {
-  font-weight: 500;
-}
-
-.status-control {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.drawer-actions {
-  display: flex;
-  width: 100%;
-  margin-top: 24px;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 12px;
-}
-
-.drawer-action-button {
-  min-width: 88px;
-}
-
-.search-form {
-  display: grid;
-  grid-template-columns: minmax(180px, 280px) minmax(140px, 180px) auto;
-  align-items: end;
-  gap: 16px;
-}
-
-.search-actions {
-  padding-bottom: 2px;
-}
-
-.record-count {
-  color: var(--n-text-color-3);
-  font-size: 13px;
-}
-
-@media (max-width: 1100px) {
-  .search-form {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 600px) {
-  .search-form {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
+<style scoped lang="scss">
+@use '@/styles/scss/management.scss';
 </style>
