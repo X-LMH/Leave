@@ -5,7 +5,7 @@ import (
 	"backend/internal/middleware"
 	"backend/internal/request"
 	"backend/internal/response"
-	"backend/internal/service"
+	adminservice "backend/internal/service/admin"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 	"net/http"
@@ -20,6 +20,19 @@ func TestManagementRejectsInvalidRequests(t *testing.T) {
 		handler            gin.HandlerFunc
 		method, path, body string
 	}{
+		{GetApartmentOptionsHandler, "GET", "/items?gender=unknown", ""},
+		{GetStudentsHandler, "GET", "/items?page=0", ""},
+		{GetStudentsHandler, "GET", "/items?page_size=101", ""},
+		{GetStudentsHandler, "GET", "/items?class_id=0", ""},
+		{GetStudentsHandler, "GET", "/items?class_id=bad", ""},
+		{GetStudentsHandler, "GET", "/items?status=2", ""},
+		{GetStudentsHandler, "GET", "/items?status=-1", ""},
+		{GetStudentHandler, "GET", "/items/0", ""},
+		{UpdateStudentHandler, "PUT", "/items/1", `{}`},
+		{UpdateStudentStatusHandler, "PUT", "/items/1", `{}`},
+		{UpdateStudentStatusHandler, "PUT", "/items/1", `{"status":2}`},
+		{UpdateStudentStatusHandler, "PUT", "/items/1", `{"status":-1}`},
+		{UpdateStudentStatusHandler, "PUT", "/items/1", `{"status":1.5}`},
 		{GetLeaveTypesHandler, "GET", "/items?page=0", ""},
 		{GetLeaveTypesHandler, "GET", "/items?is_enabled=bad", ""},
 		{GetClassesHandler, "GET", "/items?page_size=101", ""},
@@ -47,7 +60,7 @@ func TestManagementErrors(t *testing.T) {
 		err    error
 		status int
 	}{
-		{gorm.ErrRecordNotFound, 404}, {gorm.ErrDuplicatedKey, 409}, {mysql.ErrorClassInUse, 409}, {service.ErrorInvalidAdminInput, 400},
+		{gorm.ErrRecordNotFound, 404}, {gorm.ErrDuplicatedKey, 409}, {mysql.ErrorClassInUse, 409}, {adminservice.ErrorInvalidAdminInput, 400},
 	} {
 		r := gin.New()
 		r.GET("/", func(c *gin.Context) { managementError(c, tc.err) })

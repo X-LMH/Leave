@@ -5,7 +5,7 @@ import (
 	"backend/internal/dto"
 	"backend/internal/request"
 	"backend/internal/response"
-	"backend/internal/service"
+	appservice "backend/internal/service/app"
 	"errors"
 	"strings"
 	"unicode/utf8"
@@ -32,7 +32,7 @@ func RegisterHandler(c *gin.Context) {
 	}
 
 	// 业务逻辑
-	if err := service.Register(p); err != nil {
+	if err := appservice.Register(p); err != nil {
 		switch {
 		case errors.Is(err, mysql.ErrorUserExist):
 			response.Error(c, response.CodeUserExist)
@@ -65,7 +65,7 @@ func LoginHandler(c *gin.Context) {
 	}
 
 	// 业务逻辑
-	data, err := service.Login(p)
+	data, err := appservice.Login(p)
 	if err != nil {
 		switch {
 		case errors.Is(err, mysql.ErrorUserNotExist), errors.Is(err, mysql.ErrorInvalidPassword):
@@ -98,7 +98,7 @@ func UpdateAppInfoHandler(c *gin.Context) {
 		response.Error(c, response.CodeNeedLogin)
 		return
 	}
-	if err := service.UpdateAppInfo(p, studentID); err != nil {
+	if err := appservice.UpdateAppInfo(p, studentID); err != nil {
 		response.Error(c, response.CodeServerBusy)
 		return
 	}
@@ -124,7 +124,7 @@ func ChangePasswordHandler(c *gin.Context) {
 		response.Error(c, response.CodeNeedLogin)
 		return
 	}
-	if err := service.ChangePassword(p, studentID); err != nil {
+	if err := appservice.ChangePassword(p, studentID); err != nil {
 		switch {
 		case errors.Is(err, mysql.ErrorNotRightPassword):
 			response.Error(c, response.CodeNotRightPassword)

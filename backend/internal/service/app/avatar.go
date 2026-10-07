@@ -1,9 +1,10 @@
-package service
+package app
 
 import (
 	"backend/internal/config"
 	"backend/internal/dao/mysql"
 	"backend/internal/dto"
+	"backend/internal/service"
 	"backend/internal/utils/file"
 	"bytes"
 	"errors"
@@ -57,7 +58,7 @@ func UploadAvatar(studentID string, content io.Reader) (*dto.AvatarUploadRespons
 
 func deleteOldAvatar(root, key string) error {
 	// 默认头像是共享资源；空路径及其他业务目录也不应删除。
-	if key == defaultAvatarPath || !strings.HasPrefix(key, "avatars/") {
+	if key == service.DefaultAvatarPath || !strings.HasPrefix(key, "avatars/") {
 		return nil
 	}
 	return file.Delete(root, key)

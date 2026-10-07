@@ -1,17 +1,13 @@
-package service
+package app
 
 import (
 	"backend/internal/config"
 	"backend/internal/dao/mysql"
 	"backend/internal/dto"
 	"backend/internal/models"
+	"backend/internal/service"
 	"backend/internal/utils/file"
-	"errors"
 )
-
-var ErrorInvalidApartmentGender = errors.New("invalid apartment gender")
-
-const defaultAvatarPath = "avatars/default.png"
 
 func Profile(p *dto.ProfileRequest, studentID string) (err error) {
 	student := &models.Profile{
@@ -49,7 +45,7 @@ func GetProfile(studentID string) (*dto.ProfileResponse, error) {
 	data := toProfileResponse(profile, class, apartment)
 	avatarPath := profile.AvatarURL
 	if avatarPath == "" {
-		avatarPath = defaultAvatarPath
+		avatarPath = service.DefaultAvatarPath
 	}
 	data.AvatarURL, err = file.AccessURL(config.Cfg.Storage.BaseURL, avatarPath)
 	if err != nil {
@@ -68,68 +64,6 @@ func getProfileAndClass(studentID string) (*models.Profile, *models.Class, error
 		return nil, nil, err
 	}
 	return profile, class, nil
-}
-
-// GetClasses returns class options for profile selectors.
-func GetClassOptions() ([]*dto.ClassOption, error) {
-	classes, err := mysql.GetClasses()
-	if err != nil {
-		return nil, err
-	}
-
-	options := make([]*dto.ClassOption, 0, len(classes))
-	for _, class := range classes {
-		options = append(options, &dto.ClassOption{
-			ID: class.ID, College: class.College, Major: class.Major, ClassName: class.ClassName,
-		})
-	}
-	return options, nil
-}
-
-func GetAdminClasses(query dto.AdminClassListQuery) (*dto.AdminClassListResponse, error) {
-	classes, total, err := mysql.GetAdminClasses(query)
-	if err != nil {
-		return nil, err
-	}
-
-	items := make([]*dto.AdminClassListItem, 0, len(classes))
-	for _, class := range classes {
-		items = append(items, &dto.AdminClassListItem{
-			ID:        class.ID,
-			College:   class.College,
-			Major:     class.Major,
-			ClassName: class.ClassName,
-			IsEnabled: class.IsEnabled,
-			CreatedAt: class.CreatedAt,
-			UpdatedAt: class.UpdatedAt,
-		})
-	}
-	return &dto.AdminClassListResponse{
-		Items:    items,
-		Total:    total,
-		Page:     query.Page,
-		PageSize: query.PageSize,
-	}, nil
-}
-
-// GetApartments returns enabled apartment options for profile selectors.
-func GetApartments(gender string) ([]*dto.ApartmentOption, error) {
-	if gender != "" && gender != models.GenderMale && gender != models.GenderFemale {
-		return nil, ErrorInvalidApartmentGender
-	}
-
-	apartments, err := mysql.GetApartments(gender)
-	if err != nil {
-		return nil, err
-	}
-
-	options := make([]*dto.ApartmentOption, 0, len(apartments))
-	for _, apartment := range apartments {
-		options = append(options, &dto.ApartmentOption{
-			ID: apartment.ID, Name: apartment.Name, Gender: apartment.Gender,
-		})
-	}
-	return options, nil
 }
 
 func toProfileResponse(profile *models.Profile, class *models.Class, apartment *models.Apartment) *dto.ProfileResponse {

@@ -1,4 +1,4 @@
-package service
+package admin
 
 import (
 	"backend/internal/dao/mysql"

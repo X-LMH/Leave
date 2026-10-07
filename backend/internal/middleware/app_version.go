@@ -2,7 +2,7 @@ package middleware
 
 import (
 	"backend/internal/response"
-	"backend/internal/service"
+	appservice "backend/internal/service/app"
 	"strconv"
 	"strings"
 
@@ -25,7 +25,7 @@ func AppVersionMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		current, isCurrent, err := service.IsCurrentAppVersion(platform, versionCode)
+		current, isCurrent, err := appservice.IsCurrentAppVersion(platform, versionCode)
 		if err != nil {
 			response.Error(c, response.CodeServerBusy)
 			c.Abort()

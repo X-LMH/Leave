@@ -25,15 +25,6 @@ func GetLeaveTypeByID(leaveTypeID uint) (*models.LeaveType, error) {
 	return leaveType, nil
 }
 
-func GetEnabledLeaveTypes() ([]*models.LeaveType, error) {
-	leaveTypes := make([]*models.LeaveType, 0)
-	err := db.Select("id", "name", "sort_order").
-		Where("is_enabled = ?", 1).
-		Order("sort_order ASC, id ASC").
-		Find(&leaveTypes).Error
-	return leaveTypes, err
-}
-
 func GetRecordByID(studentID string, recordID int) (*models.Record, error) {
 	record := new(models.Record)
 	err := db.Where("id = ? AND student_id = ?", recordID, studentID).First(record).Error

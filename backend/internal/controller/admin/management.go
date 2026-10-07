@@ -2,13 +2,10 @@ package admin
 
 import (
 	"backend/internal/dao/mysql"
-	"backend/internal/dto"
-	"backend/internal/request"
 	"backend/internal/response"
-	"backend/internal/service"
+	adminservice "backend/internal/service/admin"
 	"errors"
 	"strconv"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -16,7 +13,7 @@ import (
 
 func managementError(c *gin.Context, err error) {
 	switch {
-	case errors.Is(err, service.ErrorInvalidAdminInput):
+	case errors.Is(err, adminservice.ErrorInvalidAdminInput):
 		response.Error(c, response.CodeInvalidParam)
 	case errors.Is(err, gorm.ErrRecordNotFound):
 		response.Error(c, response.CodeManagementNotFound)
@@ -47,115 +44,4 @@ func enabledFilter(c *gin.Context) (*bool, bool) {
 		return nil, false
 	}
 	return &enabled, true
-}
-func GetLeaveTypesHandler(c *gin.Context) {
-	pagination, ok := request.ParsePagination(c)
-	if !ok {
-		response.Error(c, response.CodeInvalidParam)
-		return
-	}
-	enabled, ok := enabledFilter(c)
-	if !ok {
-		return
-	}
-	query := dto.AdminLeaveTypeListQuery{
-		Page:      pagination.Page,
-		PageSize:  pagination.PageSize,
-		Name:      strings.TrimSpace(c.Query("name")),
-		IsEnabled: enabled,
-	}
-	data, err := service.GetAdminLeaveTypes(query)
-	if err != nil {
-		managementError(c, err)
-		return
-	}
-	response.Success(c, data)
-}
-
-func CreateLeaveTypeHandler(c *gin.Context) {
-	p := new(dto.AdminLeaveTypeRequest)
-	if err := c.ShouldBindJSON(p); err != nil {
-		response.Error(c, response.CodeInvalidParam)
-		return
-	}
-	data, err := service.CreateAdminLeaveType(p)
-	if err != nil {
-		managementError(c, err)
-		return
-	}
-	response.Success(c, data)
-}
-
-func UpdateLeaveTypeHandler(c *gin.Context) {
-	id, ok := managementID(c)
-	if !ok {
-		return
-	}
-	p := new(dto.AdminLeaveTypeRequest)
-	if err := c.ShouldBindJSON(p); err != nil {
-		response.Error(c, response.CodeInvalidParam)
-		return
-	}
-	data, err := service.UpdateAdminLeaveType(p, id)
-	if err != nil {
-		managementError(c, err)
-		return
-	}
-	response.Success(c, data)
-}
-
-func DeleteLeaveTypeHandler(c *gin.Context) {
-	id, ok := managementID(c)
-	if !ok {
-		return
-	}
-	if err := service.DeleteAdminLeaveType(id); err != nil {
-		managementError(c, err)
-		return
-	}
-	response.Success(c, nil)
-}
-
-func CreateClassHandler(c *gin.Context) {
-	p := new(dto.AdminClassRequest)
-	if err := c.ShouldBindJSON(p); err != nil {
-		response.Error(c, response.CodeInvalidParam)
-		return
-	}
-	data, err := service.CreateAdminClass(p)
-	if err != nil {
-		managementError(c, err)
-		return
-	}
-	response.Success(c, data)
-}
-
-func UpdateClassHandler(c *gin.Context) {
-	id, ok := managementID(c)
-	if !ok {
-		return
-	}
-	p := new(dto.AdminClassRequest)
-	if err := c.ShouldBindJSON(p); err != nil {
-		response.Error(c, response.CodeInvalidParam)
-		return
-	}
-	data, err := service.UpdateAdminClass(p, id)
-	if err != nil {
-		managementError(c, err)
-		return
-	}
-	response.Success(c, data)
-}
-
-func DeleteClassHandler(c *gin.Context) {
-	id, ok := managementID(c)
-	if !ok {
-		return
-	}
-	if err := service.DeleteAdminClass(id); err != nil {
-		managementError(c, err)
-		return
-	}
-	response.Success(c, nil)
 }

@@ -70,9 +70,12 @@ func GetApartmentByID(apartmentID uint) (*models.Apartment, error) {
 	return apartment, nil
 }
 
-func GetApartments(gender string) ([]*models.Apartment, error) {
+func GetApartmentOptions(gender string, enabledOnly bool) ([]*models.Apartment, error) {
 	apartments := make([]*models.Apartment, 0)
-	query := db.Select("id", "name", "gender").Where("is_enabled = ?", 1)
+	query := db.Select("id", "name", "gender", "is_enabled")
+	if enabledOnly {
+		query = query.Where("is_enabled = ?", 1)
+	}
 	if gender != "" {
 		query = query.Where("gender = ?", gender)
 	}

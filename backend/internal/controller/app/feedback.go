@@ -4,7 +4,7 @@ import (
 	"backend/internal/dto"
 	"backend/internal/request"
 	"backend/internal/response"
-	"backend/internal/service"
+	appservice "backend/internal/service/app"
 	"errors"
 
 	"github.com/gin-gonic/gin"
@@ -24,9 +24,9 @@ func CreateFeedbackHandler(c *gin.Context) {
 		return
 	}
 
-	feedback, err := service.CreateFeedback(studentID, req)
+	feedback, err := appservice.CreateFeedback(studentID, req)
 	if err != nil {
-		if errors.Is(err, service.ErrorInvalidFeedback) {
+		if errors.Is(err, appservice.ErrorInvalidFeedback) {
 			response.Error(c, response.CodeInvalidParam)
 			return
 		}

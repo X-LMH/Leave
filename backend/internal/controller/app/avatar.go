@@ -3,7 +3,7 @@ package app
 import (
 	"backend/internal/request"
 	"backend/internal/response"
-	"backend/internal/service"
+	appservice "backend/internal/service/app"
 	"errors"
 	"log"
 	"net/http"
@@ -50,12 +50,12 @@ func UploadAvatarHandler(c *gin.Context) {
 		}
 	}()
 
-	data, err := service.UploadAvatar(studentID, content)
+	data, err := appservice.UploadAvatar(studentID, content)
 	if err != nil {
 		switch {
-		case errors.Is(err, service.ErrorInvalidAvatar):
+		case errors.Is(err, appservice.ErrorInvalidAvatar):
 			response.Error(c, response.CodeInvalidParam)
-		case errors.Is(err, service.ErrorProfileIncomplete):
+		case errors.Is(err, appservice.ErrorProfileIncomplete):
 			response.Error(c, response.CodeProfileIncomplete)
 		default:
 			log.Printf("上传头像失败 student_id=%s: %v", studentID, err)

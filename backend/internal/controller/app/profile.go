@@ -5,7 +5,7 @@ import (
 	"backend/internal/models"
 	"backend/internal/request"
 	"backend/internal/response"
-	"backend/internal/service"
+	appservice "backend/internal/service/app"
 	"backend/internal/utils/validator"
 	"errors"
 	"strings"
@@ -32,7 +32,7 @@ func ProfileHandler(c *gin.Context) {
 		response.Error(c, response.CodeNeedLogin)
 		return
 	}
-	if err := service.Profile(p, studentID); err != nil {
+	if err := appservice.Profile(p, studentID); err != nil {
 		response.Error(c, response.CodeServerBusy)
 		return
 	}
@@ -46,34 +46,10 @@ func GetProfileHandler(c *gin.Context) {
 		response.Error(c, response.CodeNeedLogin)
 		return
 	}
-	data, err := service.GetProfile(studentID)
+	data, err := appservice.GetProfile(studentID)
 	if err != nil {
-		if errors.Is(err, service.ErrorProfileIncomplete) {
+		if errors.Is(err, appservice.ErrorProfileIncomplete) {
 			response.Error(c, response.CodeProfileIncomplete)
-			return
-		}
-		response.Error(c, response.CodeServerBusy)
-		return
-	}
-	response.Success(c, data)
-}
-
-// GetClassOptionsHandler returns classes for the profile form selector.
-func GetClassOptionsHandler(c *gin.Context) {
-	data, err := service.GetClassOptions()
-	if err != nil {
-		response.Error(c, response.CodeServerBusy)
-		return
-	}
-	response.Success(c, data)
-}
-
-// GetApartmentOptionsHandler returns enabled apartments for the profile form selector.
-func GetApartmentOptionsHandler(c *gin.Context) {
-	data, err := service.GetApartments(c.Query("gender"))
-	if err != nil {
-		if errors.Is(err, service.ErrorInvalidApartmentGender) {
-			response.Error(c, response.CodeInvalidParam)
 			return
 		}
 		response.Error(c, response.CodeServerBusy)

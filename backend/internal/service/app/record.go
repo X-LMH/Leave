@@ -1,4 +1,4 @@
-package service
+package app
 
 import (
 	"backend/internal/dao/mysql"
@@ -93,23 +93,6 @@ func GetRecordsList(studentID string, query dto.RecordListQuery) ([]*dto.RecordL
 		})
 	}
 	return items, nil
-}
-
-// GetLeaveTypeOptions returns enabled leave types for the leave application form.
-func GetLeaveTypeOptions() ([]*dto.LeaveTypeOption, error) {
-	leaveTypes, err := mysql.GetEnabledLeaveTypes()
-	if err != nil {
-		return nil, err
-	}
-
-	options := make([]*dto.LeaveTypeOption, 0, len(leaveTypes))
-	for _, leaveType := range leaveTypes {
-		options = append(options, &dto.LeaveTypeOption{
-			ID:   leaveType.ID,
-			Name: leaveType.Name,
-		})
-	}
-	return options, nil
 }
 
 func DeleteRecord(studentID string, recordID int) error {

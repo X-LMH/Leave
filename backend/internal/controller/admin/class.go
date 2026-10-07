@@ -4,7 +4,7 @@ import (
 	"backend/internal/dto"
 	"backend/internal/request"
 	"backend/internal/response"
-	"backend/internal/service"
+	adminservice "backend/internal/service/admin"
 	"strconv"
 	"strings"
 
@@ -19,7 +19,7 @@ func GetClassesHandler(c *gin.Context) {
 		return
 	}
 
-	query := dto.AdminClassListQuery{
+	query := dto.ClassListQuery{
 		Page:      pagination.Page,
 		PageSize:  pagination.PageSize,
 		College:   strings.TrimSpace(c.Query("college")),
@@ -35,10 +35,54 @@ func GetClassesHandler(c *gin.Context) {
 		query.IsEnabled = &enabled
 	}
 
-	data, err := service.GetAdminClasses(query)
+	data, err := adminservice.GetAdminClasses(query)
 	if err != nil {
 		response.Error(c, response.CodeServerBusy)
 		return
 	}
 	response.Success(c, data)
+}
+
+func CreateClassHandler(c *gin.Context) {
+	p := new(dto.ClassRequest)
+	if err := c.ShouldBindJSON(p); err != nil {
+		response.Error(c, response.CodeInvalidParam)
+		return
+	}
+	data, err := adminservice.CreateAdminClass(p)
+	if err != nil {
+		managementError(c, err)
+		return
+	}
+	response.Success(c, data)
+}
+
+func UpdateClassHandler(c *gin.Context) {
+	id, ok := managementID(c)
+	if !ok {
+		return
+	}
+	p := new(dto.ClassRequest)
+	if err := c.ShouldBindJSON(p); err != nil {
+		response.Error(c, response.CodeInvalidParam)
+		return
+	}
+	data, err := adminservice.UpdateAdminClass(p, id)
+	if err != nil {
+		managementError(c, err)
+		return
+	}
+	response.Success(c, data)
+}
+
+func DeleteClassHandler(c *gin.Context) {
+	id, ok := managementID(c)
+	if !ok {
+		return
+	}
+	if err := adminservice.DeleteAdminClass(id); err != nil {
+		managementError(c, err)
+		return
+	}
+	response.Success(c, nil)
 }

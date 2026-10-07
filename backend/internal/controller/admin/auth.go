@@ -4,7 +4,7 @@ import (
 	"backend/internal/dao/mysql"
 	"backend/internal/dto"
 	"backend/internal/response"
-	"backend/internal/service"
+	adminservice "backend/internal/service/admin"
 	"errors"
 	"strings"
 
@@ -18,7 +18,7 @@ func LoginHandler(c *gin.Context) {
 		return
 	}
 
-	data, err := service.AdminLogin(p)
+	data, err := adminservice.AdminLogin(p)
 	if err != nil {
 		switch {
 		case errors.Is(err, mysql.ErrorUserNotExist), errors.Is(err, mysql.ErrorInvalidPassword):

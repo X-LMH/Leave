@@ -3,7 +3,7 @@ package app
 import (
 	"backend/internal/config"
 	"backend/internal/response"
-	"backend/internal/service"
+	appservice "backend/internal/service/app"
 	"errors"
 	"fmt"
 	"mime"
@@ -25,7 +25,7 @@ func GetCurrentAppVersionHandler(c *gin.Context) {
 	}
 
 	versionCode, _ := strconv.Atoi(c.Query("version_code"))
-	version, err := service.GetCurrentAppVersion(platform, versionCode)
+	version, err := appservice.GetCurrentAppVersion(platform, versionCode)
 	if err != nil {
 		response.Error(c, response.CodeServerBusy)
 		return
@@ -41,9 +41,9 @@ func DownloadCurrentAppHandler(c *gin.Context) {
 		return
 	}
 
-	version, err := service.GetCurrentAppPackage(platform)
+	version, err := appservice.GetCurrentAppPackage(platform)
 	if err != nil {
-		if errors.Is(err, service.ErrAppVersionNotFound) {
+		if errors.Is(err, appservice.ErrAppVersionNotFound) {
 			response.Error(c, response.CodeFileNotFound)
 			return
 		}

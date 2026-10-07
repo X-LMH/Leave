@@ -5,7 +5,7 @@ import (
 	"backend/internal/dto"
 	"backend/internal/request"
 	"backend/internal/response"
-	"backend/internal/service"
+	appservice "backend/internal/service/app"
 	"errors"
 	"strconv"
 
@@ -26,12 +26,12 @@ func CreateRecordHandler(c *gin.Context) {
 		return
 	}
 
-	record, err := service.CreateRecord(studentID, req)
+	record, err := appservice.CreateRecord(studentID, req)
 	if err != nil {
 		switch {
-		case errors.Is(err, service.ErrorInvalidRecord), errors.Is(err, service.ErrorLeaveTypeUnavailable):
+		case errors.Is(err, appservice.ErrorInvalidRecord), errors.Is(err, appservice.ErrorLeaveTypeUnavailable):
 			response.Error(c, response.CodeInvalidParam)
-		case errors.Is(err, service.ErrorProfileIncomplete):
+		case errors.Is(err, appservice.ErrorProfileIncomplete):
 			response.Error(c, response.CodeProfileIncomplete)
 		default:
 			response.Error(c, response.CodeServerBusy)
@@ -52,7 +52,7 @@ func GetRecordHandler(c *gin.Context) {
 		return
 	}
 
-	record, err := service.GetRecord(studentID, recordID)
+	record, err := appservice.GetRecord(studentID, recordID)
 	if err != nil {
 		if errors.Is(err, mysql.ErrorRecordNotExist) {
 			response.Error(c, response.CodeRecordNotExist)
@@ -86,22 +86,12 @@ func GetRecordsLIstHandler(c *gin.Context) {
 		return
 	}
 	query.LeaveType = uint(leaveType)
-	records, err := service.GetRecordsList(studentID, query)
+	records, err := appservice.GetRecordsList(studentID, query)
 	if err != nil {
 		response.Error(c, response.CodeServerBusy)
 		return
 	}
 	response.Success(c, records)
-}
-
-// GetLeaveTypeOptionsHandler returns enabled leave types for the leave application form.
-func GetLeaveTypeOptionsHandler(c *gin.Context) {
-	data, err := service.GetLeaveTypeOptions()
-	if err != nil {
-		response.Error(c, response.CodeServerBusy)
-		return
-	}
-	response.Success(c, data)
 }
 
 func queryInt(c *gin.Context, key string, fallback int) int {
@@ -127,7 +117,7 @@ func DeleteRecordHandler(c *gin.Context) {
 		return
 	}
 
-	if err := service.DeleteRecord(studentID, recordID); err != nil {
+	if err := appservice.DeleteRecord(studentID, recordID); err != nil {
 		if errors.Is(err, mysql.ErrorRecordNotExist) {
 			response.Error(c, response.CodeRecordNotExist)
 		} else {

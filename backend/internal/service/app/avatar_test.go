@@ -1,6 +1,7 @@
-package service
+package app
 
 import (
+	"backend/internal/service"
 	"bytes"
 	"errors"
 	"image"
@@ -76,7 +77,7 @@ func TestDeleteOldAvatarPreservesDefault(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(root, "avatars"), 0755); err != nil {
 		t.Fatal(err)
 	}
-	keys := []string{defaultAvatarPath, "avatars/old.jpg", "other.jpg"}
+	keys := []string{service.DefaultAvatarPath, "avatars/old.jpg", "other.jpg"}
 	for _, key := range keys {
 		if err := os.WriteFile(filepath.Join(root, filepath.FromSlash(key)), []byte("test"), 0600); err != nil {
 			t.Fatal(err)
@@ -87,7 +88,7 @@ func TestDeleteOldAvatarPreservesDefault(t *testing.T) {
 			t.Fatalf("deleteOldAvatar(%q): %v", key, err)
 		}
 	}
-	for _, key := range []string{defaultAvatarPath, "other.jpg"} {
+	for _, key := range []string{service.DefaultAvatarPath, "other.jpg"} {
 		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(key))); err != nil {
 			t.Fatalf("protected file %q should remain: %v", key, err)
 		}

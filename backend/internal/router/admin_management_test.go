@@ -23,3 +23,22 @@ func TestManagementRoutesRequireLogin(t *testing.T) {
 		}
 	}
 }
+
+func TestStudentRoutesRequireLogin(t *testing.T) {
+	r := SetupRouter()
+	for _, route := range []struct{ method, path string }{
+		{"GET", "/api/v1/admin/students"},
+		{"GET", "/api/v1/admin/students/1"},
+		{"PUT", "/api/v1/admin/students/1"},
+		{"PUT", "/api/v1/admin/students/1/status"},
+		{"GET", "/api/v1/admin/class-options"},
+		{"GET", "/api/v1/admin/apartment-options"},
+		{"GET", "/api/v1/admin/leave-type-options"},
+	} {
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, httptest.NewRequest(route.method, route.path, nil))
+		if w.Code != 401 {
+			t.Errorf("%s %s: %d", route.method, route.path, w.Code)
+		}
+	}
+}
