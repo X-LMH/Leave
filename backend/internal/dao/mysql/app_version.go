@@ -30,3 +30,19 @@ func GetAppVersionUpdates(platform string, versionCode int) ([]models.AppVersion
 		Order("version_code ASC").Find(&versions).Error
 	return versions, err
 }
+
+// GetAppVersions returns complete version records, newest first.
+// Empty platform or statuses leaves that filter unrestricted for version management.
+func GetAppVersions(platform string, statuses []string) ([]models.AppVersion, error) {
+	query := db.Model(&models.AppVersion{})
+	if platform != "" {
+		query = query.Where("platform = ?", platform)
+	}
+	if len(statuses) > 0 {
+		query = query.Where("status IN ?", statuses)
+	}
+
+	var versions []models.AppVersion
+	err := query.Order("version_code DESC").Order("id DESC").Find(&versions).Error
+	return versions, err
+}

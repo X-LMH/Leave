@@ -22,10 +22,21 @@ export interface Student extends StudentProfile {
   lastSeenAt: number | null;
   lastSeenDevice: string;
   appVersion: string;
+  appVersionStatus: 'latest' | 'previous' | 'outdated' | 'unknown';
 }
 export type StudentListItem = Pick<
   Student,
-  'id' | 'studentId' | 'name' | 'classId' | 'gender' | 'phone' | 'status' | 'appVersion' | 'createdAt' | 'lastSeenAt'
+  | 'id'
+  | 'studentId'
+  | 'name'
+  | 'classId'
+  | 'gender'
+  | 'phone'
+  | 'status'
+  | 'appVersion'
+  | 'appVersionStatus'
+  | 'createdAt'
+  | 'lastSeenAt'
 >;
 export interface StudentQuery {
   studentId: string;
@@ -42,6 +53,7 @@ interface StudentListWire {
   class_id: number;
   status: number;
   app_version: string;
+  app_version_status: Student['appVersionStatus'];
   created_at: string;
   last_seen_at: string | null;
 }
@@ -65,6 +77,7 @@ function studentListRecord(row: StudentListWire): StudentListItem {
     classId: row.class_id || null,
     status: row.status,
     appVersion: row.app_version,
+    appVersionStatus: row.app_version_status,
     createdAt: Date.parse(row.created_at),
     lastSeenAt: row.last_seen_at === null ? null : Date.parse(row.last_seen_at)
   };

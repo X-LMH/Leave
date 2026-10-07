@@ -2,6 +2,7 @@
 import { computed, h, nextTick, reactive, ref, watch } from 'vue';
 import { NButton, NTag, useThemeVars } from 'naive-ui';
 import type { DataTableColumns, FormInst, FormRules } from 'naive-ui';
+import StudentVersion from './components/student-version.vue';
 import { useAppStore } from '@/store/modules/app';
 import { getStudent, queryStudents, saveStudent, setStudentStatus } from '@/service/api/student';
 import type { Student, StudentListItem, StudentProfile, StudentQuery } from '@/service/api/student';
@@ -154,7 +155,10 @@ const apartmentOptions = computed(() =>
 watch(
   () => model.gender,
   gender => {
-    if (model.apartmentId !== null && !apartments.value.some(row => row.id === model.apartmentId && row.gender === gender))
+    if (
+      model.apartmentId !== null &&
+      !apartments.value.some(row => row.id === model.apartmentId && row.gender === gender)
+    )
       model.apartmentId = null;
   }
 );
@@ -296,9 +300,8 @@ const columns: DataTableColumns<StudentListItem> = [
   {
     key: 'appVersion',
     title: '使用版本',
-    width: 100,
-    ellipsis: { tooltip: true },
-    render: row => row.appVersion || '暂无'
+    width: 190,
+    render: row => h(StudentVersion, { student: row })
   },
   { key: 'createdAt', title: '注册时间', width: 130, render: row => renderTime(row.createdAt) },
   {
@@ -456,7 +459,7 @@ void reload();
             </div>
             <div>
               <span>使用版本</span>
-              <strong>{{ selected.appVersion || '暂无' }}</strong>
+              <StudentVersion :student="selected" />
             </div>
           </div>
           <NDescriptions :column="appStore.isMobile ? 1 : 2" label-placement="top" class="detail-section">
@@ -477,7 +480,9 @@ void reload();
               {{ selected.lastSeenAt === null ? '暂无' : formatTime(selected.lastSeenAt) }}
             </NDescriptionsItem>
             <NDescriptionsItem label="活跃设备">{{ selected.lastSeenDevice || '暂无' }}</NDescriptionsItem>
-            <NDescriptionsItem v-if="editing" label="使用版本">{{ selected.appVersion || '暂无' }}</NDescriptionsItem>
+            <NDescriptionsItem v-if="editing" label="使用版本">
+              <StudentVersion :student="selected" />
+            </NDescriptionsItem>
           </NDescriptions>
           <NForm v-if="editing" ref="formRef" :model="model" :rules="rules" label-placement="top" class="edit-form">
             <div class="form-section-heading">

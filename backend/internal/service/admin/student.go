@@ -73,6 +73,13 @@ func GetAdminStudents(query dto.StudentQuery) (*dto.StudentListResponse, error) 
 	if err != nil {
 		return nil, err
 	}
+	versions, err := mysql.GetAppVersions("android", nil)
+	if err != nil {
+		return nil, err
+	}
+	for _, item := range items {
+		item.AppVersionStatus = appVersionState(item.AppVersion, versions)
+	}
 	return &dto.StudentListResponse{
 		Items:    items,
 		Total:    total,
@@ -90,7 +97,16 @@ func GetAdminStudent(id uint) (*dto.Student, error) {
 	if err != nil {
 		return nil, err
 	}
-	return studentResponse(user, profile)
+	row, err := studentResponse(user, profile)
+	if err != nil {
+		return nil, err
+	}
+	versions, err := mysql.GetAppVersions("android", nil)
+	if err != nil {
+		return nil, err
+	}
+	row.AppVersionStatus = appVersionState(row.AppVersion, versions)
+	return row, nil
 }
 
 func UpdateAdminStudent(id uint, input *dto.ProfileRequest) (*dto.Student, error) {

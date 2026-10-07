@@ -21,7 +21,7 @@ func TestStudentListResponseFields(t *testing.T) {
 	if err := json.Unmarshal(body, &response); err != nil {
 		t.Fatal(err)
 	}
-	allowed := []string{"id", "student_id", "name", "class_id", "gender", "phone", "status", "app_version", "created_at", "last_seen_at"}
+	allowed := []string{"id", "student_id", "name", "class_id", "gender", "phone", "status", "app_version", "app_version_status", "created_at", "last_seen_at"}
 	if len(response.Items) != 1 || len(response.Items[0]) != len(allowed) {
 		t.Fatalf("unexpected list fields: %s", body)
 	}
