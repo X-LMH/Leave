@@ -95,10 +95,15 @@ function resetSearch() {
 const selected = ref<Student | null>(null);
 const classes = ref<ClassOption[]>([]);
 const apartments = ref<ApartmentOption[]>([]);
-async function loadOptions() {
-  const [classResult, apartmentResult] = await Promise.all([getClassOptions(), getApartmentOptions()]);
-  if (classResult.error || apartmentResult.error) return false;
+async function loadClassOptions() {
+  const classResult = await getClassOptions();
+  if (classResult.error) return false;
   classes.value = classResult.data;
+  return true;
+}
+async function loadApartmentOptions(gender?: ApartmentOption['gender']) {
+  const apartmentResult = await getApartmentOptions(gender);
+  if (apartmentResult.error) return false;
   apartments.value = apartmentResult.data;
   return true;
 }
@@ -189,7 +194,8 @@ async function openDrawer(row: Pick<StudentListItem, 'id'>, edit: boolean) {
   opening.value = true;
   try {
     const { data: student, error } = await getStudent(row.id);
-    if (error || !(await loadOptions())) return;
+    if (error) return;
+    if (edit && !(await loadApartmentOptions(student.gender ?? undefined))) return;
     selected.value = student;
     const data = selected.value;
     Object.assign(model, {
@@ -331,7 +337,7 @@ const columns: DataTableColumns<StudentListItem> = [
       )
   }
 ];
-void loadOptions();
+void loadClassOptions();
 void reload();
 </script>
 
