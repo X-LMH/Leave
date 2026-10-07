@@ -3,18 +3,19 @@ import { computed, h, nextTick, reactive, ref, watch } from 'vue';
 import { NButton, NTag, useThemeVars } from 'naive-ui';
 import type { DataTableColumns, FormInst, FormRules } from 'naive-ui';
 import { useAppStore } from '@/store/modules/app';
-import { useMockManagement } from '@/hooks/business/mock-management';
-import {
-  apartments,
-  classes,
-  formatTime,
-  genderLabel,
-  getStudent,
-  queryStudents,
-  saveStudent,
-  setStudentStatus
-} from '@/service/mock/management';
-import type { Student, StudentProfile, StudentQuery } from '@/service/mock/management';
+import { getStudent, queryStudents, saveStudent, setStudentStatus } from '@/service/api/student';
+import type { Student, StudentListItem, StudentProfile, StudentQuery } from '@/service/api/student';
+import { getClassOptions, getApartmentOptions } from '@/service/api/options';
+import type { ClassOption, ApartmentOption } from '@/service/api/options';
+
+function formatTime(value: number) {
+  return new Date(value).toLocaleString('zh-CN', { hour12: false });
+}
+function genderLabel(value: StudentProfile['gender']) {
+  if (value === 'male') return '男';
+  if (value === 'female') return '女';
+  return '—';
+}
 
 const appStore = useAppStore();
 const themeVars = useThemeVars();
@@ -34,11 +35,85 @@ function renderTime(value: number | null, empty = '—') {
     h('span', { class: 'table-time__clock' }, date.toLocaleTimeString('zh-CN', { hour12: false }))
   ]);
 }
-const { search, rows, loading, total, pagination, reload, applySearch, resetSearch } = useMockManagement<
-  Student,
-  StudentQuery
->(() => ({ studentId: '', name: '', classId: null, status: null }), queryStudents);
-const classOptions = classes.map(row => ({ label: `${row.college} / ${row.className}`, value: row.id }));
+const search = reactive<StudentQuery>({ studentId: '', name: '', classId: null, status: null });
+const applied = reactive({ ...search });
+const rows = ref<StudentListItem[]>([]);
+const loading = ref(false);
+const total = ref(0);
+const page = ref(1);
+const pageSize = ref(10);
+let querySequence = 0;
+const pagination = computed(() => ({
+  page: page.value,
+  pageSize: pageSize.value,
+  itemCount: total.value,
+  showSizePicker: true,
+  pageSizes: [10, 20, 50],
+  onUpdatePage: (value: number) => {
+    page.value = value;
+    void reload();
+  },
+  onUpdatePageSize: (value: number) => {
+    pageSize.value = value;
+    page.value = 1;
+    void reload();
+  }
+}));
+async function reload(): Promise<void> {
+  const sequence = ++querySequence;
+  loading.value = true;
+  try {
+    const { data, error } = await queryStudents({ ...applied, page: page.value, pageSize: pageSize.value });
+    if (sequence !== querySequence) return;
+    if (error) {
+      rows.value = [];
+      total.value = 0;
+      return;
+    }
+    total.value = data.total;
+    const lastPage = Math.max(1, Math.ceil(data.total / pageSize.value));
+    if (page.value > lastPage) {
+      page.value = lastPage;
+      await reload();
+      return;
+    }
+    rows.value = data.items;
+  } finally {
+    if (sequence === querySequence) loading.value = false;
+  }
+}
+function applySearch() {
+  Object.assign(applied, search);
+  page.value = 1;
+  void reload();
+}
+function resetSearch() {
+  Object.assign(search, { studentId: '', name: '', classId: null, status: null });
+  applySearch();
+}
+const selected = ref<Student | null>(null);
+const classes = ref<ClassOption[]>([]);
+const apartments = ref<ApartmentOption[]>([]);
+async function loadOptions() {
+  const [classResult, apartmentResult] = await Promise.all([getClassOptions(), getApartmentOptions()]);
+  if (classResult.error || apartmentResult.error) return false;
+  classes.value = classResult.data;
+  apartments.value = apartmentResult.data;
+  return true;
+}
+const classOptions = computed(() =>
+  classes.value.map(row => ({
+    label: `${row.college} / ${row.className}${row.isEnabled ? '' : '（已停用）'}`,
+    value: row.id
+  }))
+);
+const editClassOptions = computed(() =>
+  classes.value.map(row => ({
+    label: `${row.college} / ${row.className}${row.isEnabled ? '' : '（已停用）'}`,
+    value: row.id,
+    disabled: !row.isEnabled && row.id !== selected.value?.classId
+  }))
+);
 const statusOptions = [
   { label: '启用', value: 1 },
   { label: '停用', value: 0 }
@@ -47,7 +122,6 @@ const genderOptions = [
   { label: '男', value: 'male' },
   { label: '女', value: 'female' }
 ];
-const selected = ref<Student | null>(null);
 const drawerVisible = ref(false);
 const editing = ref(false);
 const saving = ref(false);
@@ -66,15 +140,21 @@ const model = reactive<StudentProfile>({
   dormitoryNumber: ''
 });
 const schoolClass = computed(() =>
-  classes.find(row => row.id === (editing.value ? model.classId : selected.value?.classId))
+  classes.value.find(row => row.id === (editing.value ? model.classId : selected.value?.classId))
 );
 const apartmentOptions = computed(() =>
-  apartments.filter(row => row.gender === model.gender).map(row => ({ label: row.name, value: row.id }))
+  apartments.value
+    .filter(row => row.gender === model.gender)
+    .map(row => ({
+      label: `${row.name}${row.isEnabled ? '' : '（已停用）'}`,
+      value: row.id,
+      disabled: !row.isEnabled && row.id !== selected.value?.apartmentId
+    }))
 );
 watch(
   () => model.gender,
   gender => {
-    if (model.apartmentId !== null && !apartments.some(row => row.id === model.apartmentId && row.gender === gender))
+    if (model.apartmentId !== null && !apartments.value.some(row => row.id === model.apartmentId && row.gender === gender))
       model.apartmentId = null;
   }
 );
@@ -100,11 +180,13 @@ const rules: FormRules = {
   classId: { required: true, type: 'number', message: '请选择班级', trigger: 'change' },
   dormitoryNumber: { max: 32, message: '宿舍号最多32字符', trigger: 'input' }
 };
-async function openDrawer(row: Student, edit: boolean) {
+async function openDrawer(row: Pick<StudentListItem, 'id'>, edit: boolean) {
   if (opening.value || saving.value || changingId.value !== null) return;
   opening.value = true;
   try {
-    selected.value = await getStudent(row.id);
+    const { data: student, error } = await getStudent(row.id);
+    if (error || !(await loadOptions())) return;
+    selected.value = student;
     const data = selected.value;
     Object.assign(model, {
       name: data.name,
@@ -137,7 +219,7 @@ async function submit() {
   if (saving.value) return;
   saving.value = true;
   try {
-    selected.value = await saveStudent(selected.value.id, {
+    const { data, error } = await saveStudent(selected.value.id, {
       ...model,
       name: model.name.trim(),
       phone: model.phone.trim(),
@@ -146,6 +228,8 @@ async function submit() {
       teacherName: model.teacherName.trim(),
       dormitoryNumber: model.dormitoryNumber.trim()
     });
+    if (error) return;
+    selected.value = data;
     editing.value = false;
     await reload();
     window.$message?.success('保存成功');
@@ -155,7 +239,7 @@ async function submit() {
     saving.value = false;
   }
 }
-function confirmStatus(row: Student) {
+function confirmStatus(row: Pick<StudentListItem, 'id' | 'studentId' | 'status'>) {
   if (editing.value || opening.value || saving.value || changingId.value !== null) return;
   const status = row.status === 1 ? 0 : 1;
   const label = status === 1 ? '启用' : '停用';
@@ -168,7 +252,8 @@ function confirmStatus(row: Student) {
       if (changingId.value !== null) return false;
       changingId.value = row.id;
       try {
-        const updated = await setStudentStatus(row.id, status);
+        const { data: updated, error } = await setStudentStatus(row.id, status);
+        if (error) return false;
         if (selected.value?.id === row.id) selected.value = updated;
         await reload();
         window.$message?.success(`${label}成功`);
@@ -182,7 +267,7 @@ function confirmStatus(row: Student) {
     }
   });
 }
-const columns: DataTableColumns<Student> = [
+const columns: DataTableColumns<StudentListItem> = [
   { key: 'studentId', title: '学号', width: 130, className: 'table-id' },
   {
     key: 'name',
@@ -195,7 +280,7 @@ const columns: DataTableColumns<Student> = [
     title: '班级',
     width: 160,
     ellipsis: { tooltip: true },
-    render: row => classes.find(item => item.id === row.classId)?.className || '—'
+    render: row => classes.value.find(item => item.id === row.classId)?.className || '—'
   },
   { key: 'gender', title: '性别', width: 60, render: row => genderLabel(row.gender) },
   { key: 'phone', title: '手机号', width: 130, render: row => row.phone || '—' },
@@ -243,6 +328,8 @@ const columns: DataTableColumns<Student> = [
       )
   }
 ];
+void loadOptions();
+void reload();
 </script>
 
 <template>
@@ -308,7 +395,7 @@ const columns: DataTableColumns<Student> = [
         </div>
       </template>
       <template #header-extra>
-        <span class="record-count">按注册时间倒序</span>
+        <span class="record-count">按注册时间正序</span>
       </template>
       <NDataTable
         :bordered="false"
@@ -403,7 +490,7 @@ const columns: DataTableColumns<Student> = [
             </NFormItem>
             <NFormItem label="手机号" path="phone"><NInput v-model:value="model.phone" :maxlength="20" /></NFormItem>
             <NFormItem label="班级" path="classId">
-              <NSelect v-model:value="model.classId" :options="classOptions" filterable />
+              <NSelect v-model:value="model.classId" :options="editClassOptions" filterable />
             </NFormItem>
             <NFormItem label="学院"><NInput :value="schoolClass?.college || ''" readonly /></NFormItem>
             <NFormItem label="专业"><NInput :value="schoolClass?.major || ''" readonly /></NFormItem>

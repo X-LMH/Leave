@@ -30,7 +30,18 @@ function setup(kind) {
     exports: {},
     require: name => {
       if (name === 'vue') return vue;
-      if (name === 'naive-ui') return {};
+      if (name === 'naive-ui')
+        return {
+          useThemeVars: () =>
+            vue.ref({
+              primaryColor: '#18a058',
+              textColor1: '#333333',
+              textColor3: '#999999',
+              dividerColor: '#eeeeee',
+              cardColor: '#ffffff',
+              tableHeaderColor: '#fafafa'
+            })
+        };
       if (name.includes('/service/api/management')) return apiContext.exports;
       if (name.includes('/store/modules/app')) return { useAppStore: () => ({ isMobile: false }) };
       throw new Error(`unexpected import ${name}`);
