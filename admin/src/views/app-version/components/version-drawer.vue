@@ -2,13 +2,14 @@
 import { computed } from 'vue';
 import { useThemeVars } from 'naive-ui';
 import { useAppStore } from '@/store/modules/app';
-import type { AppVersionRecord } from '@/service/mock/app-version';
-import { formatTime } from '@/service/mock/management';
+import { appVersionPlatformLabel } from '@/service/api/app-version';
+import type { AppVersionRecord } from '@/service/api/app-version';
 
 const props = defineProps<{ show: boolean; record: AppVersionRecord | null }>();
 const emit = defineEmits<{ 'update:show': [value: boolean] }>();
 const appStore = useAppStore();
 const theme = useThemeVars();
+const formatTime = (value: number) => new Date(value).toLocaleString('zh-CN', { hour12: false });
 const themeStyle = computed(() => ({
   '--version-text': theme.value.textColor1,
   '--version-muted': theme.value.textColor3,
@@ -30,7 +31,7 @@ async function copyPackage() {
     <NDrawerContent class="version-drawer" :style="themeStyle" title="版本详情" :native-scrollbar="false" closable>
       <template v-if="record">
         <div class="version-identity">
-          <span class="version-kicker">ANDROID RELEASE</span>
+          <span class="version-kicker">{{ appVersionPlatformLabel[record.platform].toUpperCase() }} RELEASE</span>
           <h2>{{ record.versionName }}</h2>
           <div class="version-identity__meta">
             <span>构建 {{ record.versionCode }}</span>
@@ -48,7 +49,7 @@ async function copyPackage() {
             </div>
             <div>
               <dt>客户端平台</dt>
-              <dd>Android</dd>
+              <dd>{{ appVersionPlatformLabel[record.platform] }}</dd>
             </div>
             <div>
               <dt>发布时间</dt>
@@ -72,10 +73,7 @@ async function copyPackage() {
           </div>
         </section>
         <section class="version-section">
-          <h3>
-            更新说明
-            <span class="version-muted">{{ record.releaseNotes?.length ?? 0 }} 条</span>
-          </h3>
+          <h3>更新说明</h3>
           <ol v-if="record.releaseNotes?.length" class="version-notes">
             <li v-for="(note, index) in record.releaseNotes" :key="index">{{ note }}</li>
           </ol>
@@ -130,11 +128,6 @@ async function copyPackage() {
   margin: 0 0 12px;
   font-size: 15px;
   font-weight: 600;
-}
-.version-section h3 .version-muted {
-  margin-left: auto;
-  font-size: 12px;
-  font-weight: 400;
 }
 .version-facts {
   margin: 0;

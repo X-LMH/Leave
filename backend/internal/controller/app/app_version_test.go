@@ -1,6 +1,7 @@
 package app
 
 import (
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -9,6 +10,13 @@ import (
 
 	"github.com/gin-gonic/gin"
 )
+
+func TestOpenAPKMissingFile(t *testing.T) {
+	_, _, err := openAPK(t.TempDir(), "missing.apk")
+	if !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("missing APK: %v", err)
+	}
+}
 
 func TestIsSafeAPKFileName(t *testing.T) {
 	for _, test := range []struct {

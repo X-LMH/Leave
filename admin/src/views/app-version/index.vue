@@ -1,14 +1,19 @@
 <script setup lang="ts">
-import { computed, h, ref } from 'vue';
+import { computed, h, reactive, ref } from 'vue';
 import { NButton, NTag, useThemeVars } from 'naive-ui';
 import type { DataTableColumns } from 'naive-ui';
-import { useMockManagement } from '@/hooks/business/mock-management';
-import { getAppVersion, getAppVersionOverview, queryAppVersions } from '@/service/mock/app-version';
-import type { AppVersionQuery, AppVersionRecord } from '@/service/mock/app-version';
-import { formatTime } from '@/service/mock/management';
+import {
+  appVersionPlatformLabel,
+  downloadCurrentAppPackage,
+  getAppVersion,
+  getCurrentAppVersion,
+  queryAppVersions
+} from '@/service/api/app-version';
+import type { AppVersionPlatform, AppVersionQuery, AppVersionRecord } from '@/service/api/app-version';
 import VersionDrawer from './components/version-drawer.vue';
 
 const theme = useThemeVars();
+const formatTime = (value: number) => new Date(value).toLocaleString('zh-CN', { hour12: false });
 const themeStyle = computed(() => ({
   '--management-accent': theme.value.primaryColor,
   '--management-text': theme.value.textColor1,
@@ -17,12 +22,69 @@ const themeStyle = computed(() => ({
   '--management-surface': theme.value.cardColor,
   '--management-inset': theme.value.tableHeaderColor
 }));
-const { search, rows, loading, total, pagination, reload, applySearch, resetSearch } = useMockManagement<
-  AppVersionRecord,
-  AppVersionQuery
->(() => ({ keyword: '', platform: null, status: null }), queryAppVersions);
+const emptyQuery = (): Omit<AppVersionQuery, 'page' | 'pageSize'> => ({ keyword: '', platform: null, status: null });
+const search = reactive(emptyQuery());
+const applied = reactive(emptyQuery());
+const rows = ref<AppVersionRecord[]>([]);
+const loading = ref(false);
+const listError = ref(false);
+const total = ref(0);
+const page = ref(1);
+const pageSize = ref(10);
+const hasFilters = computed(() => Boolean(applied.keyword.trim() || applied.platform || applied.status));
+let querySequence = 0;
+async function reload() {
+  const sequence = ++querySequence;
+  loading.value = true;
+  try {
+    const { data, error } = await queryAppVersions({ ...applied, page: page.value, pageSize: pageSize.value });
+    if (sequence !== querySequence) return;
+    if (error) {
+      listError.value = true;
+      rows.value = [];
+      total.value = 0;
+      return;
+    }
+    listError.value = false;
+    total.value = data.total;
+    const lastPage = Math.max(1, Math.ceil(data.total / pageSize.value));
+    if (page.value > lastPage) {
+      page.value = lastPage;
+      await reload();
+      return;
+    }
+    rows.value = data.items;
+  } finally {
+    if (sequence === querySequence) loading.value = false;
+  }
+}
+function applySearch() {
+  Object.assign(applied, search);
+  page.value = 1;
+  void reload();
+}
+function resetSearch() {
+  Object.assign(search, emptyQuery());
+  applySearch();
+}
+const pagination = computed(() => ({
+  page: page.value,
+  pageSize: pageSize.value,
+  itemCount: total.value,
+  showSizePicker: true,
+  pageSizes: [10, 20, 50],
+  onUpdatePage: (value: number) => {
+    page.value = value;
+    void reload();
+  },
+  onUpdatePageSize: (value: number) => {
+    pageSize.value = value;
+    page.value = 1;
+    void reload();
+  }
+}));
 const current = ref<AppVersionRecord | null>(null);
-const allCount = ref(0);
+const downloading = ref(false);
 const overviewLoading = ref(true);
 const overviewError = ref(false);
 const drawerVisible = ref(false);
@@ -32,19 +94,25 @@ const statusOptions = [
   { label: '最新版本', value: 'published' },
   { label: '历史版本', value: 'archived' }
 ];
-const platformOptions = [{ label: 'Android', value: 'android' }];
+const platformOptions: { label: string; value: AppVersionPlatform }[] = [
+  { label: 'Android', value: 'android' },
+  { label: 'iOS', value: 'ios' },
+  { label: 'Web', value: 'web' }
+];
 let overviewSequence = 0;
 async function loadOverview() {
   const sequence = ++overviewSequence;
   overviewLoading.value = true;
   overviewError.value = false;
   try {
-    const result = await getAppVersionOverview();
+    const { data, error } = await getCurrentAppVersion();
     if (sequence !== overviewSequence) return;
-    current.value = result.current;
-    allCount.value = result.total;
-  } catch {
-    if (sequence === overviewSequence) overviewError.value = true;
+    if (error) {
+      overviewError.value = true;
+      current.value = null;
+      return;
+    }
+    current.value = data;
   } finally {
     if (sequence === overviewSequence) overviewLoading.value = false;
   }
@@ -52,17 +120,23 @@ async function loadOverview() {
 async function refresh() {
   await Promise.all([loadOverview(), reload()]);
 }
-function downloadLatestPackage() {
-  window.$message?.info('安装包下载功能待接入，暂未开放下载');
+async function downloadLatestPackage() {
+  if (downloading.value) return;
+  downloading.value = true;
+  try {
+    await downloadCurrentAppPackage();
+  } finally {
+    downloading.value = false;
+  }
 }
 async function openDrawer(row: AppVersionRecord) {
   if (opening.value || drawerVisible.value) return;
   opening.value = true;
   try {
-    selected.value = await getAppVersion(row.id);
+    const { data, error } = await getAppVersion(row.id);
+    if (error) return;
+    selected.value = data;
     drawerVisible.value = true;
-  } catch (error) {
-    window.$message?.error(error instanceof Error ? error.message : '加载版本失败，请重试');
   } finally {
     opening.value = false;
   }
@@ -78,7 +152,7 @@ const columns: DataTableColumns<AppVersionRecord> = [
         h('span', {}, `构建 ${row.versionCode}`)
       ])
   },
-  { key: 'platform', title: '平台', width: '9%', render: () => 'Android' },
+  { key: 'platform', title: '平台', width: '9%', render: row => appVersionPlatformLabel[row.platform] },
   {
     key: 'status',
     title: '状态',
@@ -139,6 +213,7 @@ const columns: DataTableColumns<AppVersionRecord> = [
   }
 ];
 void loadOverview();
+void reload();
 </script>
 
 <template>
@@ -177,7 +252,7 @@ void loadOverview();
             <p v-else>该版本未填写更新说明。</p>
           </section>
           <div class="release-current__actions">
-            <NButton size="small" type="primary" @click="downloadLatestPackage">
+            <NButton size="small" type="primary" :loading="downloading" @click="downloadLatestPackage">
               <template #icon><SvgIcon icon="mdi:download" /></template>
               下载安装包
             </NButton>
@@ -257,9 +332,10 @@ void loadOverview();
         <template #empty>
           <div class="table-empty">
             <SvgIcon icon="mdi:package-variant" aria-hidden="true" />
-            <strong>{{ allCount ? '未找到匹配的版本' : '暂无版本记录' }}</strong>
-            <span>{{ allCount ? '请调整关键词、平台或发布状态。' : '暂无 Android 客户端版本发布记录。' }}</span>
-            <NButton v-if="allCount" size="small" @click="resetSearch">重置筛选</NButton>
+              <strong>{{ listError ? '版本记录加载失败' : hasFilters ? '未找到匹配的版本' : '暂无版本记录' }}</strong>
+              <span v-if="!listError">{{ hasFilters ? '请调整关键词、平台或发布状态。' : '暂无客户端版本发布记录。' }}</span>
+            <NButton v-if="listError" size="small" @click="reload">重新加载</NButton>
+            <NButton v-else-if="hasFilters" size="small" @click="resetSearch">重置筛选</NButton>
           </div>
         </template>
       </NDataTable>

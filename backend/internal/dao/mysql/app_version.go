@@ -1,6 +1,7 @@
 package mysql
 
 import (
+	"backend/internal/dto"
 	"backend/internal/models"
 	"errors"
 
@@ -8,6 +9,37 @@ import (
 )
 
 var ErrorAppVersionNotFound = errors.New("未找到已发布的应用版本")
+
+func GetAppVersionByID(id uint64) (*models.AppVersion, error) {
+	version := new(models.AppVersion)
+	if err := db.Where("id = ?", id).First(version).Error; err != nil {
+		return nil, err
+	}
+	return version, nil
+}
+
+func GetAppVersionList(query dto.AppVersionListQuery) ([]models.AppVersion, int64, error) {
+	dbQuery := db.Model(&models.AppVersion{})
+	if query.Platform != "" {
+		dbQuery = dbQuery.Where("platform = ?", query.Platform)
+	}
+	if query.Status != "" {
+		dbQuery = dbQuery.Where("status = ?", query.Status)
+	}
+	if query.Keyword != "" {
+		pattern := "%" + query.Keyword + "%"
+		dbQuery = dbQuery.Where("(version_name LIKE ? OR CAST(version_code AS CHAR) LIKE ?)", pattern, pattern)
+	}
+	var total int64
+	if err := dbQuery.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	versions := make([]models.AppVersion, 0)
+	err := dbQuery.Order("version_code DESC, id DESC").
+		Offset((query.Page - 1) * query.PageSize).
+		Limit(query.PageSize).Find(&versions).Error
+	return versions, total, err
+}
 
 // GetCurrentAppVersion returns the highest published version for one platform.
 func GetCurrentAppVersion(platform string) (*models.AppVersion, error) {

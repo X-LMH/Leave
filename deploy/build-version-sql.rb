@@ -20,6 +20,7 @@ read_manifest_value = lambda do |name|
 end
 version_name = read_manifest_value.call('versionName')
 version_code = read_manifest_value.call('versionCode')
+abort "Invalid platform: #{options[:platform].inspect}" unless %w[android ios web].include?(options[:platform])
 abort "Invalid versionCode: #{version_code.inspect}" unless version_code.match?(/\A\d+\z/) && version_code.to_i.positive?
 release = YAML.safe_load(File.read(options[:release]), permitted_classes: [], aliases: false) || {}
 release_notes = release.fetch('release_notes', [])

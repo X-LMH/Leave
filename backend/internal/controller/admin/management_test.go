@@ -20,6 +20,14 @@ func TestManagementRejectsInvalidRequests(t *testing.T) {
 		handler            gin.HandlerFunc
 		method, path, body string
 	}{
+		{GetAppVersionsHandler, "GET", "/items?page=0", ""},
+		{GetAppVersionsHandler, "GET", "/items?page_size=101", ""},
+		{GetAppVersionsHandler, "GET", "/items?platform=unknown", ""},
+		{GetAppVersionsHandler, "GET", "/items?status=draft", ""},
+		{GetAppVersionHandler, "GET", "/items/0", ""},
+		{GetAppVersionHandler, "GET", "/items/-1", ""},
+		{GetAppVersionHandler, "GET", "/items/bad", ""},
+		{GetAppVersionHandler, "GET", "/items/18446744073709551616", ""},
 		{GetApartmentOptionsHandler, "GET", "/items?gender=unknown", ""},
 		{GetStudentsHandler, "GET", "/items?page=0", ""},
 		{GetStudentsHandler, "GET", "/items?page_size=101", ""},

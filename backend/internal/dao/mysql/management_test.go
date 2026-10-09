@@ -65,7 +65,7 @@ func TestAdminManagementIntegration(t *testing.T) {
 	original := db
 	db = testDB
 	defer func() { db = original }()
-	for _, name := range []string{"leave_types", "classes", "profiles", "users", "apartments"} {
+	for _, name := range []string{"leave_types", "classes", "profiles", "users", "apartments", "app_versions"} {
 		sql, err := os.ReadFile(filepath.Join("..", "..", "..", "database", "tables", name+".sql"))
 		if err != nil {
 			t.Fatal(err)
@@ -74,6 +74,65 @@ func TestAdminManagementIntegration(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	t.Run("app versions", func(t *testing.T) {
+		if _, err := GetCurrentAppVersion("android"); !errors.Is(err, ErrorAppVersionNotFound) {
+			t.Fatalf("empty current: %v", err)
+		}
+		for _, row := range []models.AppVersion{
+			{Platform: "android", VersionCode: 2, VersionName: "0.0.2", PackageFile: "old.apk", Status: "archived", ReleaseNotes: "[]"},
+			{Platform: "android", VersionCode: 12, VersionName: "0.0.12", PackageFile: "latest.apk", Status: "published", ReleaseNotes: "[]"},
+			{Platform: "android", VersionCode: 3, VersionName: "0.0.3", PackageFile: "old3.apk", Status: "archived", ReleaseNotes: "[]"},
+			{Platform: "ios", VersionCode: 99, VersionName: "0.0.99", PackageFile: "ios.apk", Status: "published", ReleaseNotes: "[]"},
+		} {
+			if err := db.Create(&row).Error; err != nil {
+				t.Fatal(err)
+			}
+		}
+		for _, tc := range []struct {
+			keyword string
+			status  string
+			page    int
+			total   int64
+			code    int
+		}{
+			{"", "", 1, 3, 12},
+			{"", "", 2, 3, 3},
+			{"2", "", 1, 2, 12},
+			{"0.0.3", "archived", 1, 1, 3},
+			{"12", "archived", 1, 0, 0},
+			{"", "published", 1, 1, 12},
+			{"", "", 4, 3, 0},
+		} {
+			rows, total, err := GetAppVersionList(dto.AppVersionListQuery{
+				Platform: "android",
+				Keyword:  tc.keyword,
+				Status:   tc.status,
+				Page:     tc.page,
+				PageSize: 1,
+			})
+			if err != nil || total != tc.total {
+				t.Fatalf("%+v: total=%d err=%v", tc, total, err)
+			}
+			if tc.code == 0 {
+				if len(rows) != 0 {
+					t.Fatalf("expected empty page: %+v", rows)
+				}
+			} else if len(rows) != 1 || rows[0].VersionCode != tc.code {
+				t.Fatalf("wrong page/order: %+v", rows)
+			}
+		}
+		current, err := GetCurrentAppVersion("android")
+		if err != nil || current.VersionCode != 12 {
+			t.Fatalf("current: %+v %v", current, err)
+		}
+		detail, err := GetAppVersionByID(current.ID)
+		if err != nil || detail.PackageFile != "latest.apk" {
+			t.Fatalf("detail: %+v %v", detail, err)
+		}
+		if _, err := GetAppVersionByID(18446744073709551615); !errors.Is(err, gorm.ErrRecordNotFound) {
+			t.Fatalf("missing detail: %v", err)
+		}
+	})
 	first := &models.LeaveType{Name: "病假", SortOrder: 2, IsEnabled: true}
 	second := &models.LeaveType{Name: "事假", SortOrder: 1, IsEnabled: false}
 	for _, row := range []*models.LeaveType{first, second} {

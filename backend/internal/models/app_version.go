@@ -3,9 +3,23 @@ package models
 import "time"
 
 const (
+	AppVersionPlatformAndroid = "android"
+	AppVersionPlatformIOS     = "ios"
+	AppVersionPlatformWeb     = "web"
+
 	AppVersionStatusPublished = "published"
 	AppVersionStatusArchived  = "archived"
 )
+
+func IsValidAppVersionPlatform(platform string) bool {
+	return platform == AppVersionPlatformAndroid ||
+		platform == AppVersionPlatformIOS ||
+		platform == AppVersionPlatformWeb
+}
+
+func IsValidAppVersionStatus(status string) bool {
+	return status == AppVersionStatusPublished || status == AppVersionStatusArchived
+}
 
 // AppVersion 是一个平台已发布客户端版本的记录。
 // ReleaseNotes 以 JSON 数组形式存储，序列化和反序列化由 Service 层处理。

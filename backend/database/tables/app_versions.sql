@@ -1,7 +1,7 @@
 CREATE TABLE `app_versions`
 (
     `id`            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-    `platform`      VARCHAR(20)     NOT NULL COMMENT '客户端平台，例如 android',
+    `platform`      VARCHAR(20)     NOT NULL COMMENT '客户端平台标识: android, ios, web',
     `version_code`  INT UNSIGNED    NOT NULL COMMENT '构建版本号，用于版本校验',
     `version_name`  VARCHAR(32)     NOT NULL COMMENT '展示版本号',
     `package_file`  VARCHAR(255)    NOT NULL COMMENT '安装包文件名，仅允许目录内的 APK 文件',

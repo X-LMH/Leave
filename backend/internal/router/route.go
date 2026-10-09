@@ -69,6 +69,10 @@ func SetupRouter() *gin.Engine {
 		admin.GET("/apartment-options", admincontroller.GetApartmentOptionsHandler)
 		admin.GET("/leave-type-options", admincontroller.GetLeaveTypeOptionsHandler)
 
+		admin.GET("/app-versions", admincontroller.GetAppVersionsHandler)
+		admin.GET("/app-versions/current", admincontroller.GetCurrentAppVersionHandler)
+		admin.GET("/app-versions/:id", admincontroller.GetAppVersionHandler)
+
 		admin.GET("/students", admincontroller.GetStudentsHandler)
 		admin.GET("/students/:id", admincontroller.GetStudentHandler)
 		admin.PUT("/students/:id", admincontroller.UpdateStudentHandler)
