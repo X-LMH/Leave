@@ -50,8 +50,7 @@ func GetClassList(query dto.ClassListQuery) ([]*models.Class, int64, error) {
 		return nil, 0, err
 	}
 	err := dbQuery.Order("college ASC, major ASC, class_name ASC, id ASC").
-		Offset((query.Page - 1) * query.PageSize).
-		Limit(query.PageSize).
+		Scopes(Paginate(query.Page, query.PageSize)).
 		Find(&classes).Error
 	return classes, total, err
 }

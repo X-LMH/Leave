@@ -48,7 +48,9 @@ func GetStudents(query dto.StudentQuery) ([]*dto.StudentListItem, int64, error) 
 		COALESCE(p.gender, '') AS gender,
 		COALESCE(p.phone, '') AS phone
 	`).
-		Order("u.created_at ASC, u.id ASC").Offset((query.Page - 1) * query.PageSize).Limit(query.PageSize).Scan(&rows).Error
+		Order("u.created_at ASC, u.id ASC").
+		Scopes(Paginate(query.Page, query.PageSize)).
+		Scan(&rows).Error
 	return rows, total, err
 }
 

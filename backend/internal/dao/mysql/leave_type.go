@@ -20,7 +20,9 @@ func GetLeaveTypeList(query dto.LeaveTypeListQuery) ([]*models.LeaveType, int64,
 	if err := q.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	err := q.Order("sort_order ASC, id ASC").Offset((query.Page - 1) * query.PageSize).Limit(query.PageSize).Find(&rows).Error
+	err := q.Order("sort_order ASC, id ASC").
+		Scopes(Paginate(query.Page, query.PageSize)).
+		Find(&rows).Error
 	return rows, total, err
 }
 

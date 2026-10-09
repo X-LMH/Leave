@@ -36,8 +36,8 @@ func GetAppVersionList(query dto.AppVersionListQuery) ([]models.AppVersion, int6
 	}
 	versions := make([]models.AppVersion, 0)
 	err := dbQuery.Order("version_code DESC, id DESC").
-		Offset((query.Page - 1) * query.PageSize).
-		Limit(query.PageSize).Find(&versions).Error
+		Scopes(Paginate(query.Page, query.PageSize)).
+		Find(&versions).Error
 	return versions, total, err
 }
 

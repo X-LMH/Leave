@@ -44,8 +44,7 @@ func GetRecordsByStuID(studentID string, page, pageSize int, leaveTypeID uint) (
 		query = query.Where("leave_type_id = ?", leaveTypeID)
 	}
 	err := query.
-		Offset((page - 1) * pageSize).
-		Limit(pageSize).
+		Scopes(Paginate(page, pageSize)).
 		Order("created_at DESC").
 		Find(&records).Error
 	return records, err
