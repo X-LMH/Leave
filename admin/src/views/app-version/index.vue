@@ -220,6 +220,7 @@ void reload();
   <div class="management-page release-page" :style="themeStyle">
     <header class="management-header">
       <div class="management-header__intro">
+        <span class="management-header__icon" aria-hidden="true"><SvgIcon icon="mdi:package-variant" /></span>
         <div>
           <p class="management-header__eyebrow">客户端管理 / 版本记录</p>
           <h1 class="management-header__title">版本管理</h1>
@@ -350,21 +351,6 @@ void reload();
 
 .release-page {
   gap: 16px;
-}
-.release-page .management-header {
-  padding: 6px 0 6px 14px;
-  border-left: 3px solid var(--management-accent);
-}
-.release-page .management-header__eyebrow {
-  color: var(--management-accent);
-  letter-spacing: 0.06em;
-}
-.release-page .management-header__title {
-  font-size: 26px;
-  letter-spacing: 0.04em;
-}
-.release-page .management-header__description {
-  margin-top: 2px;
 }
 .release-current {
   padding: 22px 24px 18px;
