@@ -27,6 +27,11 @@ export function setupElegantRouter() {
         i18nKey: `route.${key}` as App.I18n.I18nKey
       };
 
+      if (key === 'app-version') {
+        meta.icon = 'mdi:package-variant-closed';
+        meta.order = 6;
+      }
+
       if (key === 'leave-type' || key === 'class') {
         meta.icon = key === 'leave-type' ? 'mdi:format-list-bulleted' : 'mdi:google-classroom';
         meta.order = key === 'class' ? 4 : 5;

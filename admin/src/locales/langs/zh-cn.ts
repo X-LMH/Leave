@@ -220,6 +220,7 @@ const local: App.I18n.Schema = {
     }
   },
   route: {
+    'app-version': '版本管理',
     student: '学生管理',
     'leave-record': '请假记录管理',
     'leave-type': '请假原因管理',

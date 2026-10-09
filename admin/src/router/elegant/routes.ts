@@ -40,6 +40,17 @@ export const generatedRoutes: GeneratedRoute[] = [
     }
   },
   {
+    name: 'app-version',
+    path: '/app-version',
+    component: 'layout.base$view.app-version',
+    meta: {
+      title: 'app-version',
+      i18nKey: 'route.app-version',
+      icon: 'mdi:package-variant-closed',
+      order: 6
+    }
+  },
+  {
     name: 'class',
     path: '/class',
     component: 'layout.base$view.class',
