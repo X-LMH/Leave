@@ -58,8 +58,8 @@
 
 ## 数据库变更
 
-* 以后涉及数据库相关操作时，必须同步添加对应的 migration。
-* 数据库表结构可以直接修改，修改后确保 migration 能够完整反映本次表结构变更。
+* 每次修改数据库表结构或字段注释，都必须同步新增对应的可回滚 migration（`up.sql` 和 `down.sql`）。
+* 更新 `backend/database/tables/` 中对应的完整表结构定义，并确保 migration 能完整反映本次变更；不要修改已应用的历史 migration。
 
 ## 前端注意事项
 
