@@ -25,7 +25,7 @@ func normalizeAdminStudent(p *dto.ProfileRequest) error {
 	p.DormitoryNumber = strings.TrimSpace(p.DormitoryNumber)
 	if !validAdminText(p.Name, 64) || !validAdminText(p.ParentName, 64) || !validAdminText(p.TeacherName, 64) ||
 		!validator.IsMainlandMobile(p.Phone) || !validator.IsMainlandMobile(p.ParentPhone) ||
-		(p.Gender != models.GenderMale && p.Gender != models.GenderFemale) || p.ClassID == 0 ||
+		!models.IsValidGender(p.Gender) || p.ClassID == 0 ||
 		utf8.RuneCountInString(p.DormitoryNumber) > 32 {
 		return ErrorInvalidAdminInput
 	}

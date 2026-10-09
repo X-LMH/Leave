@@ -30,7 +30,7 @@ func GetClassOptions(enabledOnly bool) ([]*dto.ClassOption, error) {
 }
 
 func GetApartmentOptions(gender string, enabledOnly bool) ([]*dto.ApartmentOption, error) {
-	if gender != "" && gender != models.GenderMale && gender != models.GenderFemale {
+	if gender != "" && !models.IsValidGender(gender) {
 		return nil, ErrorInvalidApartmentGender
 	}
 	apartments, err := mysql.GetApartmentOptions(gender, enabledOnly)

@@ -11,6 +11,10 @@ const (
 	GenderFemale = "female"
 )
 
+func IsValidGender(gender string) bool {
+	return gender == GenderMale || gender == GenderFemale
+}
+
 type Profile struct {
 	ID              uint           `gorm:"column:id;primaryKey;autoIncrement"`
 	StudentID       string         `gorm:"column:student_id"`

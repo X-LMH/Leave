@@ -71,7 +71,7 @@ func validateAndNormalizeProfile(p *dto.ProfileRequest) bool {
 	if p.Name == "" || p.ParentName == "" || p.TeacherName == "" || p.ClassID == 0 {
 		return false
 	}
-	if p.Gender != models.GenderMale && p.Gender != models.GenderFemale {
+	if !models.IsValidGender(p.Gender) {
 		return false
 	}
 	return validator.IsMainlandMobile(p.Phone) && validator.IsMainlandMobile(p.ParentPhone)
