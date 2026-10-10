@@ -4,18 +4,24 @@ import { NButton, useThemeVars } from 'naive-ui';
 import type { DataTableColumns, FormInst, FormRules } from 'naive-ui';
 import { useThemeStore } from '@/store/modules/theme';
 import { useAppStore } from '@/store/modules/app';
-import { useMockManagement } from '@/hooks/business/mock-management';
-import {
-  classes,
-  durationLabel,
-  formatTime,
-  genderLabel,
-  getLeaveRecord,
-  leaveTypes,
-  queryLeaveRecords,
-  saveLeaveRecord
-} from '@/service/mock/management';
-import type { LeaveContent, LeaveQuery, LeaveRecord } from '@/service/mock/management';
+import { getLeaveRecord, queryLeaveRecords, saveLeaveRecord } from '@/service/api/leave-record';
+import type { LeaveContent, LeaveQuery, LeaveRecord, LeaveRecordListItem } from '@/service/api/leave-record';
+import { getClassOptions, getLeaveTypeOptions } from '@/service/api/options';
+import type { ClassOption, LeaveTypeOption } from '@/service/api/options';
+
+function formatTime(value: number | null) {
+  return value === null ? '—' : new Date(value).toLocaleString('zh-CN', { hour12: false });
+}
+function genderLabel(value: LeaveRecord['gender']) {
+  if (value === 'male') return '男';
+  if (value === 'female') return '女';
+  return '—';
+}
+function durationLabel(start: number | null, end: number | null) {
+  if (start === null || end === null || end <= start) return '—';
+  const hours = Math.ceil((end - start) / 3600000);
+  return `${Math.floor(hours / 24)}天${hours % 24}小时`;
+}
 
 const appStore = useAppStore();
 const themeVars = useThemeVars();
@@ -40,15 +46,105 @@ function renderTime(value: number | null, empty = '—') {
     h('span', { class: 'table-time__clock' }, date.toLocaleTimeString('zh-CN', { hour12: false }))
   ]);
 }
-const { search, rows, loading, total, pagination, reload, applySearch, resetSearch } = useMockManagement<
-  LeaveRecord,
-  LeaveQuery
->(
-  () => ({ studentId: '', name: '', classId: null, leaveTypeId: null, isLeaveSchool: null, dateRange: null }),
-  queryLeaveRecords
+const emptySearch = (): LeaveQuery => ({
+  studentId: '',
+  name: '',
+  classSnapshot: null,
+  leaveTypeId: null,
+  isLeaveSchool: null,
+  dateRange: null
+});
+const search = reactive<LeaveQuery>(emptySearch());
+const applied = reactive<LeaveQuery>(emptySearch());
+const rows = ref<LeaveRecordListItem[]>([]);
+const loading = ref(false);
+const total = ref(0);
+const page = ref(1);
+const pageSize = ref(10);
+let querySequence = 0;
+const pagination = computed(() => ({
+  page: page.value,
+  pageSize: pageSize.value,
+  itemCount: total.value,
+  showSizePicker: true,
+  pageSizes: [10, 20, 50],
+  onUpdatePage: (value: number) => {
+    page.value = value;
+    void reload();
+  },
+  onUpdatePageSize: (value: number) => {
+    pageSize.value = value;
+    page.value = 1;
+    void reload();
+  }
+}));
+async function reload(): Promise<void> {
+  const sequence = ++querySequence;
+  loading.value = true;
+  try {
+    const { data, error } = await queryLeaveRecords({ ...applied, page: page.value, pageSize: pageSize.value });
+    if (sequence !== querySequence) return;
+    if (error) {
+      rows.value = [];
+      total.value = 0;
+      return;
+    }
+    total.value = data.total;
+    const lastPage = Math.max(1, Math.ceil(data.total / pageSize.value));
+    if (page.value > lastPage) {
+      page.value = lastPage;
+      await reload();
+      return;
+    }
+    rows.value = data.items;
+  } finally {
+    if (sequence === querySequence) loading.value = false;
+  }
+}
+function applySearch() {
+  Object.assign(applied, search, { dateRange: search.dateRange ? [...search.dateRange] : null });
+  page.value = 1;
+  void reload();
+}
+function resetSearch() {
+  Object.assign(search, emptySearch());
+  applySearch();
+}
+const classes = ref<ClassOption[]>([]);
+const leaveTypes = ref<LeaveTypeOption[]>([]);
+async function loadOptions() {
+  const [classResult, typeResult] = await Promise.all([getClassOptions(), getLeaveTypeOptions()]);
+  if (!classResult.error) classes.value = classResult.data;
+  if (!typeResult.error) leaveTypes.value = typeResult.data;
+  return !typeResult.error;
+}
+const classOptions = computed(() =>
+  classes.value.map(row => ({
+    label: `${row.college} / ${row.major} / ${row.className}`,
+    value: JSON.stringify({ college: row.college, major: row.major, className: row.className })
+  }))
 );
-const classOptions = classes.map(row => ({ label: `${row.college} / ${row.className}`, value: row.id }));
-const typeOptions = leaveTypes.map(row => ({ label: row.name, value: row.id }));
+const typeOptions = computed(() =>
+  leaveTypes.value.map(row => ({
+    label: `${row.name}${row.isEnabled ? '' : '（已停用）'}`,
+    value: row.id
+  }))
+);
+const selected = ref<LeaveRecord | null>(null);
+const editTypeOptions = computed(() => {
+  const current = selected.value;
+  const options = leaveTypes.value.map(row => ({
+    label: row.id === current?.leaveTypeId ? current.leaveTypeName : `${row.name}${row.isEnabled ? '' : '（已停用）'}`,
+    value: row.id,
+    disabled: !row.isEnabled && row.id !== current?.leaveTypeId
+  }));
+  if (current?.leaveTypeId && !options.some(row => row.value === current.leaveTypeId)) {
+    options.push({ label: `${current.leaveTypeName}（已删除）`, value: current.leaveTypeId, disabled: false });
+  }
+  return options;
+});
+void loadOptions();
+void reload();
 const schoolOptions = [
   { label: '离校', value: 'yes' },
   { label: '不离校', value: 'no' }
@@ -59,14 +155,14 @@ const searchSchool = computed({
     search.isLeaveSchool = value === null ? null : value === 'yes';
   }
 });
-const typeName = (id: number | null) => leaveTypes.find(row => row.id === id)?.name || '—';
 function reasonClass(name: string) {
-  if (name === '病假') return 'detail-reason--sick';
-  if (name === '事假') return 'detail-reason--personal';
-  if (name === '其他') return 'detail-reason--other';
+  // 真实名称可能包含适用对象后缀，例如“病假-本科生”。
+  const reason = name.trim();
+  if (reason.startsWith('病假')) return 'detail-reason--sick';
+  if (reason.startsWith('事假')) return 'detail-reason--personal';
+  if (reason.startsWith('其他')) return 'detail-reason--other';
   return '';
 }
-const selected = ref<LeaveRecord | null>(null);
 const drawerVisible = ref(false);
 const editing = ref(false);
 const saving = ref(false);
@@ -118,12 +214,14 @@ const rules: FormRules = {
     trigger: ['blur', 'input']
   }
 };
-async function openDrawer(row: LeaveRecord, edit: boolean) {
+async function openDrawer(row: { id: number }, edit: boolean) {
   if (opening.value || saving.value) return;
   opening.value = true;
   try {
-    selected.value = await getLeaveRecord(row.id);
-    const data = selected.value;
+    const { data, error } = await getLeaveRecord(row.id);
+    if (error) return;
+    if (edit && !(await loadOptions())) return;
+    selected.value = data;
     Object.assign(model, {
       leaveTypeId: data.leaveTypeId,
       leaveReason: data.leaveReason,
@@ -156,13 +254,15 @@ async function submit() {
   if (saving.value) return;
   saving.value = true;
   try {
-    selected.value = await saveLeaveRecord(selected.value.id, {
+    const { data, error } = await saveLeaveRecord(selected.value.id, {
       ...model,
       leaveReason: model.leaveReason.trim(),
       affectedCourse: model.affectedCourse.trim(),
       travelWay: model.travelWay.trim(),
       destination: model.destination.trim()
     });
+    if (error) return;
+    selected.value = data;
     editing.value = false;
     await reload();
     window.$message?.success('保存成功');
@@ -172,7 +272,7 @@ async function submit() {
     saving.value = false;
   }
 }
-const columns: DataTableColumns<LeaveRecord> = [
+const columns: DataTableColumns<LeaveRecordListItem> = [
   { key: 'studentId', title: '学号', width: 130, className: 'table-id' },
   {
     key: 'name',
@@ -186,7 +286,7 @@ const columns: DataTableColumns<LeaveRecord> = [
     title: '请假原因',
     width: 110,
     render: row => {
-      const name = typeName(row.leaveTypeId);
+      const name = row.leaveTypeName || '—';
       return name === '—' ? name : h('span', { class: ['detail-reason', reasonClass(name)] }, name);
     }
   },
@@ -268,7 +368,13 @@ const columns: DataTableColumns<LeaveRecord> = [
           <NInput v-model:value="search.name" clearable placeholder="请输入姓名" @keyup.enter="applySearch" />
         </NFormItem>
         <NFormItem label="班级">
-          <NSelect v-model:value="search.classId" :options="classOptions" filterable clearable placeholder="全部班级" />
+          <NSelect
+            v-model:value="search.classSnapshot"
+            :options="classOptions"
+            filterable
+            clearable
+            placeholder="全部班级"
+          />
         </NFormItem>
         <NFormItem label="请假原因">
           <NSelect v-model:value="search.leaveTypeId" :options="typeOptions" clearable placeholder="全部原因" />
@@ -337,12 +443,7 @@ const columns: DataTableColumns<LeaveRecord> = [
       >
         <template v-if="selected">
           <div class="drawer-summary">
-            <NAvatar
-              class="drawer-summary__avatar"
-              :size="48"
-              :src="selected.avatarUrl || undefined"
-              :img-props="{ alt: `${selected.name || '学生'}的头像` }"
-            >
+            <NAvatar class="drawer-summary__avatar" :size="48" :img-props="{ alt: `${selected.name || '学生'}的头像` }">
               {{ selected.name?.slice(0, 1) || '学' }}
             </NAvatar>
             <div class="drawer-summary__identity">
@@ -358,11 +459,11 @@ const columns: DataTableColumns<LeaveRecord> = [
             <div>
               <span>请假原因</span>
               <span
-                v-if="typeName(selected.leaveTypeId) !== '—'"
+                v-if="(selected.leaveTypeName || '—') !== '—'"
                 class="detail-reason"
-                :class="reasonClass(typeName(selected.leaveTypeId))"
+                :class="reasonClass(selected.leaveTypeName || '—')"
               >
-                {{ typeName(selected.leaveTypeId) }}
+                {{ selected.leaveTypeName || '—' }}
               </span>
               <strong v-else class="detail-value">—</strong>
             </div>
@@ -414,7 +515,7 @@ const columns: DataTableColumns<LeaveRecord> = [
               <h2>请假内容</h2>
             </div>
             <NFormItem label="请假原因" path="leaveTypeId">
-              <NSelect v-model:value="model.leaveTypeId" :options="typeOptions" />
+              <NSelect v-model:value="model.leaveTypeId" :options="editTypeOptions" />
             </NFormItem>
             <NFormItem label="请假时长">
               <NInput :value="durationLabel(model.startTime, model.endTime)" readonly />
@@ -465,14 +566,7 @@ const columns: DataTableColumns<LeaveRecord> = [
                 </div>
               </template>
               <NDescriptionsItem label="请假原因">
-                <span
-                  v-if="typeName(selected.leaveTypeId) !== '—'"
-                  class="detail-reason"
-                  :class="reasonClass(typeName(selected.leaveTypeId))"
-                >
-                  {{ typeName(selected.leaveTypeId) }}
-                </span>
-                <strong v-else class="detail-value">—</strong>
+                <strong class="detail-value">{{ selected.leaveTypeName || '—' }}</strong>
               </NDescriptionsItem>
               <NDescriptionsItem label="请假时长">
                 <strong class="detail-value">{{ durationLabel(selected.startTime, selected.endTime) }}</strong>
