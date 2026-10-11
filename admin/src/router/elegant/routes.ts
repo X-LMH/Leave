@@ -47,7 +47,7 @@ export const generatedRoutes: GeneratedRoute[] = [
       title: 'apartment',
       i18nKey: 'route.apartment',
       icon: 'mdi:office-building-outline',
-      order: 8
+      order: 5
     }
   },
   {
@@ -58,7 +58,7 @@ export const generatedRoutes: GeneratedRoute[] = [
       title: 'app-version',
       i18nKey: 'route.app-version',
       icon: 'mdi:package-variant-closed',
-      order: 6
+      order: 8
     }
   },
   {
@@ -115,7 +115,7 @@ export const generatedRoutes: GeneratedRoute[] = [
       title: 'leave-record',
       i18nKey: 'route.leave-record',
       icon: 'mdi:clipboard-text-clock-outline',
-      order: 3
+      order: 2
     }
   },
   {
@@ -126,7 +126,7 @@ export const generatedRoutes: GeneratedRoute[] = [
       title: 'leave-type',
       i18nKey: 'route.leave-type',
       icon: 'mdi:format-list-bulleted',
-      order: 5
+      order: 6
     }
   },
   {
@@ -148,7 +148,7 @@ export const generatedRoutes: GeneratedRoute[] = [
       title: 'student',
       i18nKey: 'route.student',
       icon: 'mdi:account-school',
-      order: 2
+      order: 3
     }
   }
 ];
