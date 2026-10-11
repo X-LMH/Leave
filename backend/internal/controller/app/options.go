@@ -1,7 +1,9 @@
 package app
 
 import (
+	"backend/internal/request"
 	"backend/internal/response"
+	appservice "backend/internal/service/app"
 	"backend/internal/service/common"
 	"errors"
 
@@ -9,7 +11,12 @@ import (
 )
 
 func GetClassOptionsHandler(c *gin.Context) {
-	data, err := common.GetClassOptions(true)
+	studentID, err := request.GetCurrentStuID(c)
+	if err != nil {
+		response.Error(c, response.CodeNeedLogin)
+		return
+	}
+	data, err := appservice.GetProfileClassOptions(studentID)
 	if err != nil {
 		response.Error(c, response.CodeServerBusy)
 		return
@@ -18,7 +25,12 @@ func GetClassOptionsHandler(c *gin.Context) {
 }
 
 func GetApartmentOptionsHandler(c *gin.Context) {
-	data, err := common.GetApartmentOptions(c.Query("gender"), true)
+	studentID, err := request.GetCurrentStuID(c)
+	if err != nil {
+		response.Error(c, response.CodeNeedLogin)
+		return
+	}
+	data, err := appservice.GetProfileApartmentOptions(studentID, c.Query("gender"))
 	if err != nil {
 		if errors.Is(err, common.ErrorInvalidApartmentGender) {
 			response.Error(c, response.CodeInvalidParam)

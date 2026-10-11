@@ -33,6 +33,10 @@ func ProfileHandler(c *gin.Context) {
 		return
 	}
 	if err := appservice.Profile(p, studentID); err != nil {
+		if errors.Is(err, appservice.ErrorInvalidProfileReference) {
+			response.Error(c, response.CodeInvalidParam)
+			return
+		}
 		response.Error(c, response.CodeServerBusy)
 		return
 	}

@@ -58,6 +58,10 @@ const dormNumber = ref('')
 const counselor = ref('')
 const firstProfile = ref(false)
 const submitting = ref(false)
+const pageLoading = ref(true)
+const apartmentLoading = ref(false)
+const apartmentOptionsReady = ref(true)
+let apartmentRequestSequence = 0
 const avatarURL = ref(getCachedAvatarSource(getCurrentUser().student_id, getStoredAvatarURL()))
 const selectedPath = ref('')
 const choosing = ref(false)
@@ -115,11 +119,11 @@ async function retryAvatar() {
 }
 
 function formatClass(item: ClassOption): string {
-	return item.class_name
+	return item.class_name + (item.is_enabled ? '' : '（已停用）')
 }
 
 const classLabels = computed((): string[] => classOptions.value.map((item) => formatClass(item)))
-const apartmentLabels = computed((): string[] => apartmentOptions.value.map((item) => item.name))
+const apartmentLabels = computed((): string[] => apartmentOptions.value.map((item) => item.name + (item.is_enabled ? '' : '（已停用）')))
 const pickerClassIndex = computed((): number => classIndex.value >= 0 ? classIndex.value : 0)
 const className = computed((): string => classIndex.value >= 0 && classIndex.value < classLabels.value.length ? classLabels.value[classIndex.value] : '')
 const apartment = computed((): string => apartmentIndex.value >= 0 && apartmentIndex.value < apartmentLabels.value.length ? apartmentLabels.value[apartmentIndex.value] : '')
@@ -130,17 +134,32 @@ function genderCode(): string {
 
 async function loadApartments(selectedID: number = 0) {
 	if (gender.value == '') return
+	const sequence = ++apartmentRequestSequence
+	apartmentLoading.value = true
+	apartmentOptionsReady.value = false
 	try {
-		apartmentOptions.value = await getApartments(genderCode())
+		const options = await getApartments(genderCode())
+		if (sequence != apartmentRequestSequence || !pageActive) return
+		apartmentOptions.value = options
 		const selectedIndex = apartmentOptions.value.findIndex((item) => item.id.toString() == selectedID.toString())
-		apartmentIndex.value = selectedIndex >= 0 ? selectedIndex : apartmentOptions.value.length == 1 ? 0 : -1
+		// An existing assignment must never be replaced by a default option.
+		if (selectedID != 0 && selectedIndex < 0) {
+			uni.showToast({ title: '原公寓信息不可用，请重新加载资料', icon: 'none' })
+			return
+		}
+		apartmentIndex.value = selectedIndex >= 0 ? selectedIndex : apartmentOptions.value.length == 1 && apartmentOptions.value[0].is_enabled ? 0 : -1
+		apartmentOptionsReady.value = true
 	} catch (error) {
+		if (sequence != apartmentRequestSequence || !pageActive) return
 		const message = (error as Error).message
 		uni.showToast({ title: message == null || message == '' ? '公寓列表加载失败' : message, icon: 'none' })
+	} finally {
+		if (sequence == apartmentRequestSequence) apartmentLoading.value = false
 	}
 }
 
 function setGender(value: string) {
+	if (pageLoading.value || submitting.value) return
 	if (gender.value == value) return
 	gender.value = value
 	apartmentIndex.value = -1
@@ -168,7 +187,7 @@ function phoneIsValid(value: string): boolean {
 	return /^1[3-9]\d{9}$/.test(value.trim())
 }
 
-function fillProfile(profile: ProfileData) {
+async function fillProfile(profile: ProfileData) {
 	const storedURL = getStoredAvatarURL()
 	avatarURL.value = getCachedAvatarSource(profile.student_id, storedURL == '' ? profile.avatar_url : storedURL)
 	studentID.value = profile.student_id
@@ -180,7 +199,7 @@ function fillProfile(profile: ProfileData) {
 	dormNumber.value = profile.apartment_info.dormitory_number
 	counselor.value = profile.teacher_name
 	classIndex.value = classOptions.value.findIndex((item) => item.id.toString() == profile.class_id.toString())
-	loadApartments(profile.apartment_id)
+	await loadApartments(profile.apartment_id)
 }
 
 async function loadPage() {
@@ -190,7 +209,7 @@ async function loadPage() {
 		const profile = await getProfile()
 		if (!pageActive || currentStudentID != getCurrentUser().student_id) return
 		if (profile != null) {
-			fillProfile(profile)
+			await fillProfile(profile)
 			const storedURL = getStoredAvatarURL()
 			const remoteURL = storedURL == '' ? profile.avatar_url : storedURL
 			const source = await cacheAvatarFile(currentStudentID, remoteURL)
@@ -203,11 +222,21 @@ async function loadPage() {
 		const message = (error as Error).message
 		if (firstProfile.value && message == '请先完善个人信息') return
 		uni.showToast({ title: message == null || message == '' ? '个人资料加载失败' : message, icon: 'none' })
+	} finally {
+		pageLoading.value = false
 	}
 }
 
 async function save() {
 	if (submitting.value || choosing.value || avatarRetryPending.value) return
+	if (pageLoading.value || apartmentLoading.value) {
+		uni.showToast({ title: '资料正在加载，请稍候', icon: 'none' })
+		return
+	}
+	if (!apartmentOptionsReady.value) {
+		uni.showToast({ title: '请先重新加载公寓信息', icon: 'none' })
+		return
+	}
 	if (name.value.trim() == '' || phone.value.trim() == '' || gender.value == '' || parentName.value.trim() == '' || parentPhone.value.trim() == '' || counselor.value.trim() == '' || classIndex.value < 0) {
 		uni.showToast({ title: '请完整填写必填信息', icon: 'none' })
 		return

@@ -89,12 +89,14 @@ export type ClassOption = {
 	college: string
 	major: string
 	class_name: string
+	is_enabled: boolean
 }
 
 export type ApartmentOption = {
 	id: number
 	name: string
 	gender: string
+	is_enabled: boolean
 }
 
 export type ProfilePayload = {
@@ -564,7 +566,8 @@ export async function getClassOptions(): Promise<ClassOption[]> {
 			id: item['id'] as number,
 			college: item['college'] as string,
 			major: item['major'] as string,
-			class_name: item['class_name'] as string
+			class_name: item['class_name'] as string,
+			is_enabled: item['is_enabled'] as boolean
 		}
 	})
 }
@@ -575,7 +578,8 @@ export async function getApartments(gender: string): Promise<ApartmentOption[]> 
 		return {
 			id: item['id'] as number,
 			name: item['name'] as string,
-			gender: item['gender'] as string
+			gender: item['gender'] as string,
+			is_enabled: item['is_enabled'] as boolean
 		}
 	})
 }

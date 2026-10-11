@@ -205,7 +205,7 @@ func TestAdminManagementIntegration(t *testing.T) {
 		t.Fatalf("class filters: %v %d", err, total)
 	}
 	profile := &models.Profile{StudentID: "test", ClassID: class.ID, Name: "学生", Gender: "male"}
-	if err := FinishProfile(profile); err != nil {
+	if err := Transaction(func(tx *gorm.DB) error { return SaveAppProfile(tx, profile) }); err != nil {
 		t.Fatal(err)
 	}
 	if err := DeleteClass(class.ID); !errors.Is(err, ErrorClassInUse) {
@@ -225,11 +225,6 @@ func TestAdminManagementIntegration(t *testing.T) {
 	}
 	if err := DeleteClass(class.ID); !errors.Is(err, gorm.ErrRecordNotFound) {
 		t.Fatalf("missing class: %v", err)
-	}
-	profile.StudentID = "new"
-	profile.ID = 0
-	if err := FinishProfile(profile); !errors.Is(err, gorm.ErrRecordNotFound) {
-		t.Fatalf("assignment to deleted class: %v", err)
 	}
 	t.Run("students", testAdminStudents)
 	// All data and connections above are confined to the generated test schema.

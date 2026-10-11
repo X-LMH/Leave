@@ -7,7 +7,12 @@ import (
 	"backend/internal/models"
 	"backend/internal/service"
 	"backend/internal/utils/file"
+	"errors"
+
+	"gorm.io/gorm"
 )
+
+var ErrorInvalidProfileReference = errors.New("invalid profile reference")
 
 func Profile(p *dto.ProfileRequest, studentID string) (err error) {
 	student := &models.Profile{
@@ -22,7 +27,36 @@ func Profile(p *dto.ProfileRequest, studentID string) (err error) {
 		DormitoryNumber: p.DormitoryNumber,
 		TeacherName:     p.TeacherName,
 	}
-	return mysql.FinishProfile(student)
+	// Validate class and apartment assignments under the same locks as management edits.
+	return mysql.Transaction(func(tx *gorm.DB) error {
+		current, err := mysql.GetStudentProfileForUpdate(tx, studentID)
+		if err != nil {
+			return err
+		}
+		class, err := mysql.GetStudentClassForShare(tx, p.ClassID)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return ErrorInvalidProfileReference
+			}
+			return err
+		}
+		if err := validateProfileClass(current, class); err != nil {
+			return err
+		}
+		if p.ApartmentID != 0 {
+			apartment, err := mysql.GetStudentApartmentForShare(tx, p.ApartmentID)
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return ErrorInvalidProfileReference
+			}
+			if err != nil {
+				return err
+			}
+			if err := validateProfileApartment(p, current, apartment); err != nil {
+				return err
+			}
+		}
+		return mysql.SaveAppProfile(tx, student)
+	})
 }
 
 func GetProfile(studentID string) (*dto.ProfileResponse, error) {
@@ -92,4 +126,18 @@ func toProfileResponse(profile *models.Profile, class *models.Class, apartment *
 			DormitoryNumber: profile.DormitoryNumber,
 		},
 	}
+}
+
+func validateProfileClass(current *models.Profile, class *models.Class) error {
+	if !class.IsEnabled && class.ID != current.ClassID {
+		return ErrorInvalidProfileReference
+	}
+	return nil
+}
+
+func validateProfileApartment(input *dto.ProfileRequest, current *models.Profile, apartment *models.Apartment) error {
+	if apartment.Gender != input.Gender || (apartment.IsEnabled != 1 && apartment.ID != current.ApartmentID) {
+		return ErrorInvalidProfileReference
+	}
+	return nil
 }
