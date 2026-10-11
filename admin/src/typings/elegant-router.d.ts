@@ -20,8 +20,10 @@ declare module "@elegant-router/types" {
     "403": "/403";
     "404": "/404";
     "500": "/500";
+    "apartment": "/apartment";
     "app-version": "/app-version";
     "class": "/class";
+    "feedback": "/feedback";
     "home": "/home";
     "iframe-page": "/iframe-page/:url";
     "leave-record": "/leave-record";
@@ -62,8 +64,10 @@ declare module "@elegant-router/types" {
     | "403"
     | "404"
     | "500"
+    | "apartment"
     | "app-version"
     | "class"
+    | "feedback"
     | "home"
     | "iframe-page"
     | "leave-record"
@@ -91,8 +95,10 @@ declare module "@elegant-router/types" {
     | "500"
     | "iframe-page"
     | "login"
+    | "apartment"
     | "app-version"
     | "class"
+    | "feedback"
     | "home"
     | "leave-record"
     | "leave-type"

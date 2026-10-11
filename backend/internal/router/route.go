@@ -77,9 +77,19 @@ func SetupRouter() *gin.Engine {
 		admin.GET("/records", admincontroller.GetRecordsHandler)
 		admin.GET("/records/:id", admincontroller.GetRecordHandler)
 		admin.PUT("/records/:id", admincontroller.UpdateRecordHandler)
+
 		admin.GET("/students/:id", admincontroller.GetStudentHandler)
 		admin.PUT("/students/:id", admincontroller.UpdateStudentHandler)
 		admin.PUT("/students/:id/status", admincontroller.UpdateStudentStatusHandler)
+
+		admin.GET("/feedbacks", admincontroller.GetFeedbacksHandler)
+		admin.GET("/feedbacks/:id", admincontroller.GetFeedbackHandler)
+		admin.DELETE("/feedbacks/:id", admincontroller.DeleteFeedbackHandler)
+
+		admin.GET("/apartments", admincontroller.GetApartmentsHandler)
+		admin.POST("/apartments", admincontroller.CreateApartmentHandler)
+		admin.PUT("/apartments/:id", admincontroller.UpdateApartmentHandler)
+		admin.DELETE("/apartments/:id", admincontroller.DeleteApartmentHandler)
 
 		admin.GET("/classes", admincontroller.GetClassesHandler)
 		admin.POST("/classes", admincontroller.CreateClassHandler)

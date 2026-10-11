@@ -9,7 +9,7 @@ import (
 func TestManagementRoutesRequireLogin(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	r := SetupRouter()
-	for _, path := range []string{"/api/v1/admin/classes", "/api/v1/admin/leave-types"} {
+	for _, path := range []string{"/api/v1/admin/classes", "/api/v1/admin/leave-types", "/api/v1/admin/apartments"} {
 		for _, method := range []string{"GET", "POST", "PUT", "DELETE"} {
 			target := path
 			if method == "PUT" || method == "DELETE" {
@@ -30,6 +30,9 @@ func TestStudentRoutesRequireLogin(t *testing.T) {
 		{"GET", "/api/v1/admin/app-versions"},
 		{"GET", "/api/v1/admin/app-versions/current"},
 		{"GET", "/api/v1/admin/app-versions/1"},
+		{"GET", "/api/v1/admin/feedbacks"},
+		{"GET", "/api/v1/admin/feedbacks/1"},
+		{"DELETE", "/api/v1/admin/feedbacks/1"},
 		{"GET", "/api/v1/admin/students"},
 		{"GET", "/api/v1/admin/records"},
 		{"GET", "/api/v1/admin/records/1"},

@@ -19,6 +19,8 @@ func managementError(c *gin.Context, err error) {
 		response.Error(c, response.CodeManagementNotFound)
 	case mysql.IsDuplicateKeyError(err):
 		response.Error(c, response.CodeManagementDuplicate)
+	case errors.Is(err, adminservice.ErrorApartmentInUse):
+		response.Error(c, response.CodeApartmentInUse)
 	case errors.Is(err, mysql.ErrorClassInUse):
 		response.Error(c, response.CodeClassInUse)
 	default:

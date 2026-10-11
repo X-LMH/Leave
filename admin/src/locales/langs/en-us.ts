@@ -224,6 +224,8 @@ const local: App.I18n.Schema = {
     }
   },
   route: {
+    feedback: 'Feedback Management',
+    apartment: 'Apartment Management',
     'app-version': 'Version Management',
     student: 'Student Management',
     'leave-record': 'Leave Record Management',

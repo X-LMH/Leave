@@ -40,6 +40,17 @@ export const generatedRoutes: GeneratedRoute[] = [
     }
   },
   {
+    name: 'apartment',
+    path: '/apartment',
+    component: 'layout.base$view.apartment',
+    meta: {
+      title: 'apartment',
+      i18nKey: 'route.apartment',
+      icon: 'mdi:office-building-outline',
+      order: 8
+    }
+  },
+  {
     name: 'app-version',
     path: '/app-version',
     component: 'layout.base$view.app-version',
@@ -59,6 +70,17 @@ export const generatedRoutes: GeneratedRoute[] = [
       i18nKey: 'route.class',
       icon: 'mdi:google-classroom',
       order: 4
+    }
+  },
+  {
+    name: 'feedback',
+    path: '/feedback',
+    component: 'layout.base$view.feedback',
+    meta: {
+      title: 'feedback',
+      i18nKey: 'route.feedback',
+      icon: 'mdi:message-text-outline',
+      order: 7
     }
   },
   {

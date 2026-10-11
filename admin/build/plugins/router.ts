@@ -27,6 +27,11 @@ export function setupElegantRouter() {
         i18nKey: `route.${key}` as App.I18n.I18nKey
       };
 
+      if (key === 'feedback' || key === 'apartment') {
+        meta.icon = key === 'feedback' ? 'mdi:message-text-outline' : 'mdi:office-building-outline';
+        meta.order = key === 'feedback' ? 7 : 8;
+      }
+
       if (key === 'app-version') {
         meta.icon = 'mdi:package-variant-closed';
         meta.order = 6;

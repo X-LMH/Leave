@@ -23,6 +23,7 @@ const (
 	CodeManagementNotFound  Code = 2004
 	CodeManagementDuplicate Code = 2005
 	CodeClassInUse          Code = 2006
+	CodeApartmentInUse      Code = 2007
 
 	// 请假记录类错误：3000-3999
 	CodeRecordNotExist    Code = 3001
@@ -45,6 +46,7 @@ type codeMeta struct {
 }
 
 var metaByCode = map[Code]codeMeta{
+	CodeApartmentInUse:      {message: "该公寓已被学生资料引用，不能删除或修改适用性别，可选择停用", httpStatus: http.StatusConflict},
 	CodeManagementNotFound:  {message: "管理记录不存在", httpStatus: http.StatusNotFound},
 	CodeManagementDuplicate: {message: "名称已存在，请使用其他名称", httpStatus: http.StatusConflict},
 	CodeClassInUse:          {message: "该班级已被学生资料引用，请停用而非删除", httpStatus: http.StatusConflict},
