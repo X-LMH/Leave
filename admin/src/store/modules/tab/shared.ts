@@ -175,7 +175,9 @@ export function extractTabsByAllRoutes(router: Router, tabs: App.Global.Tab[]) {
 
   const routeNames = routes.map(route => route.name);
 
-  return tabs.filter(tab => routeNames.includes(tab.routeKey));
+  return tabs
+    .filter(tab => routeNames.includes(tab.routeKey))
+    .map(tab => (tab.routeKey === 'app-version' ? { ...tab, fixedIndex: undefined } : tab));
 }
 
 /**

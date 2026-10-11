@@ -333,8 +333,8 @@ void reload();
         <template #empty>
           <div class="table-empty">
             <SvgIcon icon="mdi:package-variant" aria-hidden="true" />
-              <strong>{{ listError ? '版本记录加载失败' : hasFilters ? '未找到匹配的版本' : '暂无版本记录' }}</strong>
-              <span v-if="!listError">{{ hasFilters ? '请调整关键词、平台或发布状态。' : '暂无客户端版本发布记录。' }}</span>
+            <strong>{{ listError ? '版本记录加载失败' : hasFilters ? '未找到匹配的版本' : '暂无版本记录' }}</strong>
+            <span v-if="!listError">{{ hasFilters ? '请调整关键词、平台或发布状态。' : '暂无客户端版本发布记录。' }}</span>
             <NButton v-if="listError" size="small" @click="reload">重新加载</NButton>
             <NButton v-else-if="hasFilters" size="small" @click="resetSearch">重置筛选</NButton>
           </div>
