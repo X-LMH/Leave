@@ -1,152 +1,100 @@
 <script setup lang="ts">
 import { watch } from 'vue';
+import { useThemeVars } from 'naive-ui';
 import { useAppStore } from '@/store/modules/app';
+import { useThemeStore } from '@/store/modules/theme';
 import { useEcharts } from '@/hooks/common/echarts';
 import { $t } from '@/locales';
+import type { WeeklyApplicationPoint } from '@/service/api/overview';
+import { formatOverviewDateRange } from '../date-range';
 
-defineOptions({
-  name: 'LineChart'
-});
-
+const props = defineProps<{ weeks: WeeklyApplicationPoint[] }>();
 const appStore = useAppStore();
+const themeStore = useThemeStore();
+const themeVars = useThemeVars();
 
-const { domRef, updateOptions } = useEcharts(() => ({
-  tooltip: {
-    trigger: 'axis',
-    axisPointer: {
-      type: 'cross',
-      label: {
-        backgroundColor: '#6a7985'
-      }
-    }
-  },
-  legend: {
-    data: [$t('page.home.downloadCount'), $t('page.home.registerCount')],
-    top: '0'
-  },
-  grid: {
-    left: '3%',
-    right: '4%',
-    bottom: '3%',
-    top: '15%'
-  },
-  xAxis: {
-    type: 'category',
-    boundaryGap: false,
-    data: [] as string[]
-  },
-  yAxis: {
-    type: 'value'
-  },
-  series: [
-    {
-      color: '#8e9dff',
-      name: $t('page.home.downloadCount'),
-      type: 'line',
-      smooth: true,
-      stack: 'Total',
-      areaStyle: {
-        color: {
-          type: 'linear',
-          x: 0,
-          y: 0,
-          x2: 0,
-          y2: 1,
-          colorStops: [
-            {
-              offset: 0.25,
-              color: '#8e9dff'
-            },
-            {
-              offset: 1,
-              color: '#fff'
-            }
-          ]
-        }
-      },
-      emphasis: {
-        focus: 'series'
-      },
-      data: [] as number[]
+function options() {
+  const dates = new Intl.DateTimeFormat(appStore.locale, {
+    timeZone: 'Asia/Shanghai',
+    month: '2-digit',
+    day: '2-digit'
+  });
+  return {
+    tooltip: {
+      trigger: 'axis' as const,
+      valueFormatter: (value: unknown) => `${value} ${$t('page.home.recordsUnit')}`
     },
-    {
-      color: '#26deca',
-      name: $t('page.home.registerCount'),
-      type: 'line',
-      smooth: true,
-      stack: 'Total',
-      areaStyle: {
-        color: {
-          type: 'linear',
-          x: 0,
-          y: 0,
-          x2: 0,
-          y2: 1,
-          colorStops: [
-            {
-              offset: 0.25,
-              color: '#26deca'
-            },
-            {
-              offset: 1,
-              color: '#fff'
-            }
-          ]
+    grid: { left: 36, right: 20, top: 32, bottom: 48 },
+    xAxis: {
+      type: 'category' as const,
+      boundaryGap: false,
+      data: props.weeks.map(week => {
+        const range = formatOverviewDateRange(week.start, week.end, appStore.locale, true);
+        return week.isCurrent ? `${range} (${$t('page.home.currentWeek')} · ${$t('page.home.asOfNow')})` : range;
+      }),
+      axisTick: { show: false },
+      axisLine: { lineStyle: { color: themeVars.value.dividerColor } },
+      axisLabel: {
+        color: themeVars.value.textColor3,
+        interval: appStore.isMobile ? ('auto' as const) : 0,
+        fontSize: 11,
+        lineHeight: 18,
+        formatter: (_value: string, index: number) => {
+          const week = props.weeks[index];
+          return `${dates.format(week.start)}${week.isCurrent ? `\n${$t('page.home.currentWeek')}` : ''}`;
         }
-      },
-      emphasis: {
-        focus: 'series'
-      },
-      data: []
-    }
-  ]
-}));
-
-async function mockData() {
-  await new Promise(resolve => {
-    setTimeout(resolve, 1000);
-  });
-
-  updateOptions(opts => {
-    opts.xAxis.data = ['06:00', '08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00', '22:00', '24:00'];
-    opts.series[0].data = [4623, 6145, 6268, 6411, 1890, 4251, 2978, 3880, 3606, 4311];
-    opts.series[1].data = [2208, 2016, 2916, 4512, 8281, 2008, 1963, 2367, 2956, 678];
-
-    return opts;
-  });
+      }
+    },
+    yAxis: {
+      type: 'value' as const,
+      min: 0,
+      minInterval: 1,
+      splitNumber: 4,
+      axisLabel: { color: themeVars.value.textColor3 },
+      splitLine: { lineStyle: { color: themeVars.value.dividerColor, type: 'dashed' as const } }
+    },
+    series: [
+      {
+        name: $t('page.home.applications'),
+        type: 'line' as const,
+        data: props.weeks.map(week => ({
+          value: week.count,
+          itemStyle: {
+            color: week.isCurrent ? themeVars.value.cardColor : themeVars.value.primaryColor,
+            borderColor: themeVars.value.primaryColor,
+            borderWidth: 2
+          }
+        })),
+        connectNulls: false,
+        symbol: 'circle',
+        symbolSize: 7,
+        lineStyle: { width: 2.5, color: themeVars.value.primaryColor },
+        itemStyle: {
+          color: themeVars.value.cardColor,
+          borderColor: themeVars.value.primaryColor,
+          borderWidth: 2
+        },
+        label: {
+          show: !appStore.isMobile,
+          position: 'top' as const,
+          color: themeVars.value.primaryColor,
+          fontSize: 11
+        },
+        areaStyle: { color: themeVars.value.primaryColor, opacity: 0.06 }
+      }
+    ]
+  };
 }
 
-function updateLocale() {
-  updateOptions((opts, factory) => {
-    const originOpts = factory();
-
-    opts.legend.data = originOpts.legend.data;
-    opts.series[0].name = originOpts.series[0].name;
-    opts.series[1].name = originOpts.series[1].name;
-
-    return opts;
-  });
-}
-
-async function init() {
-  mockData();
-}
-
+const { domRef, updateOptions } = useEcharts(options);
 watch(
-  () => appStore.locale,
+  [() => props.weeks, () => appStore.locale, () => appStore.isMobile, () => themeStore.themeColor, themeVars],
   () => {
-    updateLocale();
+    void updateOptions(() => options());
   }
 );
-
-// init
-init();
 </script>
 
 <template>
-  <NCard :bordered="false" class="card-wrapper">
-    <div ref="domRef" class="h-360px overflow-hidden"></div>
-  </NCard>
+  <div ref="domRef" class="h-280px min-w-0" role="img" :aria-label="$t('page.home.trend')"></div>
 </template>
-
-<style scoped></style>

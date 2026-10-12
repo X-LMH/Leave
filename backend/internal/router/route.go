@@ -65,6 +65,7 @@ func SetupRouter() *gin.Engine {
 
 	admin.Use(middleware.JWTAuthMiddleware(), middleware.AdminAuthMiddleware())
 	{
+		admin.GET("/overview", admincontroller.GetOverviewHandler)
 		admin.GET("/class-options", admincontroller.GetClassOptionsHandler)
 		admin.GET("/apartment-options", admincontroller.GetApartmentOptionsHandler)
 		admin.GET("/leave-type-options", admincontroller.GetLeaveTypeOptionsHandler)
