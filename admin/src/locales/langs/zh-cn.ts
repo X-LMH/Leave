@@ -220,6 +220,7 @@ const local: App.I18n.Schema = {
     }
   },
   route: {
+    'account-settings': '账号设置',
     feedback: '意见反馈管理',
     apartment: '公寓管理',
     'app-version': '版本管理',

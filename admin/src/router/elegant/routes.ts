@@ -40,6 +40,17 @@ export const generatedRoutes: GeneratedRoute[] = [
     }
   },
   {
+    name: 'account-settings',
+    path: '/account-settings',
+    component: 'layout.base$view.account-settings',
+    meta: {
+      title: 'account-settings',
+      i18nKey: 'route.account-settings',
+      icon: 'mdi:account-cog-outline',
+      hideInMenu: true
+    }
+  },
+  {
     name: 'apartment',
     path: '/apartment',
     component: 'layout.base$view.apartment',

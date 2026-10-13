@@ -28,6 +28,7 @@ func TestStudentRoutesRequireLogin(t *testing.T) {
 	r := SetupRouter()
 	for _, route := range []struct{ method, path string }{
 		{"GET", "/api/v1/admin/overview"},
+		{"POST", "/api/v1/admin/auth/password"},
 		{"GET", "/api/v1/admin/app-versions"},
 		{"GET", "/api/v1/admin/app-versions/current"},
 		{"GET", "/api/v1/admin/app-versions/1"},

@@ -18,7 +18,7 @@ function loginOrRegister() {
   toLogin();
 }
 
-type DropdownKey = 'logout';
+type DropdownKey = 'account-settings' | 'logout';
 
 type DropdownOption =
   | {
@@ -33,6 +33,12 @@ type DropdownOption =
 
 const options = computed(() => {
   const opts: DropdownOption[] = [
+    {
+      label: $t('route.account-settings'),
+      key: 'account-settings',
+      icon: SvgIconVNode({ icon: 'ph:user-gear', fontSize: 18 })
+    },
+    { type: 'divider', key: 'account-divider' },
     {
       label: $t('common.logout'),
       key: 'logout',
@@ -59,7 +65,6 @@ function handleDropdown(key: DropdownKey) {
   if (key === 'logout') {
     logout();
   } else {
-    // If your other options are jumps from other routes, they will be directly supported here
     routerPushByKey(key);
   }
 }

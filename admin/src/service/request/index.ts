@@ -36,7 +36,7 @@ export const request = createFlatRequest(
     async onBackendFail(response, instance) {
       const authStore = useAuthStore();
       if (response.status === 401 && response.config.url?.startsWith('/admin/')) {
-        if (!response.config.url.startsWith('/admin/auth/')) await authStore.resetStore();
+        if (response.config.url !== '/admin/auth/login') await authStore.resetStore();
         return null;
       }
       const responseCode = String(response.data.code);
@@ -107,7 +107,7 @@ export const request = createFlatRequest(
 
       // Management authentication has no refresh endpoint; never retry an expired admin session.
       if (error.response?.status === 401 && error.config?.url?.startsWith('/admin/')) {
-        if (!error.config.url.startsWith('/admin/auth/')) await useAuthStore().resetStore();
+        if (error.config.url !== '/admin/auth/login') await useAuthStore().resetStore();
         showErrorMsg(request.state, error.response.data.message || message);
         return;
       }

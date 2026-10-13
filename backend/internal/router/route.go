@@ -61,7 +61,12 @@ func SetupRouter() *gin.Engine {
 
 	admin := api.Group("/admin")
 	adminAuth := admin.Group("/auth")
-	adminAuth.POST("/login", admincontroller.LoginHandler)
+	{
+		adminAuth.POST("/login", admincontroller.LoginHandler)
+
+		adminAuth.Use(middleware.JWTAuthMiddleware(), middleware.AdminAuthMiddleware())
+		adminAuth.POST("/password", admincontroller.ChangePasswordHandler)
+	}
 
 	admin.Use(middleware.JWTAuthMiddleware(), middleware.AdminAuthMiddleware())
 	{

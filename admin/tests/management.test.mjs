@@ -132,6 +132,19 @@ test('management HTTP 401 clears authentication without refreshing tokens', asyn
   });
   assert.equal(resets, 1);
   assert.equal(messages[1], 'Invalid password');
+  await options.onError({
+    message: 'HTTP 401',
+    config: { url: '/admin/auth/password' },
+    response: { status: 401, data: { code: 1005, message: 'Token expired' } }
+  });
+  assert.equal(resets, 2);
+  assert.equal(refreshes, 0);
+  await options.onBackendFail({
+    status: 401,
+    config: { url: '/admin/auth/password' },
+    data: { code: 1005, message: 'Token expired' }
+  });
+  assert.equal(resets, 3);
 });
 for (const kind of ['class', 'leave-type']) {
   test(`${kind}: pagination, filters and stale responses`, async () => {

@@ -32,6 +32,11 @@ export function setupElegantRouter() {
         meta.order = 1;
       }
 
+      if (key === 'account-settings') {
+        meta.icon = 'mdi:account-cog-outline';
+        meta.hideInMenu = true;
+      }
+
       if (key === 'feedback' || key === 'apartment') {
         meta.icon = key === 'feedback' ? 'mdi:message-text-outline' : 'mdi:office-building-outline';
         meta.order = key === 'feedback' ? 7 : 5;

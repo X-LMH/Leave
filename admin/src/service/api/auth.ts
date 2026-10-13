@@ -1,5 +1,17 @@
 import { request } from '../request';
 
+export function changeAdminPassword(currentPassword: string, newPassword: string, confirmPassword: string) {
+  return request<null>({
+    url: '/admin/auth/password',
+    method: 'post',
+    data: {
+      password: currentPassword,
+      new_password: newPassword,
+      re_password: confirmPassword
+    }
+  });
+}
+
 /**
  * Login
  *
@@ -11,7 +23,7 @@ export function fetchLogin(userName: string, password: string) {
     url: '/admin/auth/login',
     method: 'post',
     data: {
-      userName,
+      user_name: userName,
       password
     }
   });

@@ -20,6 +20,7 @@ declare module "@elegant-router/types" {
     "403": "/403";
     "404": "/404";
     "500": "/500";
+    "account-settings": "/account-settings";
     "apartment": "/apartment";
     "app-version": "/app-version";
     "class": "/class";
@@ -64,6 +65,7 @@ declare module "@elegant-router/types" {
     | "403"
     | "404"
     | "500"
+    | "account-settings"
     | "apartment"
     | "app-version"
     | "class"
@@ -95,6 +97,7 @@ declare module "@elegant-router/types" {
     | "500"
     | "iframe-page"
     | "login"
+    | "account-settings"
     | "apartment"
     | "app-version"
     | "class"

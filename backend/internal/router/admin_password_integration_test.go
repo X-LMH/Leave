@@ -1,0 +1,206 @@
+package router
+
+import (
+	"backend/internal/config"
+	"backend/internal/dao/mysql"
+	"backend/internal/dto"
+	"backend/internal/models"
+	"backend/internal/response"
+	adminservice "backend/internal/service/admin"
+	"backend/internal/utils/jwt"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"net"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"testing"
+	"time"
+
+	driver "github.com/go-sql-driver/mysql"
+	gormmysql "gorm.io/driver/mysql"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
+)
+
+func TestAdminPasswordIntegration(t *testing.T) {
+	dsn := os.Getenv("ADMIN_TEST_MYSQL_DSN")
+	if dsn == "" {
+		t.Skip("set ADMIN_TEST_MYSQL_DSN for isolated loopback MySQL coverage")
+	}
+	cfg, err := driver.ParseDSN(dsn)
+	if err != nil {
+		t.Fatal("invalid test MySQL DSN")
+	}
+	host, port, err := net.SplitHostPort(cfg.Addr)
+	if err != nil || cfg.Net != "tcp" || (host != "localhost" && host != "127.0.0.1" && host != "::1") {
+		t.Fatal("integration tests require loopback TCP MySQL")
+	}
+	cfg.DBName = ""
+	cfg.ParseTime = true
+	cfg.Loc = time.Local
+	server, err := gorm.Open(gormmysql.Open(cfg.FormatDSN()), &gorm.Config{Logger: logger.Default.LogMode(logger.Silent)})
+	if err != nil {
+		t.Fatal("cannot connect to isolated MySQL server")
+	}
+	serverSQL, err := server.DB()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer serverSQL.Close()
+	schema := fmt.Sprintf("leave_password_test_%d", time.Now().UnixNano())
+	if err := server.Exec("CREATE DATABASE `" + schema + "` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci").Error; err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := server.Exec("DROP DATABASE `" + schema + "`").Error; err != nil {
+			t.Errorf("drop test schema: %v", err)
+		}
+	}()
+	cfg.DBName = schema
+	testDB, err := gorm.Open(gormmysql.Open(cfg.FormatDSN()), &gorm.Config{Logger: logger.Default.LogMode(logger.Silent)})
+	if err != nil {
+		t.Fatal("cannot open isolated test schema")
+	}
+	connection, err := testDB.DB()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer connection.Close()
+	definition, err := os.ReadFile(filepath.Join("..", "..", "database", "tables", "users.sql"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := testDB.Exec(string(definition)).Error; err != nil {
+		t.Fatal(err)
+	}
+	previous := config.Cfg
+	defer func() { config.Cfg = previous }()
+	portNumber, err := strconv.Atoi(port)
+	if err != nil {
+		t.Fatal(err)
+	}
+	config.Cfg.Mysql.Host = host
+	config.Cfg.Mysql.Port = portNumber
+	config.Cfg.Mysql.Database = schema
+	config.Cfg.Mysql.User = cfg.User
+	config.Cfg.Mysql.Password = cfg.Passwd
+	config.Cfg.JWT.Secret = "isolated-password-test"
+	config.Cfg.JWT.ExpirationDays = 1
+	if err := mysql.Init(); err != nil {
+		t.Fatal("cannot initialize isolated test database")
+	}
+	for _, user := range []models.User{
+		{StudentID: "admin", Password: "old-pass", Role: models.RoleAdmin, Status: models.UserStatusActive},
+		{StudentID: "student", Password: "old-pass", Role: models.RoleStudent, Status: models.UserStatusActive},
+		{StudentID: "disabled", Password: "old-pass", Role: models.RoleAdmin, Status: models.UserStatusDisabled},
+	} {
+		if err := testDB.Create(&user).Error; err != nil {
+			t.Fatal(err)
+		}
+	}
+	token, err := jwt.GenerateToken("admin", models.RoleAdmin)
+	if err != nil {
+		t.Fatal(err)
+	}
+	router := SetupRouter()
+	call := func(auth, body string) response.Response {
+		t.Helper()
+		req := httptest.NewRequest("POST", "/api/v1/admin/auth/password", strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		if auth != "" {
+			req.Header.Set("Authorization", "Bearer "+auth)
+		}
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		var result response.Response
+		if err := json.Unmarshal(w.Body.Bytes(), &result); err != nil {
+			t.Fatal(err)
+		}
+		if w.Code != result.Code.HTTPStatus() || result.Data != nil {
+			t.Fatal("unexpected HTTP status or credential data in response")
+		}
+		return result
+	}
+	validBody := `{"password":"old-pass","new_password":"new-pass","re_password":"new-pass"}`
+	if got := call("", validBody); got.Code != response.CodeNeedLogin {
+		t.Fatal("anonymous password change allowed")
+	}
+	for _, account := range []struct{ id, role string }{
+		{"student", models.RoleStudent},
+		{"student", models.RoleAdmin}, // Stale or incorrect admin claim must not grant access.
+		{"disabled", models.RoleAdmin},
+		{"missing", models.RoleAdmin},
+	} {
+		auth, err := jwt.GenerateToken(account.id, account.role)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := call(auth, validBody); got.Code != response.CodeNeedLogin {
+			t.Fatalf("account %s accepted", account.id)
+		}
+	}
+	for _, body := range []string{
+		`{`,
+		`{}`,
+		`{"password":"old-pass","new_password":"short","re_password":"short"}`,
+		`{"password":"old-pass","new_password":"old-pass","re_password":"old-pass"}`,
+		`{"password":"old-pass","new_password":"new-pass","re_password":"different"}`,
+	} {
+		if got := call(token, body); got.Code != response.CodeInvalidParam {
+			t.Fatalf("invalid request accepted: %d", got.Code)
+		}
+	}
+	if got := call(token, strings.Replace(validBody, "old-pass", "wrong-pass", 1)); got.Code != response.CodeNotRightPassword {
+		t.Fatal("incorrect original password accepted")
+	}
+	user, err := mysql.FindUserByStudentID("admin")
+	if err != nil || user.Password != "old-pass" {
+		t.Fatal("failed request modified password")
+	}
+	// No App version headers are sent, and the same token remains valid after success.
+	if got := call(token, validBody); got.Code != response.CodeSuccess {
+		t.Fatalf("change failed: %d", got.Code)
+	}
+	if _, err := adminservice.AdminLogin(&dto.AdminLoginRequest{UserName: "admin", Password: "old-pass"}); !errors.Is(err, mysql.ErrorInvalidPassword) {
+		t.Fatal("old password still accepted for login")
+	}
+	if _, err := adminservice.AdminLogin(&dto.AdminLoginRequest{UserName: "admin", Password: "new-pass"}); err != nil {
+		t.Fatal("new password cannot log in")
+	}
+	if got := call(token, `{"password":"new-pass","new_password":" pass ","re_password":" pass "}`); got.Code != response.CodeSuccess {
+		t.Fatal("current session or password spaces were not preserved")
+	}
+	// Both requests start with the same original password; exactly one can commit.
+	start := make(chan struct{})
+	results := make(chan error, 2)
+	for _, password := range []string{"winner-one", "winner-two"} {
+		go func(next string) {
+			<-start
+			results <- adminservice.ChangePassword("admin", &dto.PasswordChangeRequest{
+				Password:    " pass ",
+				NewPassword: next,
+				RePassword:  next,
+			})
+		}(password)
+	}
+	close(start)
+	successes := 0
+	for range 2 {
+		if err := <-results; err == nil {
+			successes++
+		} else if !errors.Is(err, mysql.ErrorNotRightPassword) {
+			t.Fatalf("unexpected concurrent result: %v", err)
+		}
+	}
+	if successes != 1 {
+		t.Fatalf("concurrent successes: %d", successes)
+	}
+	user, err = mysql.FindUserByStudentID("admin")
+	if err != nil || (user.Password != "winner-one" && user.Password != "winner-two") || user.Role != models.RoleAdmin || user.Status != models.UserStatusActive {
+		t.Fatal("unexpected persisted account state")
+	}
+}
