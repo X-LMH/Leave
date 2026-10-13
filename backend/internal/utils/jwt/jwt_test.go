@@ -2,6 +2,8 @@ package jwt
 
 import (
 	"backend/internal/config"
+	"encoding/base64"
+	"strings"
 	"testing"
 	"time"
 
@@ -41,9 +43,15 @@ func TestParseTokenRejectsTamperedAndWrongAlgorithmTokens(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	parts := []byte(token)
-	parts[len(parts)-1] ^= 1
-	if _, err := ParseToken(string(parts)); err == nil {
+	parts := strings.Split(token, ".")
+	signature, err := base64.RawURLEncoding.DecodeString(parts[2])
+	if err != nil {
+		t.Fatal(err)
+	}
+	// 修改实际签名字节，避免只改变 Base64URL 末尾未使用的位。
+	signature[0] ^= 1
+	parts[2] = base64.RawURLEncoding.EncodeToString(signature)
+	if _, err := ParseToken(strings.Join(parts, ".")); err == nil {
 		t.Fatal("expected tampered token to be rejected")
 	}
 
