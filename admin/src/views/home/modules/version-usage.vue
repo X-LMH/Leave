@@ -1,16 +1,58 @@
 <script setup lang="ts">
+import { computed, onDeactivated, onUnmounted, ref, watch } from 'vue';
 import { useAppStore } from '@/store/modules/app';
 import { $t } from '@/locales';
 import type { OverviewVersionUsage } from '@/service/api/overview';
+import { HOME_CHART_ANIMATION_DURATION } from '../motion';
+import AnimatedCount from './animated-count.vue';
 
-defineProps<{
+const props = defineProps<{
   usage: OverviewVersionUsage;
   latestVersion: string | null;
+  animate: boolean;
 }>();
 defineEmits<{ manage: [] }>();
 const appStore = useAppStore();
 
 type VersionGroup = OverviewVersionUsage['groups'][number];
+// Keep segment identities stable while the entire bar is revealed from left to right.
+const groupKeys: VersionGroup['key'][] = ['latest', 'previous', 'older', 'unreported', 'other'];
+const barGroups = computed(() =>
+  groupKeys.map(
+    key => props.usage.groups.find(group => group.key === key) ?? { key, version: '', count: 0, percentage: 0 }
+  )
+);
+const lastVisibleSegment = computed(() => barGroups.value.findLastIndex(group => group.percentage > 0));
+const barRef = ref<HTMLElement | null>(null);
+const revealed = ref(false);
+let revealAnimation: Animation | null = null;
+
+function finishReveal() {
+  revealAnimation?.cancel();
+  revealAnimation = null;
+  revealed.value = true;
+}
+
+function startReveal() {
+  finishReveal();
+  if (!props.animate || !barRef.value) return;
+  revealAnimation = barRef.value.animate([{ clipPath: 'inset(0 100% 0 0)' }, { clipPath: 'inset(0 0% 0 0)' }], {
+    duration: HOME_CHART_ANIMATION_DURATION,
+    easing: 'linear',
+    fill: 'both'
+  });
+}
+
+watch(
+  () => props.animate,
+  animate => {
+    if (!animate) finishReveal();
+  }
+);
+onDeactivated(finishReveal);
+onUnmounted(finishReveal);
+defineExpose({ startReveal, finishReveal });
+
 function versionLabel(group: VersionGroup) {
   const labels = {
     latest: $t('page.home.versionLatestGroup'),
@@ -44,15 +86,24 @@ function color(group: VersionGroup) {
       <div class="version-usage__summary">
         <span>{{ $t('page.home.versionSampleTotal') }}</span>
         <strong>
-          {{ usage.total.toLocaleString(appStore.locale) }}
+          <AnimatedCount :value="usage.total" :animate="animate" />
           <small>{{ $t('page.home.peopleUnit') }}</small>
         </strong>
       </div>
-      <div class="version-usage__bar" aria-hidden="true">
+      <div
+        ref="barRef"
+        class="version-usage__bar"
+        :class="{ 'version-usage__bar--waiting': animate && !revealed }"
+        aria-hidden="true"
+      >
         <span
-          v-for="group in usage.groups.filter(item => item.count > 0)"
+          v-for="(group, index) in barGroups"
           :key="group.key"
-          :style="{ width: `${group.percentage}%`, backgroundColor: color(group) }"
+          :style="{
+            width: `${group.percentage}%`,
+            backgroundColor: color(group),
+            borderRightWidth: `${index === lastVisibleSegment ? 0 : Math.min(2, group.percentage)}px`
+          }"
           :title="`${versionLabel(group)} · ${group.count}`"
         ></span>
       </div>
@@ -60,7 +111,10 @@ function color(group: VersionGroup) {
         <li v-for="group in usage.groups" :key="group.key">
           <span class="version-usage__dot" :style="{ backgroundColor: color(group) }"></span>
           <span class="version-usage__name">{{ versionLabel(group) }}</span>
-          <strong>{{ group.count.toLocaleString(appStore.locale) }} {{ $t('page.home.peopleUnit') }}</strong>
+          <strong>
+            <AnimatedCount :value="group.count" :animate="animate" />
+            {{ $t('page.home.peopleUnit') }}
+          </strong>
           <span class="version-usage__percent">{{ percentage(group.percentage) }}%</span>
         </li>
       </ul>
@@ -73,7 +127,11 @@ function color(group: VersionGroup) {
           <strong>v{{ latestVersion }}</strong>
         </span>
         <span class="version-usage__adoption">
-          {{ $t('page.home.versionAdoption', { count: usage.latestCount.toLocaleString(appStore.locale) }) }}
+          <AnimatedCount
+            :value="usage.latestCount"
+            :animate="animate"
+            :format="count => $t('page.home.versionAdoption', { count })"
+          />
         </span>
       </template>
       <span v-else>{{ $t('page.home.noVersion') }}</span>
@@ -125,8 +183,8 @@ function color(group: VersionGroup) {
     border-right: 2px solid var(--management-surface);
     box-sizing: border-box;
   }
-  &__bar span:last-child {
-    border-right: 0;
+  &__bar--waiting {
+    clip-path: inset(0 100% 0 0);
   }
   &__legend {
     display: flex;

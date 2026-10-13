@@ -7,11 +7,14 @@ import { useEcharts } from '@/hooks/common/echarts';
 import { $t } from '@/locales';
 import type { WeeklyApplicationPoint } from '@/service/api/overview';
 import { formatOverviewDateRange } from '../date-range';
+import { HOME_CHART_ANIMATION_DURATION } from '../motion';
 
-const props = defineProps<{ weeks: WeeklyApplicationPoint[] }>();
+const props = defineProps<{ weeks: WeeklyApplicationPoint[]; animate: boolean }>();
+const emit = defineEmits<{ draw: []; finished: [] }>();
 const appStore = useAppStore();
 const themeStore = useThemeStore();
 const themeVars = useThemeVars();
+let animationEndsAt = 0;
 
 function options() {
   const dates = new Intl.DateTimeFormat(appStore.locale, {
@@ -20,6 +23,8 @@ function options() {
     day: '2-digit'
   });
   return {
+    animation: props.animate,
+    animationDuration: HOME_CHART_ANIMATION_DURATION,
     tooltip: {
       trigger: 'axis' as const,
       valueFormatter: (value: unknown) => `${value} ${$t('page.home.recordsUnit')}`
@@ -86,9 +91,36 @@ function options() {
   };
 }
 
-const { domRef, updateOptions } = useEcharts(options);
+const { domRef, updateOptions } = useEcharts(options, {
+  onRender: instance => {
+    animationEndsAt = props.animate ? Date.now() + HOME_CHART_ANIMATION_DURATION : 0;
+    instance.on('finished', () => {
+      animationEndsAt = 0;
+      emit('finished');
+    });
+  },
+  onUpdated: instance => {
+    instance.hideLoading();
+    animationEndsAt = props.animate ? Date.now() + HOME_CHART_ANIMATION_DURATION : 0;
+    emit('draw');
+  },
+  resizeAnimation: () => {
+    // Route transitions can resize the canvas mid-reveal; ECharts otherwise stops it immediately.
+    return {
+      duration: props.animate ? Math.max(0, animationEndsAt - Date.now()) : 0,
+      easing: 'linear'
+    };
+  }
+});
 watch(
-  [() => props.weeks, () => appStore.locale, () => appStore.isMobile, () => themeStore.themeColor, themeVars],
+  [
+    () => props.weeks,
+    () => props.animate,
+    () => appStore.locale,
+    () => appStore.isMobile,
+    () => themeStore.themeColor,
+    themeVars
+  ],
   () => {
     void updateOptions(() => options());
   }

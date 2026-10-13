@@ -1,6 +1,7 @@
 import { computed, effectScope, nextTick, onScopeDispose, shallowRef, watch } from 'vue';
 import { useElementSize } from '@vueuse/core';
 import * as echarts from 'echarts/core';
+import type { ResizeOpts } from 'echarts/core';
 import { BarChart, GaugeChart, LineChart, PictorialBarChart, PieChart, RadarChart, ScatterChart } from 'echarts/charts';
 import type {
   BarSeriesOption,
@@ -72,6 +73,7 @@ interface ChartHooks {
   onRender?: (chart: echarts.ECharts) => void | Promise<void>;
   onUpdated?: (chart: echarts.ECharts) => void | Promise<void>;
   onDestroy?: (chart: echarts.ECharts) => void | Promise<void>;
+  resizeAnimation?: () => ResizeOpts['animation'];
 }
 
 /**
@@ -158,7 +160,7 @@ export function useEcharts<T extends ECOption>(optionsFactory: () => T, hooks: C
 
   /** resize chart */
   function resize() {
-    chart.value?.resize();
+    chart.value?.resize({ animation: hooks.resizeAnimation?.() });
   }
 
   /** destroy chart */

@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, h, onActivated, onDeactivated, onMounted, onUnmounted, reactive } from 'vue';
-import { useNow } from '@vueuse/core';
-import { NTag, useThemeVars } from 'naive-ui';
+import { computed, h, onActivated, onDeactivated, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
+import { useNow, usePreferredReducedMotion } from '@vueuse/core';
+import { NSkeleton, NTag, useThemeVars } from 'naive-ui';
 import type { DataTableColumns } from 'naive-ui';
 import type { RouteKey } from '@elegant-router/types';
 import { useAppStore } from '@/store/modules/app';
@@ -13,8 +13,10 @@ import type { OverviewRecord } from '@/service/api/overview';
 import { createOverviewLoader } from './data';
 import { formatOverviewDateRange } from './date-range';
 import type { OverviewLoadState } from './data';
+import { HOME_CHART_ANIMATION_DURATION } from './motion';
 import LineChart from './modules/line-chart.vue';
 import VersionUsage from './modules/version-usage.vue';
+import AnimatedCount from './modules/animated-count.vue';
 
 const appStore = useAppStore();
 const themeStore = useThemeStore();
@@ -24,14 +26,72 @@ const clock = useNow({ interval: 60_000 });
 const state = reactive<OverviewLoadState>({ data: null, loading: false, failed: false });
 const overview = computed(() => state.data);
 const weekly = computed(() => overview.value?.weeklyApplications);
+const pageRef = ref<HTMLElement | null>(null);
+const versionUsageRef = ref<InstanceType<typeof VersionUsage> | null>(null);
+const active = ref(true);
+const reducedMotion = usePreferredReducedMotion();
+const motionEnabled = computed(() => active.value && themeStore.page.animate && reducedMotion.value !== 'reduce');
+const presented = ref(false);
+let animatedOverview: typeof state.data = null;
+let contentAnimations: Animation[] = [];
+
+function stopMotion() {
+  contentAnimations.forEach(animation => animation.cancel());
+  contentAnimations = [];
+}
+
+function startHomeMotion() {
+  versionUsageRef.value?.startReveal();
+  const data = overview.value;
+  if (!data || data === animatedOverview) return;
+  const first = !presented.value;
+  presented.value = true;
+  animatedOverview = data;
+  stopMotion();
+  if (!motionEnabled.value) return;
+
+  // Refresh content in place; theme and layout redraws do not replay the whole page.
+  const selector = first
+    ? '.management-header, .home-statistic, .home-panel, .home-page__sample'
+    : '.management-header, .home-statistic__body, .home-statistic__icon, .home-panel .n-card-header, .home-panel .n-card__content, .home-page__sample';
+  const targets = pageRef.value?.querySelectorAll<HTMLElement>(selector);
+  contentAnimations = Array.from(targets ?? [], element =>
+    element.animate(
+      [
+        { opacity: first ? 0 : 0.8, translate: first ? '-6px 0' : '0 0' },
+        { opacity: 1, translate: '0 0' }
+      ],
+      { duration: HOME_CHART_ANIMATION_DURATION, easing: 'linear' }
+    )
+  );
+}
+
+function finishHomeMotion() {
+  versionUsageRef.value?.finishReveal();
+  stopMotion();
+}
+
+watch(motionEnabled, enabled => {
+  if (!enabled) stopMotion();
+});
 const { reload, invalidate } = createOverviewLoader(state, async () => {
   const result = await getOverview();
   return result.error ? null : result.data;
 });
 onMounted(() => void reload());
-onActivated(() => void reload());
-onDeactivated(invalidate);
-onUnmounted(invalidate);
+onActivated(() => {
+  active.value = true;
+  void reload();
+});
+onDeactivated(() => {
+  active.value = false;
+  stopMotion();
+  invalidate();
+});
+onUnmounted(() => {
+  stopMotion();
+  invalidate();
+});
 const themeStyle = computed(() => ({
   '--management-accent': themeVars.value.primaryColor,
   '--management-text': themeVars.value.textColor1,
@@ -52,15 +112,14 @@ const dateFormatter = computed(
       day: '2-digit'
     })
 );
-const weekRange = computed(
-  () =>
-    weekly.value
-      ? formatOverviewDateRange(
-          weekly.value.weeks[0].start,
-          weekly.value.weeks[weekly.value.weeks.length - 1].end,
-          appStore.locale
-        )
-      : ''
+const weekRange = computed(() =>
+  weekly.value
+    ? formatOverviewDateRange(
+        weekly.value.weeks[0].start,
+        weekly.value.weeks[weekly.value.weeks.length - 1].end,
+        appStore.locale
+      )
+    : ''
 );
 const generatedAt = computed(() =>
   overview.value
@@ -191,6 +250,19 @@ const columns = computed<DataTableColumns<OverviewRecord>>(() => [
       ])
   }
 ]);
+const skeletonRows = Array.from({ length: 5 }, (_, id) => ({ id }));
+const skeletonColumns = computed(() =>
+  columns.value.map(column => ({
+    ...column,
+    render: () => {
+      const lines = [h(NSkeleton, { height: '18px', width: '70%', animated: motionEnabled.value })];
+      if ('key' in column && (column.key === 'name' || column.key === 'appliedAt')) {
+        lines.push(h(NSkeleton, { height: '18px', width: '55%', animated: motionEnabled.value }));
+      }
+      return h('div', { class: 'home-table-placeholder', 'aria-hidden': 'true' }, lines);
+    }
+  }))
+);
 
 function navigate(route: string) {
   void routerPushByKey(route as RouteKey);
@@ -198,32 +270,40 @@ function navigate(route: string) {
 </script>
 
 <template>
-  <div class="management-page home-page" :style="themeStyle">
+  <div
+    ref="pageRef"
+    class="management-page home-page"
+    :class="{ 'home-page--motion': motionEnabled }"
+    :style="themeStyle"
+    :aria-busy="state.loading"
+  >
     <header class="management-header">
-      <div>
-        <h1 class="management-header__title">{{ $t('page.home.title') }}</h1>
-        <p class="management-header__description">{{ $t('page.home.description') }}</p>
+      <div class="management-header__intro">
+        <span class="management-header__icon" aria-hidden="true"><SvgIcon icon="mdi:monitor-dashboard" /></span>
+        <div>
+          <h1 class="management-header__title">{{ $t('page.home.title') }}</h1>
+          <p class="management-header__description">{{ $t('page.home.description') }}</p>
+        </div>
       </div>
       <div class="home-page__date">
         <span class="home-page__calendar"><SvgIcon icon="lucide:calendar-days" /></span>
         <time>{{ dateFormatter.format(clock) }}</time>
-        <NButton size="small" :loading="state.loading" @click="reload">{{ $t('page.home.refresh') }}</NButton>
       </div>
     </header>
 
-    <div v-if="!overview && state.loading" class="home-loading" role="status" :aria-label="$t('page.home.loading')">
-      <div class="home-statistics">
-        <NSkeleton v-for="item in 4" :key="item" height="116px" :sharp="false" />
-      </div>
-      <div class="home-grid">
-        <NSkeleton v-for="item in 2" :key="item" height="360px" :sharp="false" />
-      </div>
-    </div>
-    <NAlert v-if="state.failed" type="error" :title="$t(overview ? 'page.home.refreshFailed' : 'page.home.loadFailed')" role="alert">
+    <span v-if="!overview && state.loading" class="home-loading-status" role="status">
+      {{ $t('page.home.loading') }}
+    </span>
+    <NAlert
+      v-if="state.failed"
+      type="error"
+      :title="$t(overview ? 'page.home.refreshFailed' : 'page.home.loadFailed')"
+      role="alert"
+    >
       <p v-if="overview">{{ $t('page.home.updatedAt', { time: generatedAt }) }}</p>
       <NButton size="small" :loading="state.loading" @click="reload">{{ $t('page.home.retry') }}</NButton>
     </NAlert>
-    <template v-if="overview && weekly">
+    <template v-if="overview || state.loading">
       <div class="home-statistics">
         <button
           v-for="item in statistics"
@@ -231,13 +311,15 @@ function navigate(route: string) {
           type="button"
           class="home-statistic"
           :class="`home-tone--${item.tone}`"
+          :disabled="!overview"
           @click="navigate(item.route)"
         >
           <span class="home-statistic__icon"><SvgIcon :icon="item.icon" /></span>
           <span class="home-statistic__body">
             <span class="home-statistic__label">{{ item.title }}</span>
             <span class="home-statistic__number">
-              {{ item.value.toLocaleString(appStore.locale) }}
+              <AnimatedCount v-if="overview" :value="item.value" :animate="motionEnabled" />
+              <NSkeleton v-else class="home-number-placeholder" width="75px" height="32px" :animated="motionEnabled" />
               <small>{{ item.unit }}</small>
             </span>
           </span>
@@ -249,7 +331,8 @@ function navigate(route: string) {
           <template #header>
             <div class="home-panel__heading">
               <h2>{{ $t('page.home.trend') }}</h2>
-              <span class="home-panel__caption">{{ weekRange }}</span>
+              <span v-if="weekly" class="home-panel__caption">{{ weekRange }}</span>
+              <NSkeleton v-else width="190px" height="18px" :animated="motionEnabled" aria-hidden="true" />
             </div>
           </template>
           <template #header-extra>
@@ -259,15 +342,37 @@ function navigate(route: string) {
             <div class="home-week-toolbar__current">
               <span>{{ $t('page.home.currentApplications') }}</span>
               <strong>
-                {{ weekly.weeks[8].count.toLocaleString(appStore.locale) }}
+                <AnimatedCount v-if="weekly" :value="weekly.weeks[8].count" :animate="motionEnabled" />
+                <NSkeleton
+                  v-else
+                  class="home-number-placeholder"
+                  width="64px"
+                  height="28px"
+                  :animated="motionEnabled"
+                />
                 <small>{{ $t('page.home.recordsUnit') }}</small>
               </strong>
             </div>
             <span class="home-week-toolbar__total">
-              {{ $t('page.home.weekTotal', { count: weekly.total.toLocaleString(appStore.locale) }) }}
+              <AnimatedCount
+                v-if="weekly"
+                :value="weekly.total"
+                :animate="motionEnabled"
+                :format="count => $t('page.home.weekTotal', { count })"
+              />
+              <NSkeleton v-else width="170px" height="18px" :animated="motionEnabled" aria-hidden="true" />
             </span>
           </div>
-          <LineChart :weeks="weekly.weeks" />
+          <LineChart
+            v-if="weekly"
+            :weeks="weekly.weeks"
+            :animate="motionEnabled"
+            @draw="startHomeMotion"
+            @finished="finishHomeMotion"
+          />
+          <div v-else class="home-chart-placeholder" aria-hidden="true">
+            <NSkeleton height="100%" :sharp="false" :animated="motionEnabled" />
+          </div>
           <p class="home-panel__note">{{ $t('page.home.trendNote') }}</p>
         </NCard>
         <NCard :bordered="false" class="management-card home-panel">
@@ -278,10 +383,37 @@ function navigate(route: string) {
             </div>
           </template>
           <VersionUsage
+            v-if="overview"
+            ref="versionUsageRef"
             :usage="overview.versionUsage"
             :latest-version="overview.latestVersion?.versionName ?? null"
+            :animate="motionEnabled"
             @manage="navigate('app-version')"
           />
+          <div v-else class="home-usage-placeholder">
+            <div class="home-usage-placeholder__summary">
+              <span>{{ $t('page.home.versionSampleTotal') }}</span>
+              <NSkeleton width="80px" height="42px" :animated="motionEnabled" />
+            </div>
+            <NSkeleton height="14px" :sharp="false" :animated="motionEnabled" />
+            <div class="home-usage-placeholder__legend" aria-hidden="true">
+              <div v-for="item in 4" :key="item" class="home-usage-placeholder__group">
+                <NSkeleton circle width="8px" height="8px" :animated="motionEnabled" />
+                <NSkeleton width="80%" height="19.5px" :animated="motionEnabled" />
+                <NSkeleton width="50px" height="19.5px" :animated="motionEnabled" />
+                <NSkeleton width="42px" height="18px" :animated="motionEnabled" />
+              </div>
+            </div>
+            <div class="home-usage-placeholder__latest">
+              <NSkeleton width="170px" height="18px" :animated="motionEnabled" />
+              <NSkeleton width="120px" height="18px" :animated="motionEnabled" />
+            </div>
+            <p class="home-usage-placeholder__note">{{ $t('page.home.versionUsageNote') }}</p>
+            <NButton class="home-usage-placeholder__link" text type="primary" @click="navigate('app-version')">
+              {{ $t('page.home.manageVersions') }}
+              <span class="home-link-arrow"><SvgIcon icon="lucide:arrow-right" /></span>
+            </NButton>
+          </div>
         </NCard>
       </div>
 
@@ -297,8 +429,8 @@ function navigate(route: string) {
             </NButton>
           </template>
           <NDataTable
-            :columns="columns"
-            :data="overview.recentRecords"
+            :columns="overview ? columns : skeletonColumns"
+            :data="overview?.recentRecords ?? skeletonRows"
             :row-key="row => row.id"
             :bordered="false"
             :scroll-x="600"
@@ -331,7 +463,7 @@ function navigate(route: string) {
             <template #header>
               <h2 class="home-panel__title">{{ $t('page.home.latestVersion') }}</h2>
             </template>
-            <div v-if="overview.latestVersion" class="home-version">
+            <div v-if="overview?.latestVersion" class="home-version">
               <span class="home-version__icon"><SvgIcon icon="ant-design:android-filled" /></span>
               <div>
                 <strong>
@@ -347,18 +479,34 @@ function navigate(route: string) {
                 <span class="home-link-arrow"><SvgIcon icon="lucide:arrow-right" /></span>
               </NButton>
             </div>
-            <p v-if="overview.latestVersion?.releaseNotes.length" class="home-version__notes">
+            <div v-if="!overview" class="home-version">
+              <span class="home-version__icon"><SvgIcon icon="ant-design:android-filled" /></span>
+              <div class="home-version-placeholder">
+                <NSkeleton width="100px" height="21px" :animated="motionEnabled" />
+                <NSkeleton width="170px" height="19px" :animated="motionEnabled" />
+              </div>
+              <NButton text type="primary" @click="navigate('app-version')">
+                {{ $t('page.home.viewVersion') }}
+                <span class="home-link-arrow"><SvgIcon icon="lucide:arrow-right" /></span>
+              </NButton>
+            </div>
+            <p v-if="overview?.latestVersion?.releaseNotes.length" class="home-version__notes">
               {{ overview.latestVersion.releaseNotes[0] }}
             </p>
-            <NEmpty v-if="!overview.latestVersion" :description="$t('page.home.noVersion')" size="small">
+            <NEmpty v-if="overview && !overview.latestVersion" :description="$t('page.home.noVersion')" size="small">
               <template #extra>
-                <NButton text type="primary" @click="navigate('app-version')">{{ $t('page.home.viewVersion') }}</NButton>
+                <NButton text type="primary" @click="navigate('app-version')">
+                  {{ $t('page.home.viewVersion') }}
+                </NButton>
               </template>
             </NEmpty>
           </NCard>
         </div>
       </div>
-      <p class="home-page__sample">{{ $t('page.home.updatedAt', { time: generatedAt }) }}</p>
+      <p class="home-page__sample">
+        <template v-if="overview">{{ $t('page.home.updatedAt', { time: generatedAt }) }}</template>
+        <NSkeleton v-else width="190px" height="18px" :animated="motionEnabled" aria-hidden="true" />
+      </p>
     </template>
   </div>
 </template>
@@ -370,10 +518,13 @@ function navigate(route: string) {
   --home-icon-color: var(--management-accent);
   gap: 22px;
 
-  .home-loading {
-    display: flex;
-    flex-direction: column;
-    gap: 22px;
+  .management-header,
+  .management-card {
+    animation: none;
+  }
+
+  :deep(.n-skeleton) {
+    max-width: 100%;
   }
 
   .management-header {
@@ -436,15 +587,19 @@ function navigate(route: string) {
   cursor: pointer;
   transition:
     border-color 160ms,
-    box-shadow 160ms;
+    box-shadow 160ms,
+    transform 160ms ease-out;
 
-  &:hover {
+  &:enabled:hover {
     border-color: var(--management-accent);
     box-shadow: 0 4px 16px color-mix(in srgb, var(--management-accent) 6%, transparent);
   }
   &:focus-visible {
     outline: 2px solid var(--management-accent);
     outline-offset: 3px;
+  }
+  &:disabled {
+    cursor: default;
   }
   &__icon {
     display: grid;
@@ -576,10 +731,14 @@ function navigate(route: string) {
   color: var(--management-text);
   text-align: left;
   cursor: pointer;
-  transition: background-color 160ms;
+  transition:
+    background-color 160ms,
+    border-color 160ms,
+    transform 160ms ease-out;
 
   &:hover {
     background: var(--management-inset);
+    border-color: var(--management-accent);
   }
   &:focus-visible {
     outline: 2px solid var(--management-accent);
@@ -616,6 +775,7 @@ function navigate(route: string) {
     margin-left: auto;
     color: var(--management-muted);
     font-size: 13px;
+    transition: transform 160ms ease-out;
   }
 }
 .home-version {
@@ -669,6 +829,72 @@ function navigate(route: string) {
   color: var(--management-muted);
   font-size: 11px;
   font-variant-numeric: tabular-nums;
+}
+.home-loading-status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.home-number-placeholder {
+  display: inline-block;
+  vertical-align: middle;
+}
+.home-chart-placeholder {
+  height: 280px;
+  padding: 32px 20px 48px 36px;
+  box-sizing: border-box;
+}
+.home-usage-placeholder {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+
+  &__summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    color: var(--management-muted);
+    font-size: 13px;
+  }
+  &__legend {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+  &__group {
+    display: grid;
+    grid-template-columns: 8px minmax(0, 1fr) auto 54px;
+    align-items: center;
+    gap: 10px;
+  }
+  &__latest {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 12px;
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--management-accent) 7%, var(--management-surface));
+  }
+  &__link {
+    align-self: flex-end;
+  }
+  &__note {
+    margin: 0;
+    color: var(--management-muted);
+    font-size: 12px;
+    line-height: 1.7;
+  }
+}
+.home-version-placeholder,
+:deep(.home-table-placeholder) {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 @media (max-width: 1100px) {
   .home-statistics {
@@ -728,9 +954,36 @@ function navigate(route: string) {
     padding: 0 14px 18px;
   }
 }
-@media (prefers-reduced-motion: reduce) {
+@media (prefers-reduced-motion: no-preference) {
+  @media (hover: hover) and (pointer: fine) {
+    .home-page--motion {
+      .home-statistic:enabled:hover,
+      .home-shortcut:hover {
+        transform: translateY(-2px);
+      }
+      .home-shortcut:hover .home-shortcut__arrow {
+        transform: translateX(2px);
+      }
+    }
+  }
+
+  .home-page--motion {
+    .home-statistic:enabled:active,
+    .home-shortcut:active {
+      transform: translateY(0);
+      transition-duration: 80ms;
+    }
+    .home-shortcut:active .home-shortcut__arrow {
+      transform: translateX(0);
+      transition-duration: 80ms;
+    }
+  }
+}
+
+.home-page:not(.home-page--motion) {
   .home-statistic,
-  .home-shortcut {
+  .home-shortcut,
+  .home-shortcut__arrow {
     transition: none;
   }
 }
