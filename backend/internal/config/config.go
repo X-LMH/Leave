@@ -41,25 +41,11 @@ func Init() error {
 		return fmt.Errorf("加载环境变量文件失败: %w", err)
 	}
 
-	// 支持在 backend 目录本地运行，以及在服务器项目根目录或 release 目录运行。
-	configPaths := []string{
-		"./config/config.local.yaml",
-		"./config/config.server.yaml",
-		"../../config/config.server.yaml",
+	configPath, err := FindConfigFile()
+	if err != nil {
+		return err
 	}
-	configFound := false
-	for _, configPath := range configPaths {
-		if _, err := os.Stat(configPath); err == nil {
-			viper.SetConfigFile(configPath)
-			configFound = true
-			break
-		} else if !os.IsNotExist(err) {
-			return fmt.Errorf("检查配置文件 %q 失败: %w", configPath, err)
-		}
-	}
-	if !configFound {
-		return fmt.Errorf("未找到配置文件，请提供 config.local.yaml 或 config.server.yaml")
-	}
+	viper.SetConfigFile(configPath)
 	viper.AllowEmptyEnv(true)
 	viper.SetDefault("app.port", 10000)
 	viper.BindEnv("mysql.password", "MYSQL_PASSWORD")
@@ -104,10 +90,31 @@ func Init() error {
 	return nil
 }
 
+// FindConfigFile 为服务和迁移工具选择同一个环境配置，不匹配模板或任意 YAML。
+func FindConfigFile() (string, error) {
+	// 宝塔会从程序所在目录启动；兼容新旧发布布局及根目录启动。
+	paths := []string{
+		"./config/config.local.yaml",
+		"./config/config.test.yaml",
+		"./config/config.server.yaml",
+		"../../config/config.test.yaml",
+		"../../config/config.server.yaml",
+		"../../../config/config.test.yaml",
+		"../../../config/config.server.yaml",
+	}
+	for _, path := range paths {
+		if _, err := os.Stat(path); err == nil {
+			return path, nil
+		} else if !os.IsNotExist(err) {
+			return "", fmt.Errorf("检查配置文件 %q 失败: %w", path, err)
+		}
+	}
+	return "", fmt.Errorf("未找到配置文件，请提供 config.local.yaml、config.test.yaml 或 config.server.yaml")
+}
+
 func loadDotEnv() error {
-	// current 通常是软链接，进程工作目录可能解析为 releases/vX.Y.Z；
-	// 因此还需要向上两级读取 Leave 根目录下的 .env。
-	for _, path := range []string{".env", "../.env", "../../.env"} {
+	// current 会解析为 releases/vN 或 backend/releases/vN，分别向上两级或三级。
+	for _, path := range []string{".env", "../.env", "../../.env", "../../../.env"} {
 		if _, err := os.Stat(path); err == nil {
 			return gotenv.Load(path)
 		} else if !os.IsNotExist(err) {

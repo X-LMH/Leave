@@ -14,6 +14,8 @@ import (
 	"strconv"
 	"strings"
 
+	"backend/internal/config"
+
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/spf13/viper"
 	"github.com/subosito/gotenv"
@@ -32,9 +34,16 @@ func main() {
 	loadDotEnv()
 
 	// 允许通过命令行指定配置文件路径。
-	configPath := flag.String("config", "./config/config.local.yaml", "path to the YAML configuration file")
+	configPath := flag.String("config", "", "path to the YAML configuration file; defaults to local, test, then server config")
 	migrationsPath := flag.String("migrations", "./database/migrations", "path to the migration files")
 	flag.Parse()
+	if *configPath == "" {
+		path, err := config.FindConfigFile()
+		if err != nil {
+			log.Fatal(err)
+		}
+		*configPath = path
+	}
 
 	// 打开数据库连接，并在程序结束时关闭连接。
 	db, err := openDatabase(*configPath)
@@ -56,7 +65,7 @@ func main() {
 }
 
 func loadDotEnv() {
-	for _, path := range []string{".env", "../.env"} {
+	for _, path := range []string{".env", "../.env", "../../.env", "../../../.env"} {
 		if _, err := os.Stat(path); err == nil {
 			_ = gotenv.Load(path)
 			return

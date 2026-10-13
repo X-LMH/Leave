@@ -13,7 +13,7 @@
 * `backend/`：Go 后端，使用 Gin 提供 HTTP 接口，使用 GORM 操作 MySQL。命令入口位于 `backend/cmd/`，配置文件位于 `backend/config/`。
 * `backend/internal/`：后端主要代码。`controller/` 对应 Handler 层，`service/` 处理业务逻辑，`dao/` 处理数据库操作；`router/` 管理路由，`middleware/` 管理中间件，`models/` 定义数据模型，`dto/` 定义请求和响应结构。
 * `backend/database/`：数据库相关文件。`tables/` 保存当前完整表结构，`seed/` 保存初始化数据，`migrations/` 保存增量变更。具体操作参见 `backend/database/README.md`。
-* `deploy/`：构建、部署、数据库迁移和客户端版本发布脚本；部署说明位于 `deploy/DEPLOYMENT.md`，客户端发布配置位于 `deploy/releases/`。
+* `deploy/`：构建、部署、数据库迁移和客户端版本发布脚本；部署说明位于 `deploy/README.md`，客户端发布配置位于 `deploy/releases/`。
 
 ### 当前开发边界
 
@@ -88,7 +88,7 @@
 
 ## 部署与客户端发布边界
 
-* 部署流程以 `deploy/DEPLOYMENT.md` 和现有脚本为准；源码修改与执行部署、发布或业务数据库操作分开处理，是否执行以当前任务授权为准。
+* 部署流程以 `deploy/README.md` 和现有脚本为准；源码修改与执行部署、发布或业务数据库操作分开处理，是否执行以当前任务授权为准。
 * 客户端版本发布沿用 `deploy/releases/` 和发布脚本，版本号由 `frontend/manifest.json` 读取；发布版本数据不属于表结构 migration，不为每次版本发布新增 migration。
 
 ## 规范参考
