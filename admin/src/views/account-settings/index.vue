@@ -44,7 +44,7 @@ const rules: FormRules = {
         // Unicode White_Space matches Go's strings.TrimSpace, including U+0085.
         return length >= 6 && length <= 30 && !/^\p{White_Space}*$/u.test(value);
       },
-      message: '新密码需为6～30字节，不能全为空白（一个中文通常占3字节）',
+      message: '密码长度至少为6位',
       trigger: ['input', 'blur']
     },
     {
@@ -89,9 +89,11 @@ async function submit() {
     }
     if (sequence !== submitSequence) return;
     const { error } = await changeAdminPassword(model.currentPassword, model.newPassword, model.confirmPassword);
-    if (sequence !== submitSequence || error) return;
+    if (error) return;
+    // 密码已修改成功，即使表单已重置或页面已离开，也必须退出当前登录。
     resetForm();
-    window.$message?.success('密码修改成功');
+    window.$message?.success('密码修改成功，请重新登录');
+    await authStore.resetStore();
   } catch {
     if (sequence === submitSequence) window.$message?.error('提交失败，请重试');
   } finally {
@@ -99,7 +101,7 @@ async function submit() {
   }
 }
 
-// Clear sensitive inputs and ignore pending submissions when leaving, including cached pages.
+// Clear sensitive inputs and cancel pending validation when leaving, including cached pages.
 onBeforeRouteLeave(() => {
   resetForm();
 });
@@ -129,7 +131,7 @@ onUnmounted(resetForm);
 
       <section aria-labelledby="account-password-title">
         <h2 id="account-password-title" class="account-settings__section-title">修改密码</h2>
-        <p class="account-settings__notice">修改后保持当前登录，下次登录请使用新密码。</p>
+        <p class="account-settings__notice">修改密码后将退出登录，请使用新密码重新登录。</p>
         <NForm
           ref="formRef"
           :model="model"

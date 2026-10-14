@@ -8,6 +8,7 @@ function setup() {
   const calls = [];
   const hooks = [];
   const messages = [];
+  const logouts = [];
   const context = {
     exports: {},
     TextEncoder,
@@ -25,7 +26,9 @@ function setup() {
       if (name === 'vue-router') return { onBeforeRouteLeave: fn => hooks.push(fn) };
       if (name === '@vueuse/core') return { useMediaQuery: () => ({ value: false }) };
       if (name === 'naive-ui') return { useThemeVars: () => ({ value: {} }) };
-      if (name.includes('store/modules/auth')) return { useAuthStore: () => ({ userInfo: { userName: 'admin' } }) };
+      if (name.includes('store/modules/auth')) return {
+        useAuthStore: () => ({ userInfo: { userName: 'admin' }, resetStore: async () => logouts.push('logout') })
+      };
       if (name.includes('service/api/auth')) {
         return { changeAdminPassword: (...args) => new Promise(resolve => calls.push({ args, resolve })) };
       }
@@ -49,7 +52,7 @@ function setup() {
     },
     restoreValidation() { clears++; }
   };
-  return { state, calls, hooks, messages, get clears() { return clears; } };
+  return { state, calls, hooks, messages, logouts, get clears() { return clears; } };
 }
 
 const tick = () => new Promise(resolve => setImmediate(resolve));
@@ -98,7 +101,7 @@ test('password boundaries use UTF-8 bytes and Go-compatible whitespace rules', a
 });
 
 test('success clears inputs, duplicate submission is blocked, failure preserves inputs for retry', async () => {
-  const { state, calls, messages } = setup();
+  const { state, calls, messages, logouts } = setup();
   fill(state);
   let pending = state.submit();
   await tick();
@@ -110,22 +113,24 @@ test('success clears inputs, duplicate submission is blocked, failure preserves 
   assert.equal(state.model.newPassword, ' pass ');
   assert.equal(state.saving.value, false);
   assert.equal(messages.length, 0);
+  assert.equal(logouts.length, 0);
   pending = state.submit();
   await tick();
   calls[1].resolve({ error: null });
   await pending;
   assertEmpty(state);
   assert.equal(state.saving.value, false);
-  assert.deepEqual(messages, ['密码修改成功']);
+  assert.deepEqual(messages, ['密码修改成功，请重新登录']);
+  assert.equal(logouts.length, 1);
 });
 
-test('reset and navigation clear credentials and ignore late responses', async () => {
+test('reset and navigation clear credentials but successful late responses still log out', async () => {
   const fixture = setup();
-  const { state, hooks, calls, messages } = fixture;
+  const { state, hooks, calls, messages, logouts } = fixture;
   fill(state);
   state.resetForm();
   assertEmpty(state);
-  for (const leave of hooks) {
+  for (const leave of [state.resetForm, ...hooks]) {
     fill(state);
     const pending = state.submit();
     await tick();
@@ -133,8 +138,30 @@ test('reset and navigation clear credentials and ignore late responses', async (
     assertEmpty(state);
     calls.at(-1).resolve({ error: null });
     await pending;
-    assert.equal(messages.length, 0);
+    assert.equal(messages.at(-1), '密码修改成功，请重新登录');
+    assert.equal(logouts.length, messages.length);
     assert.equal(state.saving.value, false);
   }
   assert.ok(fixture.clears > 0);
+  assert.equal(logouts.length, hooks.length + 1);
+});
+
+test('leaving during validation prevents a request, and late failures do not log out', async () => {
+  const { state, hooks, calls, messages, logouts } = setup();
+  fill(state);
+  const validating = state.submit();
+  hooks[0]();
+  await validating;
+  assert.equal(calls.length, 0);
+
+  fill(state);
+  const pending = state.submit();
+  await tick();
+  hooks[0]();
+  calls[0].resolve({ error: { message: 'request failed' } });
+  await pending;
+  assertEmpty(state);
+  assert.equal(state.saving.value, false);
+  assert.equal(messages.length, 0);
+  assert.equal(logouts.length, 0);
 });

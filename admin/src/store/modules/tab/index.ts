@@ -45,6 +45,12 @@ export const useTabStore = defineStore(SetupStoreId.Tab, () => {
   /** Active tab id */
   const activeTabId = ref<string>('');
 
+  /** 清空会话标签，不保留固定标签，也不触发页面跳转。 */
+  function resetTabs() {
+    tabs.value = [];
+    activeTabId.value = '';
+  }
+
   /**
    * Set active tab id
    *
@@ -380,6 +386,7 @@ export const useTabStore = defineStore(SetupStoreId.Tab, () => {
     isTabRetain,
     updateTabsByLocale,
     getTabIdByRoute,
-    cacheTabs
+    cacheTabs,
+    resetTabs
   };
 });

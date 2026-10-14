@@ -69,8 +69,6 @@ export const useAuthStore = defineStore(SetupStoreId.Auth, () => {
 
   /** Reset auth store */
   async function resetStore() {
-    recordUserId();
-
     clearAuthStorage();
 
     authStore.$reset();
@@ -79,43 +77,15 @@ export const useAuthStore = defineStore(SetupStoreId.Auth, () => {
       await toLogin();
     }
 
-    tabStore.cacheTabs();
-    routeStore.resetStore();
+    clearSessionTabs();
+    await routeStore.resetStore();
   }
 
-  /** Record the user ID of the previous login session Used to compare with the current user ID on next login */
-  function recordUserId() {
-    if (!userInfo.userId) {
-      return;
-    }
-
-    // Store current user ID locally for next login comparison
-    localStg.set('lastLoginUserId', userInfo.userId);
-  }
-
-  /**
-   * Check if current login user is different from previous login user If different, clear all tabs
-   *
-   * @returns {boolean} Whether to clear all tabs
-   */
-  function checkTabClear(): boolean {
-    if (!userInfo.userId) {
-      return false;
-    }
-
-    const lastLoginUserId = localStg.get('lastLoginUserId');
-
-    // Clear all tabs if current user is different from previous user
-    if (!lastLoginUserId || lastLoginUserId !== userInfo.userId) {
-      localStg.remove('globalTabs');
-      tabStore.clearTabs();
-
-      localStg.remove('lastLoginUserId');
-      return true;
-    }
-
+  /** 新登录会话不恢复上次会话的标签，包括固定标签。 */
+  function clearSessionTabs() {
+    localStg.remove('globalTabs');
     localStg.remove('lastLoginUserId');
-    return false;
+    tabStore.resetTabs();
   }
 
   /**
@@ -123,9 +93,8 @@ export const useAuthStore = defineStore(SetupStoreId.Auth, () => {
    *
    * @param userName User name
    * @param password Password
-   * @param [redirect=true] Whether to redirect after login. Default is `true`
    */
-  async function login(userName: string, password: string, redirect = true) {
+  async function login(userName: string, password: string) {
     startLoading();
 
     const { data: loginToken, error } = await fetchLogin(userName, password);
@@ -134,15 +103,8 @@ export const useAuthStore = defineStore(SetupStoreId.Auth, () => {
       const pass = await loginByToken(loginToken);
 
       if (pass) {
-        // Check if the tab needs to be cleared
-        const isClear = checkTabClear();
-        let needRedirect = redirect;
-
-        if (isClear) {
-          // If the tab needs to be cleared,it means we don't need to redirect.
-          needRedirect = false;
-        }
-        await redirectFromLogin(needRedirect);
+        clearSessionTabs();
+        await redirectFromLogin(false);
 
         window.$notification?.success({
           title: $t('page.login.common.loginSuccess'),
