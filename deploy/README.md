@@ -12,11 +12,15 @@
 
 后端和 admin 使用正整数版本，目录名为 `v1`、`v2`；App 使用三段版本号及递增的 versionCode。tag 版本必须与对应模块的版本来源一致。组合发布的后端版本可以与 admin 版本不同；仅后端或 admin 发布不要求 manifest 或 APK 存在。
 
+版本校验读取标签指向的提交：`back-test-vN` 只比较 `backend.version`，`admin-test-vN` 只比较 `admin.version`，`app-test-vX.Y.Z` 只比较 manifest 的 `versionName`。admin 和 App 仍读取后端配置版本用于部署后端，但不将自己的标签版本与后端版本比较。
+
+不一致时，Actions 在 metadata 阶段报错并停止，后续构建和部署不会执行。错误会列出标签版本、配置字段和配置版本，例如 `back-test-v2（标签版本 2）与 deploy/release.yaml 的 backend.version=1 不一致，发布已停止`。如配置版本写错，修改配置并提交后，为正确提交重新创建符合版本的标签；如标签写错，创建与原提交配置一致的正确标签。不要只修改工作区后重新运行旧标签：重试仍读取旧标签指向的提交，也不要为修正标签随意覆盖已经发布的远端标签。
+
 `deploy/release.yaml` 只维护版本、APK 目录和发布说明，不重复维护固定构建参数或 App 版本。旧 `releases/android.yaml` 已移除。App 版本仍读取 `frontend/manifest.json` 的 `versionName`、`versionCode`。
 
 App 发布时，配置的 APK 目录直接包含的 `.apk` 文件必须恰好一个，文件名可以自定义，不能按修改时间挑选。CI 使用 Android SDK `apkanalyzer` 核对安装包真实版本，再命名为 `leave-android-<versionCode>-<versionName>.apk`。已有 `0.0.10` 安装包不能通过重命名变成 `1.0.0`。
 
-测试允许重复发布或覆盖同版本文件。每次仍执行 migration、宝塔重启和健康检查；覆盖前将上一份产物保存到本次备份目录。App 数据按 `platform + version_code` 更新，不重复插入记录；其他已发布 Android 版本标记为 archived。
+版本产物不覆盖：发布前检查所有选定模块，版本不存在则创建；已有且文件完整、SHA-256 相同则复用；不同或不完整则在迁移、停服之前中止，保持服务运行。后端比较 Leave 和 migrate，元数据仅用于确认版本，不以整个仓库提交号或组合标签判断相同。相同产物重试仍执行 migration、宝塔重启和健康检查。App 数据按 `platform + version_code` 更新，不重复插入记录；其他已发布 Android 版本标记为 archived。
 
 ## 测试服务器目录
 
@@ -26,6 +30,7 @@ App 发布时，配置的 APK 目录直接包含的 `.apk` 文件必须恰好一
 │   ├── current -> releases/v1/
 │   └── releases/v1/
 │       ├── Leave
+│       ├── migrate
 │       └── release.json
 ├── admin/
 │   ├── current -> releases/v1/
@@ -40,7 +45,7 @@ App 发布时，配置的 APK 目录直接包含的 `.apk` 文件必须恰好一
 ├── scripts/migrate                   # 最新迁移工具
 ├── backups/
 │   ├── mysql/
-│   └── deploy/<运行ID-尝试次数-时间>/ # 被覆盖的后端、admin 或 APK
+│   └── deploy/<运行ID-尝试次数-时间>/ # 保留的历史备份（新发布不再覆盖版本）
 └── .deploy/
     ├── deploy.lock
     └── <运行ID-尝试次数>/
@@ -74,7 +79,7 @@ pnpm build:test
 
 `.github/workflows/ci.yml` 保留 master 分支 CI，并供测试 CD 复用：后端格式、vet、测试、Linux/amd64 编译，以及发布脚本、隔离 MySQL SQL 测试。`ADMIN_TEST_MYSQL_DSN` 指向 Runner 内的 MySQL，不能使用业务配置或服务器数据库。Go 版本读取 go.mod，CGO 关闭；admin 使用 Node 22、pnpm 10。
 
-`.github/workflows/deploy.yml` 仅匹配三个测试标签。旧 `v*` 及生产入口已停用；失败后通过 Actions 页面重新运行，不需要移动或重建 Git tag。
+`.github/workflows/deploy.yml` 仅匹配三个测试标签。旧 `v*` 及生产入口已停用；版本校验通过后发生的临时故障可通过 Actions 页面重新运行，不需要移动或重建 Git tag。标签与配置不一致则按上文修正。
 
 ```text
 读取并校验标签、配置及所需 APK
@@ -85,11 +90,11 @@ pnpm build:test
     ↓
 串行上传到测试运行目录
     ↓
-校验文件、测试配置及目标目录
+校验文件、测试配置及目标目录；检查所有所选版本是否可复用
     ↓
 同步并执行 migration
     ↓
-核验 PID，停止旧后端，备份并替换程序
+核验 PID，停止旧后端，安装新版本或复用已有版本
     ↓
 调用测试宝塔脚本，核验 PID、运行程序和健康接口
     ↓
@@ -113,11 +118,11 @@ pnpm build:test
 
 ## 失败、重试与恢复
 
-每次发布使用独立运行目录和备份目录，保留 SHA-256 清单、release.json 和 status，便于定位失败阶段。任何前置步骤失败都不继续执行后续操作。后端健康检查失败不发布 admin 或 App；后续模块失败保留已成功部署的后端，不自动回滚数据库。
+每次发布使用独立运行目录，保留 SHA-256 清单、release.json 和 status，便于定位失败阶段。任何前置步骤失败都不继续执行后续操作。后端健康检查失败不发布 admin 或 App；后续模块失败保留已成功部署的后端，不自动回滚数据库。
 
-Actions 重新运行会生成新的尝试目录，重新迁移、覆盖文件、重启及健康检查。同名 migration 保持一致，App 版本记录幂等更新。旧目录已移走但新目录安装失败时，会立即恢复原目录；启动或后续检查失败则保留现场，由操作者检查后重试或恢复。
+Actions 重试会生成新的尝试目录；优先重新运行失败的 job，以复用已构建的产物。版本文件一致时复用并继续迁移、重启及健康检查。同名 migration 保持一致，App 版本记录幂等更新。重新构建若产生不同字节（例如 admin 构建时间变化），也会拒绝同版本发布，需使用原产物或递增版本。已有旧目录缺少 migrate、合法 release.json 或文件不完整时不自动补齐，应递增版本重新发布。
 
-被覆盖的同版本文件保存在 backups/deploy 中。恢复程序或页面时需同时检查对应 current 链接，后端仍通过测试宝塔项目重启。程序恢复不会撤销 migration 或 App 版本记录，不能将数据库回滚等同于文件恢复。暂不自动清理历史 APK、备份和失败运行目录。
+恢复程序或页面时将 current 指向保留的旧版本，后端仍通过测试宝塔项目重启。程序恢复不会撤销 migration 或 App 版本记录，不能将数据库回滚等同于文件恢复。暂不自动清理历史 APK、备份和失败运行目录。
 
 ## 验证边界
 

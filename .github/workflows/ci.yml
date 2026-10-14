@@ -23,7 +23,8 @@ jobs:
   # CI 只有一个 job，负责检查、测试和编译后端，不负责部署到服务器。
   test:
     name: Check and test backend
-    runs-on: ubuntu-latest
+    # 固定到与测试 CD 相同的镜像，避免 ubuntu-latest 自动迁移。
+    runs-on: ubuntu-22.04
     services:
       mysql:
         image: mysql:8.0
@@ -88,7 +89,7 @@ jobs:
 
       - name: Upload backend release artifact
         if: inputs.release_artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: backend-bin
           path: bin/

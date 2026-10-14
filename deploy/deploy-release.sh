@@ -40,19 +40,29 @@ sync_migrations() {
 prepare_backend() {
   mkdir -p "$STAGE/ready-backend"
   install -m 0755 "$BUNDLE/backend/Leave" "$STAGE/ready-backend/Leave"
+  install -m 0755 "$BUNDLE/tools/migrate" "$STAGE/ready-backend/migrate"
   cp "$BUNDLE/release.json" "$STAGE/ready-backend/release.json"
   chown -R www:www "$STAGE/ready-backend"
 }
 
-replace_directory() {
-  local ready="$1" target="$2" backup="$3"
-  check_directory "$target"
-  mkdir -p "$(dirname "$target")" "$(dirname "$backup")"
-  if [ -e "$target" ]; then mv -T "$target" "$backup"; fi
-  if ! mv -T "$ready" "$target"; then
-    if [ -d "$backup" ]; then mv -T "$backup" "$target"; fi
-    return 1
+check_versions() {
+  ruby "$SCRIPT_DIR/release.rb" check-version backend "$BUNDLE" "$APP_ROOT/backend/releases/v$BACKEND_VERSION"
+  if [ "$MODE" = admin ]; then
+    ruby "$SCRIPT_DIR/release.rb" check-version admin "$BUNDLE" "$APP_ROOT/admin/releases/v$ADMIN_VERSION"
+  elif [ "$MODE" = app ]; then
+    ruby "$SCRIPT_DIR/release.rb" check-version app "$BUNDLE" "$APP_ROOT/packages/android/$APK_NAME"
   fi
+}
+
+install_version() {
+  local ready="$1" target="$2"
+  check_directory "$target"
+  if [ -d "$target" ]; then
+    echo "Reusing verified version: $target"
+    return 0
+  fi
+  mkdir -p "$(dirname "$target")"
+  mv -T "$ready" "$target"
 }
 
 switch_current() {
@@ -67,11 +77,13 @@ switch_current() {
 }
 
 publish_admin() {
-  cp -a "$BUNDLE/admin" "$STAGE/ready-admin"
-  chown -R www:www "$STAGE/ready-admin"
-  find "$STAGE/ready-admin" -type d -exec chmod 0755 {} +
-  find "$STAGE/ready-admin" -type f -exec chmod 0644 {} +
-  replace_directory "$STAGE/ready-admin" "$APP_ROOT/admin/releases/v$ADMIN_VERSION" "$BACKUP/admin-v$ADMIN_VERSION"
+  if [ ! -e "$APP_ROOT/admin/releases/v$ADMIN_VERSION" ]; then
+    cp -a "$BUNDLE/admin" "$STAGE/ready-admin"
+    chown -R www:www "$STAGE/ready-admin"
+    find "$STAGE/ready-admin" -type d -exec chmod 0755 {} +
+    find "$STAGE/ready-admin" -type f -exec chmod 0644 {} +
+    install_version "$STAGE/ready-admin" "$APP_ROOT/admin/releases/v$ADMIN_VERSION"
+  fi
   switch_current admin "$ADMIN_VERSION"
   # Check the existing Nginx vhost without depending on external DNS.
   curl --fail --silent --show-error --max-time 10 -H "Host: $ADMIN_HOST" http://127.0.0.1/ > "$STAGE/admin-served.html"
@@ -87,15 +99,18 @@ publish_admin() {
 publish_app() {
   local target="$APP_ROOT/packages/android/$APK_NAME"
   test ! -L "$target" || return 1
-  mkdir -p "$APP_ROOT/packages/android" "$BACKUP"
-  if [ -f "$target" ]; then cp -p "$target" "$BACKUP/$APK_NAME"; fi
-  install -m 0644 "$BUNDLE/app/$APK_NAME" "$APP_ROOT/packages/android/.$APK_NAME-$RUN_ID"
-  mv -Tf "$APP_ROOT/packages/android/.$APK_NAME-$RUN_ID" "$target"
+  mkdir -p "$APP_ROOT/packages/android"
+  if [ ! -e "$target" ]; then
+    install -m 0644 "$BUNDLE/app/$APK_NAME" "$APP_ROOT/packages/android/.$APK_NAME-$RUN_ID"
+    mv -T "$APP_ROOT/packages/android/.$APK_NAME-$RUN_ID" "$target"
+  fi
   env APP_ROOT="$APP_ROOT" CONFIG_FILE="$CONFIG_FILE" RELEASE_SQL="$BUNDLE/app/app-version.sql" \
     bash "$SCRIPT_DIR/publish-version.sh"
 }
 
 run_release() {
+  set_phase checking-versions
+  check_versions
   set_phase migrations
   sync_migrations
   chmod 0755 "$BUNDLE/tools/migrate"
@@ -105,7 +120,7 @@ run_release() {
   set_phase stopping-backend
   stop_backend
   set_phase replacing-backend
-  replace_directory "$STAGE/ready-backend" "$APP_ROOT/backend/releases/v$BACKEND_VERSION" "$BACKUP/backend-v$BACKEND_VERSION"
+  install_version "$STAGE/ready-backend" "$APP_ROOT/backend/releases/v$BACKEND_VERSION"
   switch_current backend "$BACKEND_VERSION"
   mkdir -p "$APP_ROOT/scripts"
   install -m 0755 "$BUNDLE/tools/migrate" "$APP_ROOT/scripts/.migrate-$RUN_ID"

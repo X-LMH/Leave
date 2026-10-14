@@ -36,15 +36,42 @@ class ReleaseTest < Minitest::Test
   end
 
   def test_invalid_and_production_tags
-    %w[v1 admin-v2 app-v1.0.0 back-test-v0 back-test-v01 back-test-v1.0.0 admin-test-v1 app-test-v1].each do |tag|
+    %w[v1 admin-v2 app-v1.0.0 back-test-v0 back-test-v01 back-test-v1.0.0 app-test-v1].each do |tag|
       assert_raises(StandardError, tag) { Release.read(tag, @root) }
     end
   end
 
   def test_version_mismatch
-    assert_raises(StandardError) { Release.read('back-test-v2', @root) }
     prepare_app
-    assert_raises(StandardError) { Release.read('app-test-v1.0.1', @root) }
+    cases = [
+      ['back-test-v2', 'backend.version=1', '2'],
+      ['admin-test-v3', 'admin.version=2', '3'],
+      ['app-test-v1.0.1', 'versionName="1.0.0"', '1.0.1']
+    ]
+    script = File.expand_path('../read-release.rb', __dir__)
+    cases.each do |tag, field, version|
+      error = assert_raises(StandardError) { Release.read(tag, @root) }
+      assert_includes error.message, tag
+      assert_includes error.message, field
+      assert_includes error.message, "标签版本 #{version}"
+      assert_includes error.message, '发布已停止'
+      stdout, stderr, status = Open3.capture3('ruby', script, '--tag', tag, '--root', @root, '--format', 'github')
+      assert_equal 1, status.exitstatus
+      assert_empty stdout
+      assert_includes stderr, error.message
+    end
+  end
+
+  def test_admin_and_app_versions_are_independent_of_backend
+    prepare_app
+    admin = Release.read('admin-test-v2', @root)
+    assert_equal 1, admin['backend_version']
+    assert_equal 2, admin['admin_version']
+    assert_equal admin, Release.validate(admin)
+    app = Release.read('app-test-v1.0.0', @root)
+    assert_equal 1, app['backend_version']
+    assert_equal '1.0.0', app['app']['version_name']
+    assert_equal app, Release.validate(app)
   end
 
   def test_apk_count_and_arbitrary_filename

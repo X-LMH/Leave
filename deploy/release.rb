@@ -29,7 +29,7 @@ module Release
       manifest = File.read(File.join(root, 'frontend/manifest.json'))
       name = manifest[/"versionName"\s*:\s*"([^"]+)"/, 1]
       code = manifest[/"versionCode"\s*:\s*"(\d+)"/, 1]
-      raise 'App tag and manifest versionName differ' unless name == version
+      raise "#{tag}（标签版本 #{version}）与 frontend/manifest.json 的 versionName=#{name.inspect} 不一致，发布已停止" unless name == version
       raise 'Invalid manifest versionCode' unless code && code.to_i.positive? && code.to_i <= 4_294_967_295
       android = config.fetch('app').fetch('android')
       notes = android.fetch('release_notes')
@@ -54,9 +54,9 @@ module Release
       raise 'Backend/admin tag requires a positive integer' unless version.match?(/\A[1-9]\d*\z/)
       if mode == 'admin'
         info['admin_version'] = integer(config.fetch('admin').fetch('version'), 'admin.version')
-        raise 'Admin tag and admin.version differ' unless info['admin_version'].to_s == version
+        raise "#{tag}（标签版本 #{version}）与 deploy/release.yaml 的 admin.version=#{info['admin_version']} 不一致，发布已停止" unless info['admin_version'].to_s == version
       else
-        raise 'Backend tag and backend.version differ' unless info['backend_version'].to_s == version
+        raise "#{tag}（标签版本 #{version}）与 deploy/release.yaml 的 backend.version=#{info['backend_version']} 不一致，发布已停止" unless info['backend_version'].to_s == version
       end
     end
     info
@@ -141,6 +141,41 @@ module Release
     info
   end
 
+  # Compare component bytes, not whole-repository commits or release tag metadata.
+  def self.check_version(kind, bundle, target)
+    return unless File.exist?(target) || File.symlink?(target)
+    raise "Existing version is a symlink: #{target}" if File.symlink?(target)
+    info = JSON.parse(File.read(File.join(bundle, 'release.json')))
+    if kind == 'app'
+      source = File.join(bundle, 'app', info.fetch('app').fetch('apk_name'))
+      raise "Existing APK differs or is incomplete: #{target}" unless File.file?(target) && Digest::SHA256.file(source).hexdigest == Digest::SHA256.file(target).hexdigest
+      return
+    end
+    raise "Existing version is not a directory: #{target}" unless File.directory?(target)
+    paths = Dir.glob(File.join(target, '**/*'), File::FNM_DOTMATCH).reject { |p| %w[. ..].include?(File.basename(p)) }
+    raise "Existing version contains symlinks: #{target}" if paths.any? { |p| File.symlink?(p) }
+    expected = if kind == 'backend'
+      metadata = File.join(target, 'release.json')
+      raise "Existing backend version is incomplete: #{target}" unless File.file?(metadata)
+      previous = validate(JSON.parse(File.read(metadata)))
+      raise 'Existing backend metadata has a different version' unless previous.fetch('backend_version') == info.fetch('backend_version')
+      { 'Leave' => File.join(bundle, 'backend/Leave'), 'migrate' => File.join(bundle, 'tools/migrate') }
+    elsif kind == 'admin'
+      source = File.join(bundle, 'admin')
+      Dir.glob(File.join(source, '**/*'), File::FNM_DOTMATCH).select { |p| File.file?(p) }.to_h do |p|
+        [Pathname.new(p).relative_path_from(Pathname.new(source)).to_s, p]
+      end
+    else
+      raise 'Unknown version kind'
+    end
+    files = paths.select { |p| File.file?(p) }.map { |p| Pathname.new(p).relative_path_from(Pathname.new(target)).to_s }
+    required = expected.keys + (kind == 'backend' ? ['release.json'] : [])
+    raise "Existing #{kind} version differs or is incomplete: #{target}" unless files.sort == required.sort
+    expected.each do |relative, source|
+      raise "Existing #{kind} artifact differs: #{relative}; increment the version" unless Digest::SHA256.file(source).hexdigest == Digest::SHA256.file(File.join(target, relative)).hexdigest
+    end
+  end
+
   def self.version_sql(info)
     validate(info)
     raise 'Only App releases produce version SQL' unless info['mode'] == 'app'
@@ -184,6 +219,8 @@ if $PROGRAM_NAME == __FILE__
       port = Release.integer(config.fetch('app').fetch('port'), 'app.port')
       raise 'Invalid app.port' unless port <= 65_535
       puts port
+    when 'check-version'
+      Release.check_version(ARGV.fetch(0), ARGV.fetch(1), ARGV.fetch(2))
     else
       abort 'Usage: release.rb verify BUNDLE | server-config YAML'
     end
