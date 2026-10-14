@@ -17,6 +17,17 @@ verify_test_process() {
   test "$owner" = www && test "$actual" = "$expected"
 }
 
+check_backend_process() {
+  local pid status=0
+  pid=$(read_test_pid) || status=$?
+  if [ "$status" -eq 2 ]; then return 1; fi
+  if [ "$status" -eq 0 ] && kill -0 "$pid" 2>/dev/null; then
+    verify_test_process "$pid" || { echo 'PID is not the Baota test backend; refusing deployment' >&2; return 1; }
+  else
+    test -z "$(ss -ltnH "sport = :$APP_PORT")" || { echo 'Test port is occupied without a verified backend PID' >&2; return 1; }
+  fi
+}
+
 stop_backend() {
   local pid status=0
   pid=$(read_test_pid) || status=$?

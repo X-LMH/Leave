@@ -1,8 +1,8 @@
 backend:
-  version: 2
+  version: 3
 
 admin:
-  version: 1
+  version: 2
 
 app:
   android:

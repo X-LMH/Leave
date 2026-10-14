@@ -7,10 +7,9 @@ if [ "$#" -eq 0 ]; then
     bash "$0" "$scenario"
   done
   for scenario in pid migration health admin-health; do
-    if bash "$0" "$scenario"; then
-      echo "Expected failure: $scenario" >&2
-      exit 1
-    fi
+    status=0
+    bash "$0" "$scenario" || status=$?
+    test "$status" -eq 1 || { echo "Failure isolation failed: $scenario" >&2; exit 1; }
   done
   for scenario in backend-conflict admin-conflict apk-conflict backend-incomplete; do
     status=0
@@ -81,6 +80,9 @@ stop_backend() {
   echo stop >> "$LOG_FILE"
   test "$FAIL_PHASE" != pid
 }
+check_backend_process() {
+  test "$FAIL_PHASE" != pid
+}
 start_backend() {
   echo start >> "$LOG_FILE"
   test "$FAIL_PHASE" != health
@@ -103,6 +105,7 @@ if [ "$scenario" = real-pid-mismatch ]; then
   BAOTA_PID_FILE="$APP_ROOT/pid"
   echo $$ > "$BAOTA_PID_FILE"
   APP_PORT=19999
+  if check_backend_process; then exit 1; fi
   if stop_backend; then exit 1; fi
   kill -0 $$
   exit 0
@@ -140,7 +143,7 @@ if [[ "$scenario" =~ ^(backend-conflict|backend-incomplete|admin-conflict|apk-co
 fi
 
 if [[ "$scenario" =~ ^(pid|migration|health|admin-health)$ ]]; then
-  trap 'code=$?; test "$code" -ne 0; test ! -f "$APP_ROOT/scripts/app-published"; if [ "$scenario" = health ]; then test "$(cat "$APP_ROOT/admin/current/index.html")" = "old admin"; fi; exit "$code"' ERR
+  trap 'code=$?; test "$code" -ne 0; test ! -f "$APP_ROOT/scripts/app-published"; if [ "$scenario" = pid ]; then test ! -e "$LOG_FILE" || exit 99; fi; if [ "$scenario" = migration ]; then ! grep -q stop "$LOG_FILE" || exit 99; test "$(cat "$APP_ROOT/backend/current/Leave")" = "old server" || exit 99; fi; if [ "$scenario" = health ]; then test "$(cat "$APP_ROOT/admin/current/index.html")" = "old admin"; fi; exit "$code"' ERR
 fi
 readonly APP_ROOT CONFIG_FILE
 run_release

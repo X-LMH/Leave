@@ -111,16 +111,19 @@ publish_app() {
 run_release() {
   set_phase checking-versions
   check_versions
+  set_phase preparing-backend
+  check_backend_process
+  prepare_backend
+  # Install immutable files before stopping the service; current still points to the old version.
+  install_version "$STAGE/ready-backend" "$APP_ROOT/backend/releases/v$BACKEND_VERSION"
   set_phase migrations
   sync_migrations
   chmod 0755 "$BUNDLE/tools/migrate"
   env APP_ROOT="$APP_ROOT" CONFIG_FILE="$CONFIG_FILE" MIGRATE_BINARY="$BUNDLE/tools/migrate" \
     bash "$SCRIPT_DIR/run-migrations.sh"
-  prepare_backend
   set_phase stopping-backend
   stop_backend
   set_phase replacing-backend
-  install_version "$STAGE/ready-backend" "$APP_ROOT/backend/releases/v$BACKEND_VERSION"
   switch_current backend "$BACKEND_VERSION"
   mkdir -p "$APP_ROOT/scripts"
   install -m 0755 "$BUNDLE/tools/migrate" "$APP_ROOT/scripts/.migrate-$RUN_ID"
@@ -166,6 +169,10 @@ main() {
     check_directory "$APP_ROOT/$directory"
   done
   for module in backend admin; do
+    if [ -e "$APP_ROOT/$module/current" ] && [ ! -L "$APP_ROOT/$module/current" ]; then
+      echo "$module/current must be a symlink" >&2
+      return 1
+    fi
     if [ -L "$APP_ROOT/$module/current" ]; then
       [[ "$(realpath "$APP_ROOT/$module/current")" == "$APP_ROOT/$module/releases/"* ]] || return 1
     fi
