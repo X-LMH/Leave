@@ -1,5 +1,5 @@
 {
-  "ignorePatterns": ["**/node_modules/**", "**/dist/**", "**/dist-ssr/**", "**/coverage/**"],
+  "ignorePatterns": ["**/node_modules/**", "**/dist/**", "**/dist-test/**", "**/dist-ssr/**", "**/coverage/**"],
   "categories": {
     "correctness": "error",
     "suspicious": "error"

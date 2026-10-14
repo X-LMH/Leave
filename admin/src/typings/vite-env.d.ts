@@ -14,8 +14,6 @@ declare namespace Env {
     readonly VITE_BASE_URL: string;
     /** The title of the application */
     readonly VITE_APP_TITLE: string;
-    /** The description of the application */
-    readonly VITE_APP_DESC: string;
     /** The router history mode */
     readonly VITE_ROUTER_HISTORY_MODE?: RouterHistoryMode;
     /** The prefix of the iconify icon */
@@ -28,6 +26,8 @@ declare namespace Env {
     readonly VITE_ICON_LOCAL_PREFIX: 'icon-local';
     /** backend service base url */
     readonly VITE_SERVICE_BASE_URL: string;
+    /** Optional backend target for the development proxy */
+    readonly VITE_SERVICE_PROXY_TARGET?: string;
     /**
      * success code of backend service
      *

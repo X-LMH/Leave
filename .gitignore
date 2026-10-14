@@ -63,6 +63,7 @@ pnpm-debug.log*
 # build/ 和 packages/*/src/ 是源码，不能作为构建产物忽略。
 admin/**/logs/
 admin/**/dist/
+admin/dist-test/
 admin/**/dist-ssr/
 admin/**/coverage/
 admin/**/*.local

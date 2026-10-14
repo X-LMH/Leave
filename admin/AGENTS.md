@@ -33,8 +33,8 @@
 ## 接口开发
 
 - API 请求集中放在 `src/service/api/`。
-- 请求地址通过 `.env` 或 `.env.prod` 的 `VITE_SERVICE_BASE_URL` 配置。
-- 不要提交 `.env`、`.env.prod` 等本地环境文件。
+- 请求地址通过 `.env`、`.env.prod` 或 `.env.test` 的 `VITE_SERVICE_BASE_URL` 配置；测试模式使用 `pnpm dev:test`、`pnpm build:test`。
+- 不要提交 `.env`、`.env.prod`、`.env.test` 等本地环境文件；统一维护 `.env.example`，各环境配置保持相同字段结构。
 - 接口返回码和登录失效处理沿用 `src/service/request/` 的现有约定。
 
 ## 提交前检查
