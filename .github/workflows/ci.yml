@@ -4,11 +4,15 @@ name: Leave Backend CI
 
 on:
   push:
-    # master 是 CI 的主分支。
+    # 当前测试阶段在 deploy 分支运行 CI。
     branches:
-      - master
+      - deploy
   # 允许发布 workflow 复用完全相同的 CI 检查。
   workflow_call:
+    inputs:
+      release_artifact:
+        type: boolean
+        default: false
 
 # 同一个分支快速连续提交时，只保留最新的一次 CI，避免浪费运行资源。
 concurrency:
@@ -65,14 +69,27 @@ jobs:
         working-directory: backend
         env:
           MYSQL_TEST_DSN: root:password@tcp(127.0.0.1:3306)/leave_ci?multiStatements=true
+          ADMIN_TEST_MYSQL_DSN: root:password@tcp(127.0.0.1:3306)/leave_ci?multiStatements=true
         run: go test ./...
 
-      # 编译 HTTP server，确认后端主程序可以正常构建。
-      - name: Build server
-        working-directory: backend
-        run: go build ./cmd/server
+      - name: Test release metadata and shell coordination
+        run: |
+          ruby deploy/tests/release_test.rb
+          bash deploy/tests/deploy_test.sh
 
-      # 编译数据库迁移工具，确认 migration 执行程序可以正常构建。
-      - name: Build migration tool
-        working-directory: backend
-        run: go build ./cmd/migrate
+      - name: Test App version SQL on isolated MySQL
+        env:
+          DEPLOY_TEST_MYSQL: '1'
+          MYSQL_PWD: password
+        run: ruby deploy/tests/sql_test.rb
+
+      - name: Build Linux server and migration tool
+        run: bash deploy/build-linux.sh
+
+      - name: Upload backend release artifact
+        if: inputs.release_artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-bin
+          path: bin/
+          if-no-files-found: error

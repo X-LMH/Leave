@@ -84,6 +84,7 @@ func TestAdminManagementIntegration(t *testing.T) {
 			{Platform: "android", VersionCode: 3, VersionName: "0.0.3", PackageFile: "old3.apk", Status: "archived", ReleaseNotes: "[]"},
 			{Platform: "ios", VersionCode: 99, VersionName: "0.0.99", PackageFile: "ios.apk", Status: "published", ReleaseNotes: "[]"},
 		} {
+			row.PublishedAt = time.Now()
 			if err := db.Create(&row).Error; err != nil {
 				t.Fatal(err)
 			}

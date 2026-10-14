@@ -25,6 +25,7 @@ const listRow = {
   phone: '',
   status: 1,
   app_version: '1.0.0',
+  app_version_status: 'latest',
   created_at: '2026-10-07T00:00:00Z',
   last_seen_at: null
 };
@@ -43,7 +44,8 @@ test('student list accepts only table fields without fabricating detail data', a
   assert.equal(row.gender, null);
   assert.equal(row.lastSeenAt, null);
   assert.equal(row.createdAt, Date.parse(listRow.created_at));
-  assert.equal(Object.keys(row).length, 10);
+  assert.equal(row.appVersionStatus, listRow.app_version_status);
+  assert.equal(Object.keys(row).length, 11);
   for (const field of ['parentName', 'parentPhone', 'teacherName', 'avatarUrl', 'apartmentId', 'dormitoryNumber', 'lastSeenDevice', 'updatedAt']) {
     assert.equal(Object.hasOwn(row, field), false);
   }

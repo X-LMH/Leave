@@ -3,7 +3,7 @@
 set -euo pipefail
 
 APP_ROOT="${APP_ROOT:?APP_ROOT is required}"
-CONFIG_FILE="${CONFIG_FILE:-$APP_ROOT/config/config.server.yaml}"
+CONFIG_FILE="${CONFIG_FILE:-$APP_ROOT/config/config.test.yaml}"
 MIGRATE_BINARY="${MIGRATE_BINARY:-$APP_ROOT/scripts/migrate}"
 MIGRATIONS_DIR="${MIGRATIONS_DIR:-$APP_ROOT/database/migrations}"
 
@@ -21,6 +21,8 @@ test -d "$MIGRATIONS_DIR" || {
 }
 
 chmod 0755 "$MIGRATE_BINARY"
+
+cd "$APP_ROOT"
 
 echo "Running database migrations from: $MIGRATIONS_DIR"
 "$MIGRATE_BINARY" \

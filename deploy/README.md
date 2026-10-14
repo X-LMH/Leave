@@ -1,130 +1,124 @@
-# Leave 部署说明
+# Leave 测试环境 CI/CD
 
-本项目采用单台 Linux 服务器、宝塔和 Nginx 部署，不要求使用 Docker。App 安装包由 HBuilderX 本地打包，GitHub Actions 负责后端构建及发布。
+第一版只发布测试环境，不响应生产标签。生产服务器配置、Nginx、数据库和宝塔项目保持原样。App 继续由 HBuilderX 本地打包，后端和 admin 在 GitHub Runner 从标签对应的提交构建。
 
-## 当前状态与调整范围
+## 发布入口与版本
 
-生产环境 `/www/wwwroot/Leave` 仍使用原有根目录 `current`、`releases/` 结构。现有 `.github/workflows/deploy.yml` 在推送 `v*` 标签或手动触发时，执行 App + 后端组合发布；管理端尚未接入 CD。
+| 标签 | 发布内容 | 版本来源 |
+| --- | --- | --- |
+| `back-test-v1` | 后端 | `release.yaml` 的 `backend.version` |
+| `admin-test-v1` | 后端成功后发布 admin | 后端、admin 各自的配置版本 |
+| `app-test-v1.0.0` | 后端成功后发布 APK、更新客户端版本记录 | 后端版本来自配置，App 版本来自 manifest |
 
-下文的模块目录是新的部署布局，已在 `/www/wwwroot/Leave_test` 中准备。现有工作流及发布、重启脚本尚未适配该布局，不能直接用它们发布到测试目录。目前已准备目录、部分已有文件和测试配置，并将 `leave_list_local` 的表结构及数据复制到独立测试库；后端已支持宝塔从程序目录启动时读取根目录配置；测试服务由用户在宝塔面板启动和停止，不由助手启动。未运行 migration 工具，未修改生产服务。
+后端和 admin 使用正整数版本，目录名为 `v1`、`v2`；App 使用三段版本号及递增的 versionCode。tag 版本必须与对应模块的版本来源一致。组合发布的后端版本可以与 admin 版本不同；仅后端或 admin 发布不要求 manifest 或 APK 存在。
 
-## 新服务器目录
+`deploy/release.yaml` 只维护版本、APK 目录和发布说明，不重复维护固定构建参数或 App 版本。旧 `releases/android.yaml` 已移除。App 版本仍读取 `frontend/manifest.json` 的 `versionName`、`versionCode`。
 
-生产与测试环境分别使用独立根目录：
+App 发布时，配置的 APK 目录直接包含的 `.apk` 文件必须恰好一个，文件名可以自定义，不能按修改时间挑选。CI 使用 Android SDK `apkanalyzer` 核对安装包真实版本，再命名为 `leave-android-<versionCode>-<versionName>.apk`。已有 `0.0.10` 安装包不能通过重命名变成 `1.0.0`。
 
-- 生产：`/www/wwwroot/Leave`
-- 测试：`/www/wwwroot/Leave_test`
+测试允许重复发布或覆盖同版本文件。每次仍执行 migration、宝塔重启和健康检查；覆盖前将上一份产物保存到本次备份目录。App 数据按 `platform + version_code` 更新，不重复插入记录；其他已发布 Android 版本标记为 archived。
 
-两个环境采用相同的目标布局，以测试目录为例：
+## 测试服务器目录
 
 ```text
 /www/wwwroot/Leave_test/
 ├── backend/
 │   ├── current -> releases/v1/
-│   └── releases/
-│       └── v1/
-│           ├── Leave
-│           └── app-version.sql          # 仅 App 发布时生成并保存
+│   └── releases/v1/
+│       ├── Leave
+│       └── release.json
 ├── admin/
-│   ├── current -> releases/v1/           # 管理端产物就绪后创建
-│   └── releases/
-│       └── v1/
-│           ├── index.html
-│           └── assets/
-├── packages/
-│   └── android/
-│       └── leave-android-<versionCode>-<versionName>.apk
-├── config/
-│   └── config.test.yaml                 # 测试配置；生产使用 config.server.yaml
-├── .env.example                         # 环境变量模板
-├── .env                                 # 配置测试环境后创建
-├── database/
-│   └── migrations/
-├── uploads/
-│   └── avatars/
+│   ├── current -> releases/v1/
+│   └── releases/v1/
+│       ├── index.html
+│       └── assets/
+├── packages/android/                 # 按版本保存 APK
+├── config/config.test.yaml           # 服务器维护，不随发布覆盖
+├── .env                              # MYSQL_PASSWORD、JWT_SECRET
+├── database/migrations/              # 累积历史，不修改已上传的同名文件
+├── uploads/                          # 持久上传文件
+├── scripts/migrate                   # 最新迁移工具
 ├── backups/
-│   └── mysql/
-└── scripts/
-    ├── migrate
-    ├── run-migrations.sh
-    └── publish-version.sh
+│   ├── mysql/
+│   └── deploy/<运行ID-尝试次数-时间>/ # 被覆盖的后端、admin 或 APK
+└── .deploy/
+    ├── deploy.lock
+    └── <运行ID-尝试次数>/
+        ├── bundle.tar.gz
+        ├── bundle/                   # 校验和、元数据、产物及本次发布脚本
+        └── status                    # 当前阶段或失败阶段
 ```
 
-`backend/current` 与 `admin/current` 分别指向各自的发布版本。发布目录保存不可变的产物，配置、数据库迁移、上传文件、APK 和备份保存在根目录的共享位置，不随版本切换迁移。
+协调脚本将根目录固定为 `Leave_test`，不使用 `SERVER_APP_ROOT`，不允许回退到生产。测试 YAML 必须指向 loopback MySQL 的 `leave_list_test`，APK 和 uploads 存储路径必须位于测试根目录。配置和 `.env` 需让宝塔 `www` 用户可读，例如 `root:www 0640`；不要将真实凭据提交到 Git。
 
-测试目录当前使用 `backend/releases/v1/` 和空的 `admin/releases/v1/`，之前导入的生产历史版本 `v0.0.10` 保留原名。后续版本及标签规则见 [CD 迁移实施计划](CD-MIGRATION.md)。
+测试宝塔 Go 项目为 `Leave_test`：启动文件为 `/www/wwwroot/Leave_test/backend/current/Leave`，PID 文件为 `/var/tmp/gopids/Leave_test.pid`，启动脚本为 `/www/server/go_project/vhost/scripts/Leave_test.sh`。后端支持从程序目录向上三级读取测试 YAML 和 `.env`。
 
-App 安装包继续使用 `manifest.json` 中的 `versionCode` 和 `versionName` 命名。标签用于标识发布，不能替代 Android 安装包本身的版本信息。
+发布核验 PID 对应的程序及用户后停止该进程，替换文件，再以 `www` 用户执行宝塔自动生成的脚本。不会修改该脚本或另建服务启动流程；面板继续管理同一个项目。不按端口批量杀进程，PID 不符、停止超时或端口仍被占用都中止发布。
 
-## 测试目录已准备的文件
+## admin 构建与站点
 
-从当前生产版本 `v0.0.10` 复制以下文件，并逐一核对 SHA-256：
+可提交的完整模板为 [`admin/.env.test.example`](../admin/.env.test.example)。CI 将它复制为 `.env.test`，按锁文件安装依赖，执行类型检查、不自动修复的 lint、现有 Node 测试及 `pnpm build:test`。
 
-- 后端程序：`backend/releases/v0.0.10/Leave`。
-- APK：`packages/android/leave-android-10-0.0.10.apk`。
-- 生产现有的 16 个 migration 文件：`database/migrations/`。
-- 默认头像：`uploads/avatars/default.png`。
-- 可复用工具：`scripts/migrate`、`scripts/run-migrations.sh`、`scripts/publish-version.sh`。
-
-已将当前本地后端交叉编译为 Linux/amd64（`CGO_ENABLED=0`），上传后按新命名规则整理为 `backend/releases/v1/Leave`，`backend/current` 指向 `releases/v1`。程序及 YAML 上传前后 SHA-256 一致，目录改名后程序校验值未改变；程序为 amd64 ELF，可执行权限为 `0755`。之前导入的 `v0.0.10` 后端保留在历史目录中。管理端已创建空目录 `admin/releases/v1/`，尚无构建产物，不创建 `admin/current`。
-
-测试配置使用从本地上传的 `config/config.test.yaml`，端口为 `9000`，数据库/用户为 `leave_list_test`；APK 目录为 `/www/wwwroot/Leave_test/packages/android`，上传目录为 `/www/wwwroot/Leave_test/uploads`。资源地址暂为 `https://test.example.invalid/api/v1/uploads`，需要在测试 Nginx 站点配置完成后替换。旧 YAML 已替换，旧 `config.test.yaml.example` 已删除，测试 YAML 与 `.env` 权限为 `root:www 0640`，允许宝塔配置的 `www` 用户读取。测试目录不保留 `config.server.yaml`；生产配置文件名保持不变。
-
-按用户要求将本地 `.env` 上传到测试根目录，保留本地的 `JWT_SECRET`，将 `MYSQL_PASSWORD` 替换为测试库密码；`.env.example` 保持空值模板。测试配置使用 `127.0.0.1:3306` 连接 `leave_list_test`，已验证登录。
-
-复制前确认 `leave_list_test` 没有表。从 `leave_list_local` 使用一致性事务导出表结构及数据，再导入测试库；源库只读，未操作生产库 `leave_list`。复制后逐表核对表列表、行数和扩展校验值，9 张表共 189 行全部一致。导出文件保存在测试目录 `backups/mysql/leave_list_local-20261013-183233.sql`，权限为 `0600`；携带源库凭据的临时上传文件已删除。
-
-后端配置不是通过 `*` 通配符选择。服务和迁移工具共用 `FindConfigFile`，在工作目录的 `config/` 下依次选择 `config.local.yaml`、`config.test.yaml`、`config.server.yaml`，找到第一个文件后读取；保留旧发布布局的 `../../config/config.test.yaml`、`../../config/config.server.yaml` 回退，并支持新布局的 `../../../config/config.test.yaml`、`../../../config/config.server.yaml`。不匹配 `.example` 或其他 YAML 文件。
-
-宝塔面板会将程序目录作为工作目录，并在保存时重新生成启动脚本。本布局下 `backend/current` 解析为 `backend/releases/v1`，后端可向上三级读取环境根目录的 YAML 和 `.env`，不要求手动修改宝塔脚本中的 `cd`。从环境根目录直接运行也保持支持。新后端程序已上传并支持测试 YAML；`scripts/migrate` 仍为之前复制的工具，调用时需通过 `-config` 显式指定测试配置。
-
-本阶段按用户要求不修改构建、CD 工作流和部署脚本。已有部署脚本仍默认使用 `config.server.yaml`；独立调用迁移、客户端版本脚本时可显式传入 `CONFIG_FILE` 指向测试文件。迁移程序的 `-config` 参数仍可显式指定文件。后续适配测试 CD 时再统一配置路径和新发布目录，不直接执行现有组合发布流程。
-
-没有复制真实用户头像、历史发布程序、数据库备份、历史版本发布 SQL，以及依赖原目录和生产宝塔项目的 `deploy-release.sh`、`switch-and-restart.sh`。复制的数据库迁移和客户端版本发布工具未执行；测试后端交由用户在宝塔面板管理。
-
-## CD 改造进度
-
-待实施的标签规则、统一发布配置迁移方案及任务清单见 [CD 迁移实施计划](CD-MIGRATION.md)。该文档在迁移完成、有效操作说明归入本 README 后删除。
-
-[release.yaml](release.yaml) 已准备但尚未被现有脚本读取。当前仍使用 manifest 和 `releases/android.yaml`，原发布行为保持不变。
-
-## 管理端测试构建
-
-完整的测试构建模板为 [`admin/.env.test.example`](../admin/.env.test.example)，只包含可公开的页面、接口及构建设置，可以提交到 Git。在 `admin/` 目录下复制模板后，使用已有命令构建：
+本地在 `admin/` 下可以执行：
 
 ```bash
 cp .env.test.example .env.test
 pnpm build:test
 ```
 
-已有 `.env.test` 时先检查差异再替换，避免覆盖本地配置。产物目录为 `admin/dist-test/`，不是默认的 `admin/dist/`。模板使用同域 `/api/v1`，需要测试站点已有的 Nginx API 代理；服务器静态部署不使用 Vite 开发代理。
+已有 `.env.test` 时先检查差异，避免覆盖本地配置。产物为 `admin/dist-test/`，由 CI 上传到服务器管理端版本目录，不放入 APK 输入目录，不提交 Git。`.env`、`.env.test` 和产物继续忽略，无需删除 `.gitignore`。`VITE_*` 会进入浏览器产物，只能填写公开设置。
 
-`.env`、`.env.test` 和构建产物继续被 Git 忽略，无需删除 `.gitignore`。模板中的 `VITE_*` 会写入浏览器产物，只能填写非敏感配置。服务器 `.env`、后端 YAML 和密钥不随管理端构建上传覆盖。
+复用现有测试站点 `admin-test.leave.mhspace.dpdns.org`，根目录为 `/www/wwwroot/Leave_test/admin/current`，同域 `/api/v1` 由 Nginx 代理到测试后端。发布不重建站点、不修改 Nginx。发布后通过本机 Host 请求核对首页内容、入口 JS/CSS 和同域健康接口；这不代替公网、浏览器或完整业务验证。
 
-## 测试环境运行前的配置
+## 工作流与发布顺序
 
-测试后端由宝塔面板管理，环境配置要求及待完成事项如下：
+`.github/workflows/ci.yml` 保留 master 分支 CI，并供测试 CD 复用：后端格式、vet、测试、Linux/amd64 编译，以及发布脚本、隔离 MySQL SQL 测试。`ADMIN_TEST_MYSQL_DSN` 指向 Runner 内的 MySQL，不能使用业务配置或服务器数据库。Go 版本读取 go.mod，CGO 关闭；admin 使用 Node 22、pnpm 10。
 
-1. 检查 `config/config.test.yaml` 和 `.env`。测试数据库必须与生产数据库隔离；使用已导入数据并验证登录的 `leave_list_test`，不要将目标配置改为源库 `leave_list_local`。
-2. 确认测试端口未被占用，配置测试域名及存储资源地址。
-3. 在宝塔中创建独立 Go 项目 `Leave_test`。启动文件使用 `/www/wwwroot/Leave_test/backend/current/Leave`，面板可按默认方式从程序目录启动，后端会读取环境根目录的测试配置与 `.env`。
-4. 测试项目使用独立 PID 文件和启动脚本，部署逻辑不能回退到生产项目 `Leave` 的默认值。
-5. 管理端发布后，将测试站点根目录设为 `/www/wwwroot/Leave_test/admin/current`，配置 HTTPS、API 反向代理；采用 history 路由时配置页面回退。头像、APK 路径根据实际后端接口及现有 Nginx 映射配置。
+`.github/workflows/deploy.yml` 仅匹配三个测试标签。旧 `v*` 及生产入口已停用；失败后通过 Actions 页面重新运行，不需要移动或重建 Git tag。
 
-测试配置、密钥和运行产物不提交到 Git。本地文档记录目录和流程，不保存服务器密码或真实配置内容。
+```text
+读取并校验标签、配置及所需 APK
+    ↓
+后端 CI；admin 入口同时进行管理端检查和构建
+    ↓
+下载产物，生成带 SHA-256 校验和的发布包
+    ↓
+串行上传到测试运行目录
+    ↓
+校验文件、测试配置及目标目录
+    ↓
+同步并执行 migration
+    ↓
+核验 PID，停止旧后端，备份并替换程序
+    ↓
+调用测试宝塔脚本，核验 PID、运行程序和健康接口
+    ↓
+按入口发布 admin / APK，或结束后端发布
+```
 
-## 当前工作流与脚本
+同名 migration 内容相同则复用，不同则拒绝；仅新增不存在的文件，不删除历史文件。所有测试部署共用 `leave-test-deploy` 并发组，`queue: max`、不取消正在运行的发布；服务器另用 flock，避免不同发布同时替换文件或执行数据库操作。
 
-现有 CI 为 `.github/workflows/ci.yml`，负责后端检查、测试和编译。现有 CD 为 `.github/workflows/deploy.yml`，先复用 CI，再上传 APK、后端程序、迁移工具、migration、客户端版本 SQL 和部署脚本。
+## GitHub Secrets 与发布准备
 
-目前服务器侧 `deploy-release.sh` 依次执行数据库迁移、客户端版本记录写入、后端切换与宝塔重启；发布目录仍为 `$APP_ROOT/releases/v$VERSION_NAME`，启动文件仍为 `$APP_ROOT/current/Leave`。这些路径和 App 绑定关系都需要后续改造，不能仅改变 `APP_ROOT` 就视为适配完成。
+沿用四项 Secrets：`SERVER_HOST`、`SERVER_PORT`、`SERVER_USERNAME`、`SERVER_SSH_KEY`。当前脚本使用已有的特权 SSH 账号，随后以 www 启动宝塔项目。SSH 密码不写进工作流；密钥必须允许对应账号登录。
 
-当前工作流使用 GitHub Secrets：`SERVER_HOST`、`SERVER_PORT`、`SERVER_USERNAME`、`SERVER_SSH_KEY`、`SERVER_APP_ROOT`。新流程需要区分测试和生产的连接信息、根目录及宝塔项目配置。
+推送标签前：
 
-数据库 migration 为累积历史，新变更使用新文件，不修改已发布 migration。`publish-version.sh` 将旧客户端版本标记为 `archived`，插入新的 `published` 版本；这是 App 发布操作，不属于表结构 migration。
+1. 提交本次代码、release.yaml、环境模板；App 发布还需将唯一 APK、manifest 和发布说明提交到同一版本。
+2. 检查对应模块的 tag 版本和版本来源一致。
+3. 确认测试配置、宝塔项目和 Nginx 站点已就绪，四项 Secrets 已配置。
+4. 推送对应测试标签，观察 Actions 的检查和发布结果。
 
-## 回滚边界
+当前仓库的 App 版本仍是 `0.0.10`，可用对应标签测试现有包；准备好 `1.0.0` 的真实测试包后，再更新 manifest 并替换 APK。脚本不会修改 App 版本或自动打包。
 
-后端和管理端分别切换自己的 `current` 到兼容的旧版本；后端切换后通过对应宝塔项目重启并检查健康接口。程序回滚不会自动回滚数据库 migration 或客户端版本记录，数据库与接口变更必须考虑旧程序、旧 App 的兼容性。
+## 失败、重试与恢复
 
-复制文件与建立软链接不代表测试环境已上线。测试数据库复制和配置已完成。宝塔项目 `Leave_test` 的启动文件应为 `/www/wwwroot/Leave_test/backend/current/Leave`，宝塔可从 `/www/wwwroot/Leave_test/backend/current` 启动。修复版后端支持新布局下向上三级读取 YAML 和 `.env`，并已验证 `www` 用户可读取这两个文件；助手此前启动的测试进程已停止，后续启动和停止由用户在宝塔面板操作。此前本机健康接口曾返回 HTTP 200，但这不代表当前服务运行，也不代表公网访问或完整业务流程已验证。Nginx 站点、资源访问地址及三入口 CD 尚未完成。
+每次发布使用独立运行目录和备份目录，保留 SHA-256 清单、release.json 和 status，便于定位失败阶段。任何前置步骤失败都不继续执行后续操作。后端健康检查失败不发布 admin 或 App；后续模块失败保留已成功部署的后端，不自动回滚数据库。
+
+Actions 重新运行会生成新的尝试目录，重新迁移、覆盖文件、重启及健康检查。同名 migration 保持一致，App 版本记录幂等更新。旧目录已移走但新目录安装失败时，会立即恢复原目录；启动或后续检查失败则保留现场，由操作者检查后重试或恢复。
+
+被覆盖的同版本文件保存在 backups/deploy 中。恢复程序或页面时需同时检查对应 current 链接，后端仍通过测试宝塔项目重启。程序恢复不会撤销 migration 或 App 版本记录，不能将数据库回滚等同于文件恢复。暂不自动清理历史 APK、备份和失败运行目录。
+
+## 验证边界
+
+本次代码实现不推送标签、不上传服务器文件、不执行真实发布。实际 GitHub Actions、SSH Secrets、三种测试发布及公网/浏览器回归仍需后续验证；本地临时目录和隔离 MySQL 测试不能替代这些验证。

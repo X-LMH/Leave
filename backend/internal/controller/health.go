@@ -8,6 +8,7 @@ import (
 
 func HealthHandler(c *gin.Context) {
 	response.Success(c, gin.H{
-		"status": "ok",
+		"version": 2,
+		"status":  "ok",
 	})
 }

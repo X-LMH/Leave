@@ -1,5 +1,0 @@
-# 本文件只维护客户端发布时需要人工填写的内容。
-# version_code、version_name 和 APK 文件名由发布脚本自动读取和生成。
-release_notes:
-  - 添加了头像功能
-  - 优化了页面交互

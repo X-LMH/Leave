@@ -1,5 +1,5 @@
 backend:
-  version: 1
+  version: 2
 
 admin:
   version: 1
