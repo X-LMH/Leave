@@ -52,9 +52,7 @@
 
 `backend/current` 与 `admin/current` 分别指向各自的发布版本。发布目录保存不可变的产物，配置、数据库迁移、上传文件、APK 和备份保存在根目录的共享位置，不随版本切换迁移。
 
-后端和管理端版本采用整数形式 `v1`、`v2`、`v3`，测试初始版本为 `v1`；各自的版本目录只包含版本号，不包含 tag 前缀。App 使用三段版本号，例如 `v1.0.0`，新测试 App 从 `1.0.0` 开始。tag 前缀表示发布入口，例如 `admin-v1`、`app-v1.0.0`、`back-v1`。
-
-后端和管理端的版本分别管理，App 的三段版本不能直接用作后端目录名。组合发布时需明确本次后端版本；重复发布同一后端版本只能复用相同程序，不允许用不同程序覆盖已有版本。这些规则待后续 CD 改造落实，本阶段不修改工作流。之前导入的生产历史版本 `v0.0.10` 保留原名，新测试版本统一采用上述规则。
+测试目录当前使用 `backend/releases/v1/` 和空的 `admin/releases/v1/`，之前导入的生产历史版本 `v0.0.10` 保留原名。后续版本及标签规则见 [CD 迁移实施计划](CD-MIGRATION.md)。
 
 App 安装包继续使用 `manifest.json` 中的 `versionCode` 和 `versionName` 命名。标签用于标识发布，不能替代 Android 安装包本身的版本信息。
 
@@ -84,21 +82,24 @@ App 安装包继续使用 `manifest.json` 中的 `versionCode` 和 `versionName`
 
 没有复制真实用户头像、历史发布程序、数据库备份、历史版本发布 SQL，以及依赖原目录和生产宝塔项目的 `deploy-release.sh`、`switch-and-restart.sh`。复制的数据库迁移和客户端版本发布工具未执行；测试后端交由用户在宝塔面板管理。
 
-## 计划采用的三个 CD 入口
+## CD 改造进度
 
-以下是已确定的发布方案，尚未写入工作流：
+待实施的标签规则、统一发布配置迁移方案及任务清单见 [CD 迁移实施计划](CD-MIGRATION.md)。该文档在迁移完成、有效操作说明归入本 README 后删除。
 
-| 标签示例 | 发布范围 | 执行顺序 |
-| --- | --- | --- |
-| `admin-v1` | 后端 + admin | 后端检查、构建、迁移及部署成功后，发布管理端 |
-| `app-v1.0.0` | 后端 + App | 后端检查、构建、迁移及部署成功后，发布 APK 并更新客户端版本记录 |
-| `back-v1` | 仅后端 | 后端检查、构建、迁移及部署 |
+[release.yaml](release.yaml) 已准备但尚未被现有脚本读取。当前仍使用 manifest 和 `releases/android.yaml`，原发布行为保持不变。
 
-三个入口复用同一套后端部署逻辑。同一环境的生产发布必须串行执行，不能按不同标签各自并发切换同一个后端。三者联合更新时，分别触发 admin 和 App 入口，接受后端重复部署。
+## 管理端测试构建
 
-只有 App 入口读取 `frontend/manifest.json`、选择 APK，并根据 `deploy/releases/android.yaml` 生成 `app-version.sql`。其他入口不要求 APK，也不更新客户端版本记录。后端目录命名不再依赖 App 版本。
+完整的测试构建模板为 [`admin/.env.test.example`](../admin/.env.test.example)，只包含可公开的页面、接口及构建设置，可以提交到 Git。在 `admin/` 目录下复制模板后，使用已有命令构建：
 
-目前复制的 APK 仍为真实版本 `0.0.10`，不通过重命名将其标记为 `1.0.0`。测试 App 发布 `1.0.0` 时，需要更新 manifest 并重新打包，本阶段不修改 App 版本或安装包。
+```bash
+cp .env.test.example .env.test
+pnpm build:test
+```
+
+已有 `.env.test` 时先检查差异再替换，避免覆盖本地配置。产物目录为 `admin/dist-test/`，不是默认的 `admin/dist/`。模板使用同域 `/api/v1`，需要测试站点已有的 Nginx API 代理；服务器静态部署不使用 Vite 开发代理。
+
+`.env`、`.env.test` 和构建产物继续被 Git 忽略，无需删除 `.gitignore`。模板中的 `VITE_*` 会写入浏览器产物，只能填写非敏感配置。服务器 `.env`、后端 YAML 和密钥不随管理端构建上传覆盖。
 
 ## 测试环境运行前的配置
 
@@ -109,7 +110,6 @@ App 安装包继续使用 `manifest.json` 中的 `versionCode` 和 `versionName`
 3. 在宝塔中创建独立 Go 项目 `Leave_test`。启动文件使用 `/www/wwwroot/Leave_test/backend/current/Leave`，面板可按默认方式从程序目录启动，后端会读取环境根目录的测试配置与 `.env`。
 4. 测试项目使用独立 PID 文件和启动脚本，部署逻辑不能回退到生产项目 `Leave` 的默认值。
 5. 管理端发布后，将测试站点根目录设为 `/www/wwwroot/Leave_test/admin/current`，配置 HTTPS、API 反向代理；采用 history 路由时配置页面回退。头像、APK 路径根据实际后端接口及现有 Nginx 映射配置。
-6. 适配工作流和切换脚本到 `backend/current`、`backend/releases/` 新路径，再验证后端健康接口 `/api/v1/health` 和管理端访问。
 
 测试配置、密钥和运行产物不提交到 Git。本地文档记录目录和流程，不保存服务器密码或真实配置内容。
 
