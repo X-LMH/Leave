@@ -8,5 +8,4 @@ app:
   android:
     apk_directory: deploy/releases
     release_notes:
-      - 添加了头像功能
-      - 优化了页面交互
+      - 一个测试版本
