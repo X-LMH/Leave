@@ -40,7 +40,6 @@ sync_migrations() {
 prepare_backend() {
   mkdir -p "$STAGE/ready-backend"
   install -m 0755 "$BUNDLE/backend/Leave" "$STAGE/ready-backend/Leave"
-  install -m 0755 "$BUNDLE/tools/migrate" "$STAGE/ready-backend/migrate"
   cp "$BUNDLE/release.json" "$STAGE/ready-backend/release.json"
   chown -R "$BACKEND_USER:$BACKEND_USER" "$STAGE/ready-backend"
 }
@@ -122,15 +121,15 @@ run_release() {
   install_version "$STAGE/ready-backend" "$BACKEND_DIR/releases/v$BACKEND_VERSION"
   set_phase migrations
   sync_migrations
-  chmod 0755 "$BUNDLE/tools/migrate"
-  env APP_ROOT="$APP_ROOT" CONFIG_FILE="$CONFIG_FILE" MIGRATE_BINARY="$BUNDLE/tools/migrate" \
+  chmod 0755 "$BUNDLE/scripts/migrate"
+  env APP_ROOT="$APP_ROOT" CONFIG_FILE="$CONFIG_FILE" MIGRATE_BINARY="$BUNDLE/scripts/migrate" \
     bash "$SCRIPT_DIR/run-migrations.sh"
   set_phase stopping-backend
   stop_backend
   set_phase replacing-backend
   switch_current backend "$BACKEND_VERSION"
   mkdir -p "$APP_ROOT/scripts"
-  install -m 0755 "$BUNDLE/tools/migrate" "$APP_ROOT/scripts/.migrate-$RUN_ID"
+  install -m 0755 "$BUNDLE/scripts/migrate" "$APP_ROOT/scripts/.migrate-$RUN_ID"
   mv -Tf "$APP_ROOT/scripts/.migrate-$RUN_ID" "$APP_ROOT/scripts/migrate"
   set_phase restarting-backend
   start_backend

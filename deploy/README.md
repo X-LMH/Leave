@@ -21,8 +21,8 @@
 | 项目 | test | prod |
 | --- | --- | --- |
 | 根目录 | `/www/wwwroot/Leave_test` | `/www/wwwroot/Leave` |
-| 后端 current | `backend/current` | `current` |
-| 后端版本目录 | `backend/releases/vN` | `releases/vN` |
+| 后端 current | `backend/current` | `backend/current` |
+| 后端版本目录 | `backend/releases/vN` | `backend/releases/vN` |
 | admin current | `admin/current` | `admin/current` |
 | admin 版本目录 | `admin/releases/vN` | `admin/releases/vN` |
 | YAML | `config/config.test.yaml` | `config/config.server.yaml` |
@@ -30,10 +30,10 @@
 | 后端 HTTP 端口 | `9000` | `8000` |
 | admin HTTP 端口 | `80` | `8001` |
 | 宝塔 Go 项目 | `Leave_test` | `Leave` |
-| 既有运行用户 | `www` | `root` |
+| 宝塔配置的运行用户 | `www` | `www` |
 | admin 域名 | `admin-test.leave.mhspace.dpdns.org` | `admin.leave.mhspace.dpdns.org` |
 
-生产布局已通过只读 SSH 核对，当前旧后端为 `current -> releases/v0.0.10`。保留该布局、运行用户及旧版本，首次新流程发布后只切换 current。不会把生产后端移到测试的 backend 布局。
+生产与测试使用相同的模块目录布局。旧生产目录完整保留为同级 `/www/wwwroot/Leave_old`，新的生产目录为 `/www/wwwroot/Leave`。宝塔生产项目的启动文件设为 `/www/wwwroot/Leave/backend/current/Leave`，使用面板配置的 `www` 用户启动；配置文件和 .env 需对该用户可读。
 
 各环境根目录同时维护：
 
@@ -56,7 +56,9 @@ backups/deploy/                     # 历史备份及运行记录目录
     └── status                      # 当前或失败阶段
 ```
 
-后端每个新版本目录包含 Leave、migrate、release.json。生产的旧三段版本目录继续保留；旧目录不自动补齐新元数据，恢复时可将 current 指回旧版本。
+后端每个新版本目录包含 Leave、release.json。迁移工具仅放在 scripts/migrate，不随 backend/releases/vN 保存副本。旧生产版本保留在 Leave_old 中；新生产目录使用整数版本，不将历史目录自动补齐为新版本。
+
+从旧发布布局升级时，先确认 scripts/migrate 存在且可执行；核对 backend/releases/vN/migrate 与其内容一致后，清理版本目录中的重复副本。新版校验要求后端版本目录仅包含 Leave 和 release.json，保留旧副本会阻止同版本复用发布。
 
 环境、根目录、数据库、宝塔项目及构建目录在 `deploy/release.rb` 中固定映射，不使用任意 `SERVER_APP_ROOT`。服务端再次检查发布包环境与目标环境一致。YAML 的 MySQL 必须是对应数据库和 loopback 地址，package_dir 必须为该环境根目录下的 `packages/android`，storage.root_dir 必须为该环境根目录下的 `uploads`。
 
@@ -147,10 +149,10 @@ admin 入口先检查同域健康接口，再发布 admin；或发布 APK / 结�
 
 ## 版本冲突、重试与恢复
 
-产物不覆盖：不存在则创建；已有且文件完整、SHA-256 相同则复用；不同或不完整则在迁移和停服前中止。后端比较 Leave、migrate 和版本元数据，不按整个仓库提交号或组合标签判断相同。现有后端元数据还必须属于同一环境。相同产物重试仍迁移、重启及健康检查。App 数据按 platform+version_code 幂等更新，其他已发布 Android 版本归档。
+产物不覆盖：不存在则创建；已有且文件完整、SHA-256 相同则复用；不同或不完整则在迁移和停服前中止。后端比较 Leave 和版本元数据，不按整个仓库提交号或组合标签判断相同。迁移工具由发布包 SHA-256 清单校验，部署时更新 scripts/migrate。现有后端元数据还必须属于同一环境。相同产物重试仍迁移、重启及健康检查。App 数据按 platform+version_code 幂等更新，其他已发布 Android 版本归档。
 
 每次发布保留独立运行目录、SHA256SUMS、release.json、status。任何前置失败都不执行后续操作，后端健康失败不发布 admin/App；后续模块失败保留已成功部署的后端，不自动回滚数据库。
 
-Actions 重试生成新尝试目录，优先重新运行失败 job 以复用原构建产物。重新构建可能改变 admin 构建时间，导致同版本字节不同，此时应复用原产物或递增版本。已有旧目录缺 migrate、合法 release.json 或文件不完整时不自动补齐。
+Actions 重试生成新尝试目录，优先重新运行失败 job 以复用原构建产物。重新构建可能改变 admin 构建时间，导致同版本字节不同，此时应复用原产物或递增版本。已有旧目录缺合法 release.json 或后端文件不完整时不自动补齐。
 
-恢复程序或页面时将各自 current 指向保留旧版本，再通过对应宝塔项目重启；生产可指回 releases/v0.0.10。程序恢复不撤销 migration 或客户端版本记录，数据库恢复需结合备份、已执行迁移及独立授权处理。
+恢复程序或页面时将各自 current 指向本环境保留的旧版本，再通过对应宝塔项目重启。恢复旧生产目录 Leave_old 时，需同步核对宝塔启动路径及持久文件路径；程序恢复不撤销 migration 或客户端版本记录，数据库恢复需结合备份、已执行迁移及独立授权处理。

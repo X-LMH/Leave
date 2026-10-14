@@ -42,8 +42,6 @@ SYSTEM_ROOT=/www/wwwroot/Leave_test
 DATABASE=leave_list_test
 CONFIG_NAME=config.test.yaml
 if [ "$DEPLOY_ENV" = prod ]; then
-  BACKEND_DIR="$APP_ROOT"
-  BACKEND_USER=root
   TAG_PREFIX=
   SYSTEM_ROOT=/www/wwwroot/Leave
   DATABASE=leave_list
@@ -66,7 +64,7 @@ BACKEND_RUNNING=1
 if [ "$scenario" = admin-backend-down ]; then BACKEND_RUNNING=0; fi
 if [ "$scenario" = back ]; then MODE=back; fi
 if [ "$scenario" = app ] || [ "$scenario" = apk-conflict ]; then MODE=app; fi
-mkdir -p "$BUNDLE"/{backend,tools,migrations,admin/assets,app} "$APP_ROOT"/{config,admin/releases/v0,packages/android,fixtures} "$BACKEND_DIR/releases/v0"
+mkdir -p "$BUNDLE"/{backend,scripts,migrations,admin/assets,app} "$APP_ROOT"/{config,admin/releases/v0,packages/android,fixtures} "$BACKEND_DIR/releases/v0"
 printf 'old server' > "$BACKEND_DIR/releases/v0/Leave"
 printf 'new server' > "$BUNDLE/backend/Leave"
 printf 'old admin' > "$APP_ROOT/admin/releases/v0/index.html"
@@ -94,7 +92,7 @@ storage:
   root_dir: $SYSTEM_ROOT/uploads
 YAML
 export LOG_FILE="$APP_ROOT/events" FAIL_PHASE="$scenario" MYSQL_PASSWORD=fixture
-cat > "$BUNDLE/tools/migrate" <<'SH'
+cat > "$BUNDLE/scripts/migrate" <<'SH'
 #!/bin/sh
 echo migration >> "$LOG_FILE"
 test "$FAIL_PHASE" != migration
@@ -165,7 +163,6 @@ if [[ "$scenario" =~ ^(backend-conflict|backend-incomplete|admin-conflict|apk-co
     backend-conflict|backend-incomplete)
       mkdir -p "$BACKEND_DIR/releases/v1"
       cp "$BUNDLE/release.json" "$BACKEND_DIR/releases/v1/release.json"
-      cp "$BUNDLE/tools/migrate" "$BACKEND_DIR/releases/v1/migrate"
       if [ "$scenario" = backend-conflict ]; then printf 'different' > "$BACKEND_DIR/releases/v1/Leave"; fi
       ;;
     admin-conflict)
@@ -208,7 +205,8 @@ fi
 readonly APP_ROOT CONFIG_FILE
 run_release
 test "$(cat "$BACKEND_DIR/current/Leave")" = 'new server'
-test -f "$BACKEND_DIR/releases/v1/migrate"
+test ! -e "$BACKEND_DIR/releases/v1/migrate"
+cmp "$BUNDLE/scripts/migrate" "$APP_ROOT/scripts/migrate"
 if [ "$MODE" = admin ]; then cmp "$BUNDLE/admin/index.html" "$APP_ROOT/admin/current/index.html"; fi
 if [ "$MODE" = app ]; then
   cmp "$BUNDLE/app/$APK_NAME" "$APP_ROOT/packages/android/$APK_NAME"
@@ -220,9 +218,13 @@ rm -rf -- "$STAGE/ready-admin"
 # Metadata from another combination tag must not invalidate identical backend bytes.
 printf '{"tag":"admin-%sv2","mode":"admin","backend_version":1,"admin_version":2}' "$TAG_PREFIX" > "$BACKEND_DIR/releases/v1/release.json"
 before=$(stat -c '%i:%Y' "$BACKEND_DIR/current/Leave")
+# 更新迁移工具不改变后端版本目录；重试应使用并保存本次发布包的工具。
+printf '\n# updated migration tool\n' >> "$BUNDLE/scripts/migrate"
 if [ "$scenario" = admin-backend-down ]; then BACKEND_RUNNING=0; fi
 run_release
 test "$(stat -c '%i:%Y' "$BACKEND_DIR/current/Leave")" = "$before"
 test "$(grep -c '^start$' "$LOG_FILE")" -eq 2
 test "$(cat "$BACKEND_DIR/current/Leave")" = 'new server'
+test ! -e "$BACKEND_DIR/releases/v1/migrate"
+cmp "$BUNDLE/scripts/migrate" "$APP_ROOT/scripts/migrate"
 echo "Same-version deployment/retry passed: $DEPLOY_ENV $scenario"

@@ -20,7 +20,7 @@ module Release
       'root' => '/www/wwwroot/Leave', 'database' => 'leave_list',
       'config' => 'config.server.yaml', 'project' => 'Leave',
       'admin_host' => 'admin.leave.mhspace.dpdns.org', 'admin_dist' => 'dist',
-      'backend_dir' => '/www/wwwroot/Leave', 'process_user' => 'root',
+      'backend_dir' => '/www/wwwroot/Leave/backend', 'process_user' => 'www',
       'admin_port' => 8001
     }
   }.freeze
@@ -127,7 +127,7 @@ module Release
     validate(info)
     raise 'Bundle destination must be empty' if File.exist?(destination) && !Dir.empty?(destination)
     FileUtils.mkdir_p(destination)
-    { 'bin/Leave' => 'backend/Leave', 'bin/migrate' => 'tools/migrate' }.each do |source, target|
+    { 'bin/Leave' => 'backend/Leave', 'bin/migrate' => 'scripts/migrate' }.each do |source, target|
       FileUtils.mkdir_p(File.dirname(File.join(destination, target)))
       FileUtils.cp(File.join(root, source), File.join(destination, target))
     end
@@ -146,7 +146,6 @@ module Release
     end
     metadata = Marshal.load(Marshal.dump(info))
     metadata['app']&.delete('apk_path')
-    metadata['commit'] = ENV.fetch('GITHUB_SHA', '')
     File.write(File.join(destination, 'release.json'), JSON.pretty_generate(metadata) + "\n")
     files = Dir.glob(File.join(destination, '**/*'), File::FNM_DOTMATCH).select { |p| File.file?(p) }.sort
     sums = files.map do |path|
@@ -174,7 +173,7 @@ module Release
     files = actual.select { |p| File.file?(p) && p != File.join(root, 'SHA256SUMS') }
     raise 'Unexpected or duplicate bundle files' unless files.sort == expected.sort && expected.uniq.length == expected.length
     info = validate(JSON.parse(File.read(File.join(root, 'release.json'))))
-    required = %w[backend/Leave tools/migrate scripts/release.rb scripts/deploy-release.sh scripts/switch-and-restart.sh scripts/run-migrations.sh scripts/publish-version.sh]
+    required = %w[backend/Leave scripts/migrate scripts/release.rb scripts/deploy-release.sh scripts/switch-and-restart.sh scripts/run-migrations.sh scripts/publish-version.sh]
     required += ['admin/index.html'] if info['mode'] == 'admin'
     required += ["app/#{info['app']['apk_name']}", 'app/app-version.sql'] if info['mode'] == 'app'
     required.each { |p| raise "Missing bundle file: #{p}" unless File.file?(File.join(root, p)) }
@@ -201,7 +200,7 @@ module Release
       previous = validate(JSON.parse(File.read(metadata)))
       raise 'Existing backend metadata has a different environment' unless environment(previous) == environment(info)
       raise 'Existing backend metadata has a different version' unless previous.fetch('backend_version') == info.fetch('backend_version')
-      { 'Leave' => File.join(bundle, 'backend/Leave'), 'migrate' => File.join(bundle, 'tools/migrate') }
+      { 'Leave' => File.join(bundle, 'backend/Leave') }
     elsif kind == 'admin'
       source = File.join(bundle, 'admin')
       Dir.glob(File.join(source, '**/*'), File::FNM_DOTMATCH).select { |p| File.file?(p) }.to_h do |p|

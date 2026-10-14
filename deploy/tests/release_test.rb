@@ -171,6 +171,8 @@ class ReleaseTest < Minitest::Test
     bundle = File.join(@root, 'bundle')
     Release.bundle(Release.read('back-test-v1', @root), bundle, @root)
     assert_equal 'back', Release.verify_bundle(bundle)['mode']
+    assert_equal 'migration tool', File.read(File.join(bundle, 'scripts/migrate'))
+    refute File.exist?(File.join(bundle, 'tools/migrate'))
     File.write(File.join(bundle, 'backend/Leave'), 'corrupted')
     assert_raises(StandardError) { Release.verify_bundle(bundle) }
     File.write(File.join(bundle, 'backend/Leave'), 'server')
