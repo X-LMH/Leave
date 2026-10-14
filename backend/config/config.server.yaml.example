@@ -1,0 +1,20 @@
+# 生产服务器模板；复制为 /www/wwwroot/Leave/config/config.server.yaml。
+# MYSQL_PASSWORD 和 JWT_SECRET 从服务器 .env 注入，不随发布包上传。
+app:
+  port: 8000
+  package_dir: /www/wwwroot/Leave/packages/android
+
+storage:
+  root_dir: /www/wwwroot/Leave/uploads
+  base_url: http://leave.mhspace.dpdns.org/api/v1/uploads
+
+mysql:
+  host: 127.0.0.1
+  port: 3306
+  database: leave_list
+  user: leave_list
+  password: ""
+
+jwt:
+  secret: ""
+  expiration_days: 30

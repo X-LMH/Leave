@@ -35,9 +35,65 @@ class ReleaseTest < Minitest::Test
     assert_equal 2, Release.read('admin-test-v2', @root)['admin_version']
   end
 
-  def test_invalid_and_production_tags
-    %w[v1 admin-v2 app-v1.0.0 back-test-v0 back-test-v01 back-test-v1.0.0 app-test-v1].each do |tag|
+  def test_invalid_tags
+    %w[v1 back-prod-v1 back-v0 admin-v02 back-v1.0.0 app-v1 back-test-v0 back-test-v01 back-test-v1.0.0 app-test-v1].each do |tag|
       assert_raises(StandardError, tag) { Release.read(tag, @root) }
+    end
+  end
+
+  def test_production_tags_and_environment_integrity
+    prepare_app
+    %w[back-v1 admin-v2 app-v1.0.0].each do |tag|
+      info = Release.read(tag, @root)
+      assert_equal 'prod', Release.environment(info)
+      assert_equal info, Release.validate(info)
+      info['environment'] = 'test'
+      assert_raises(StandardError) { Release.validate(info) }
+    end
+    assert_equal 'test', Release.environment(Release.read('back-test-v1', @root))
+    # Existing test releases have no explicit environment field.
+    assert_equal 'test', Release.environment({ 'tag' => 'back-test-v1' })
+    assert_raises(StandardError) { Release.read('admin-v3', @root) }
+  end
+
+  def test_server_config_rejects_cross_environment_database_and_storage
+    %w[test prod].each do |env|
+      profile = Release::ENVIRONMENTS.fetch(env)
+      config = {
+        'mysql' => { 'database' => profile['database'], 'host' => '127.0.0.1' },
+        'app' => { 'port' => 8080, 'package_dir' => "#{profile['root']}/packages/android" },
+        'storage' => { 'root_dir' => "#{profile['root']}/uploads" }
+      }
+      file = File.join(@root, 'config.yaml')
+      File.write(file, YAML.dump(config))
+      assert_equal config, Release.server_config(file, env)
+      assert_raises(StandardError) { Release.server_config(file, env == 'test' ? 'prod' : 'test') }
+      config['app']['package_dir'] = '/www/wwwroot/other/packages/android'
+      File.write(file, YAML.dump(config))
+      assert_raises(StandardError) { Release.server_config(file, env) }
+      config['app']['package_dir'] = "#{profile['root']}/packages/android"
+      config['storage']['root_dir'] = '/www/wwwroot/other/uploads'
+      File.write(file, YAML.dump(config))
+      assert_raises(StandardError) { Release.server_config(file, env) }
+    end
+  end
+
+  def test_admin_bundle_uses_selected_environment_build
+    %w[bin backend/database/migrations admin/dist admin/dist-test].each { |d| FileUtils.mkdir_p(File.join(@root, d)) }
+    File.write(File.join(@root, 'bin/Leave'), 'server')
+    File.write(File.join(@root, 'bin/migrate'), 'migration tool')
+    File.write(File.join(@root, 'backend/database/migrations/000001_test.up.sql'), 'SELECT 1;')
+    %w[release.rb deploy-release.sh switch-and-restart.sh run-migrations.sh publish-version.sh].each do |n|
+      FileUtils.cp(File.join(Release::ROOT, 'deploy', n), File.join(@root, 'deploy', n))
+    end
+    File.write(File.join(@root, 'admin/dist/index.html'), 'production page')
+    File.write(File.join(@root, 'admin/dist-test/index.html'), 'test page')
+    { 'admin-v2' => 'production page', 'admin-test-v2' => 'test page' }.each do |tag, page|
+      bundle = File.join(@root, tag)
+      info = Release.read(tag, @root)
+      Release.bundle(info, bundle, @root)
+      assert_equal info['environment'], Release.environment(Release.verify_bundle(bundle))
+      assert_equal page, File.read(File.join(bundle, 'admin/index.html'))
     end
   end
 

@@ -34,7 +34,7 @@
 
 - API 请求集中放在 `src/service/api/`。
 - 请求地址通过 `.env`、`.env.prod` 或 `.env.test` 的 `VITE_SERVICE_BASE_URL` 配置；测试模式使用 `pnpm dev:test`、`pnpm build:test`。
-- 不要提交 `.env`、`.env.prod`、`.env.test` 等本地环境文件；通用模板维护在 `.env.example`，可提交的完整测试构建模板维护在 `.env.test.example`，各环境配置保持相同字段结构。模板只能包含非敏感信息。
+- 不要提交 `.env`、`.env.prod`、`.env.test` 等本地环境文件；通用模板维护在 `.env.example`，完整测试和生产构建模板分别维护在 `.env.test.example`、`.env.prod.example`，各环境配置保持相同字段结构。模板只能包含非敏感信息；生产构建使用 `pnpm build` 或 `pnpm build:prod`。
 - 接口返回码和登录失效处理沿用 `src/service/request/` 的现有约定。
 
 ## 提交前检查

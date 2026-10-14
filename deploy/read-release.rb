@@ -15,6 +15,10 @@ begin
     Release.bundle(info, options[:bundle], options[:root])
   elsif options[:format] == 'github'
     puts "mode=#{info.fetch('mode')}"
+    environment = Release.environment(info)
+    puts "environment=#{environment}"
+    puts "app_root=#{Release::ENVIRONMENTS.fetch(environment).fetch('root')}"
+    puts "admin_dist=#{Release::ENVIRONMENTS.fetch(environment).fetch('admin_dist')}"
     puts "backend_version=#{info.fetch('backend_version')}"
     puts "admin_version=#{info.fetch('admin_version', '')}"
     if info['app']

@@ -28,6 +28,7 @@
   "type": "module",
   "scripts": {
     "build": "vite build --mode prod",
+    "build:prod": "vite build --mode prod",
     "build:test": "vite build --mode test --outDir dist-test",
     "cleanup": "sa cleanup",
     "commit": "sa git-commit",
@@ -40,6 +41,7 @@
     "lint": "oxlint --fix && eslint --fix .",
     "prepare": "simple-git-hooks",
     "preview": "vite preview",
+    "preview:prod": "vite preview --mode prod",
     "preview:test": "vite preview --mode test --outDir dist-test --port 9001 --strictPort",
     "release": "sa release",
     "typecheck": "vue-tsc --noEmit --skipLibCheck",

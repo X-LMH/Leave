@@ -1,83 +1,79 @@
-# 当前工作流只负责持续集成（CI）：检查、测试并编译后端代码。
-# 前端 Android 应用仍然由 HBuilderX 在本地手动打包，本流程不会处理 frontend 目录。
 name: Leave Backend CI
 
 on:
-  # 临时停用 push 自动触发，便于测试；保留 workflow_call，供 deploy.yml 复用。
-  # push:
-  #   # 当前测试阶段在 deploy 分支运行 CI。
-  #   branches:
-  #     - deploy
-  # 允许发布 workflow 复用完全相同的 CI 检查。
+  push:
+    branches:
+      - master
   workflow_call:
     inputs:
       release_artifact:
         type: boolean
         default: false
 
-# 同一个分支快速连续提交时，只保留最新的一次 CI，避免浪费运行资源。
+permissions:
+  contents: read
+
 concurrency:
   group: backend-ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  # CI 只有一个 job，负责检查、测试和编译后端，不负责部署到服务器。
   test:
-    name: Check and test backend
-    # 固定到与测试 CD 相同的镜像，避免 ubuntu-latest 自动迁移。
+    name: Check, test and build backend
     runs-on: ubuntu-22.04
-    # 测试步骤暂时停用，恢复时取消下面注释。
-    # services:
-    #   mysql:
-    #     image: mysql:8.0
-    #     env:
-    #       MYSQL_ROOT_PASSWORD: password
-    #       MYSQL_DATABASE: leave_ci
-    #     ports:
-    #       - 3306:3306
-    #     options: >-
-    #       --health-cmd="mysqladmin ping -h 127.0.0.1 -ppassword"
-    #       --health-interval=10s
-    #       --health-timeout=5s
-    #       --health-retries=10
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_DATABASE: leave_ci
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -ppassword"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
 
     steps:
-      # 将当前仓库代码下载到 GitHub Runner。
       - name: Check out repository
         uses: actions/checkout@v5
 
-      # 按 backend/go.mod 中的版本安装 Go，并缓存依赖。
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
           go-version-file: backend/go.mod
           cache-dependency-path: backend/go.sum
 
-      # 暂时跳过格式、静态检查、Go 测试和部署脚本测试；恢复测试时取消注释。
-      # - name: Check Go format
-      #   working-directory: backend
-      #   run: test -z "$(gofmt -l .)"
-      # - name: Run go vet
-      #   working-directory: backend
-      #   run: go vet ./...
-      # - name: Download Go dependencies
-      #   working-directory: backend
-      #   run: go mod download
-      # - name: Run Go tests
-      #   working-directory: backend
-      #   env:
-      #     MYSQL_TEST_DSN: root:password@tcp(127.0.0.1:3306)/leave_ci?multiStatements=true
-      #     ADMIN_TEST_MYSQL_DSN: root:password@tcp(127.0.0.1:3306)/leave_ci?multiStatements=true
-      #   run: go test ./...
-      # - name: Test release metadata and shell coordination
-      #   run: |
-      #     ruby deploy/tests/release_test.rb
-      #     bash deploy/tests/deploy_test.sh
-      # - name: Test App version SQL on isolated MySQL
-      #   env:
-      #     DEPLOY_TEST_MYSQL: '1'
-      #     MYSQL_PWD: password
-      #   run: ruby deploy/tests/sql_test.rb
+      - name: Check Go format
+        working-directory: backend
+        run: test -z "$(gofmt -l .)"
+
+      - name: Run go vet
+        working-directory: backend
+        run: go vet ./...
+
+      - name: Download Go dependencies
+        working-directory: backend
+        run: go mod download
+
+      - name: Run Go tests
+        working-directory: backend
+        env:
+          MYSQL_TEST_DSN: root:password@tcp(127.0.0.1:3306)/leave_ci?multiStatements=true
+          ADMIN_TEST_MYSQL_DSN: root:password@tcp(127.0.0.1:3306)/leave_ci?multiStatements=true
+        run: go test ./...
+
+      - name: Test release metadata and shell coordination
+        run: |
+          ruby deploy/tests/release_test.rb
+          bash deploy/tests/deploy_test.sh
+
+      - name: Test App version SQL on isolated MySQL
+        env:
+          DEPLOY_TEST_MYSQL: '1'
+          MYSQL_PWD: password
+        run: ruby deploy/tests/sql_test.rb
 
       - name: Build Linux server and migration tool
         run: bash deploy/build-linux.sh

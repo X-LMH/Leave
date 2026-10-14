@@ -7,10 +7,10 @@ source "$SCRIPT_DIR/switch-and-restart.sh"
 set_phase() {
   PHASE="$1"
   printf '%s\n' "$PHASE" > "$STAGE/status"
-  echo "Test deployment: $PHASE"
+  echo "$DEPLOY_ENV deployment: $PHASE"
 }
 
-# Refuse symlinked persistent directories that could redirect test writes.
+# Refuse symlinked persistent directories that could redirect deployment writes.
 check_directory() {
   local path="$1"
   test ! -L "$path" || { echo "Symlinked deployment directory: $path" >&2; return 1; }
@@ -42,11 +42,11 @@ prepare_backend() {
   install -m 0755 "$BUNDLE/backend/Leave" "$STAGE/ready-backend/Leave"
   install -m 0755 "$BUNDLE/tools/migrate" "$STAGE/ready-backend/migrate"
   cp "$BUNDLE/release.json" "$STAGE/ready-backend/release.json"
-  chown -R www:www "$STAGE/ready-backend"
+  chown -R "$BACKEND_USER:$BACKEND_USER" "$STAGE/ready-backend"
 }
 
 check_versions() {
-  ruby "$SCRIPT_DIR/release.rb" check-version backend "$BUNDLE" "$APP_ROOT/backend/releases/v$BACKEND_VERSION"
+  ruby "$SCRIPT_DIR/release.rb" check-version backend "$BUNDLE" "$BACKEND_DIR/releases/v$BACKEND_VERSION"
   if [ "$MODE" = admin ]; then
     ruby "$SCRIPT_DIR/release.rb" check-version admin "$BUNDLE" "$APP_ROOT/admin/releases/v$ADMIN_VERSION"
   elif [ "$MODE" = app ]; then
@@ -66,7 +66,10 @@ install_version() {
 }
 
 switch_current() {
-  local module="$1" version="$2" link="$APP_ROOT/$1/current" next="$APP_ROOT/$1/.current-$RUN_ID"
+  local module="$1" version="$2" directory
+  directory="$APP_ROOT/$module"
+  if [ "$module" = backend ]; then directory="$BACKEND_DIR"; fi
+  local link="$directory/current" next="$directory/.current-$RUN_ID"
   test ! -e "$next" && test ! -L "$next" || return 1
   if [ -e "$link" ] && [ ! -L "$link" ]; then
     echo 'current must be a symlink, not a directory' >&2
@@ -86,14 +89,14 @@ publish_admin() {
   fi
   switch_current admin "$ADMIN_VERSION"
   # Check the existing Nginx vhost without depending on external DNS.
-  curl --fail --silent --show-error --max-time 10 -H "Host: $ADMIN_HOST" http://127.0.0.1/ > "$STAGE/admin-served.html"
+  curl --fail --silent --show-error --max-time 10 -H "Host: $ADMIN_HOST" "http://127.0.0.1:$ADMIN_PORT/" > "$STAGE/admin-served.html"
   cmp "$BUNDLE/admin/index.html" "$STAGE/admin-served.html"
   local asset assets
   assets=$(ruby -e 'html=File.read(ARGV[0]); paths=html.scan(/(?:src|href)=["\x27](\/[^"\x27]+\.(?:js|css)(?:\?[^"\x27]*)?)["\x27]/).flatten; abort "No entry assets in admin HTML" if paths.empty?; puts paths.uniq' "$BUNDLE/admin/index.html")
   while IFS= read -r asset; do
-    curl --fail --silent --show-error --max-time 10 -H "Host: $ADMIN_HOST" "http://127.0.0.1$asset" >/dev/null
+    curl --fail --silent --show-error --max-time 10 -H "Host: $ADMIN_HOST" "http://127.0.0.1:$ADMIN_PORT$asset" >/dev/null
   done <<< "$assets"
-  curl --fail --silent --show-error --max-time 10 -H "Host: $ADMIN_HOST" http://127.0.0.1/api/v1/health >/dev/null
+  curl --fail --silent --show-error --max-time 10 -H "Host: $ADMIN_HOST" "http://127.0.0.1:$ADMIN_PORT/api/v1/health" >/dev/null
 }
 
 publish_app() {
@@ -105,6 +108,7 @@ publish_app() {
     mv -T "$APP_ROOT/packages/android/.$APK_NAME-$RUN_ID" "$target"
   fi
   env APP_ROOT="$APP_ROOT" CONFIG_FILE="$CONFIG_FILE" RELEASE_SQL="$BUNDLE/app/app-version.sql" \
+    DEPLOY_ENV="$DEPLOY_ENV" \
     bash "$SCRIPT_DIR/publish-version.sh"
 }
 
@@ -115,7 +119,7 @@ run_release() {
   check_backend_process
   prepare_backend
   # Install immutable files before stopping the service; current still points to the old version.
-  install_version "$STAGE/ready-backend" "$APP_ROOT/backend/releases/v$BACKEND_VERSION"
+  install_version "$STAGE/ready-backend" "$BACKEND_DIR/releases/v$BACKEND_VERSION"
   set_phase migrations
   sync_migrations
   chmod 0755 "$BUNDLE/tools/migrate"
@@ -131,6 +135,9 @@ run_release() {
   set_phase restarting-backend
   start_backend
   if [ "$MODE" = admin ]; then
+    set_phase checking-admin-site
+    # 同域健康检查依赖后端；先完成恢复，再检查代理，失败时不切换 admin。
+    curl --fail --silent --show-error --max-time 10 -H "Host: $ADMIN_HOST" "http://127.0.0.1:$ADMIN_PORT/api/v1/health" >/dev/null
     set_phase publishing-admin
     publish_admin
   elif [ "$MODE" = app ]; then
@@ -141,16 +148,23 @@ run_release() {
 }
 
 main() {
-  test "$#" -eq 1 && [[ "$1" =~ ^[0-9]+-[0-9]+$ ]] || { echo 'Expected GitHub RUN_ID-RUN_ATTEMPT' >&2; return 1; }
-  # Deliberately no environment override or production fallback.
-  APP_ROOT=/www/wwwroot/Leave_test
+  test "$#" -ge 1 && test "$#" -le 2 && [[ "$1" =~ ^[0-9]+-[0-9]+$ ]] || { echo 'Expected GitHub RUN_ID-RUN_ATTEMPT [test|prod]' >&2; return 1; }
+  # Keep the old one-argument entry confined to test. Production is explicit.
+  DEPLOY_ENV="${2:-test}"
+  local profile
+  profile=$(ruby "$SCRIPT_DIR/release.rb" environment "$DEPLOY_ENV")
+  mapfile -t deployment <<< "$profile"
+  APP_ROOT="${deployment[0]}"
   RUN_ID="$1"
   STAGE="$APP_ROOT/.deploy/$RUN_ID"
   BUNDLE="$STAGE/bundle"
-  CONFIG_FILE="$APP_ROOT/config/config.test.yaml"
-  BAOTA_PID_FILE=/var/tmp/gopids/Leave_test.pid
-  BAOTA_START_SCRIPT=/www/server/go_project/vhost/scripts/Leave_test.sh
-  ADMIN_HOST=admin-test.leave.mhspace.dpdns.org
+  CONFIG_FILE="$APP_ROOT/config/${deployment[1]}"
+  BAOTA_PID_FILE="/var/tmp/gopids/${deployment[2]}.pid"
+  BAOTA_START_SCRIPT="/www/server/go_project/vhost/scripts/${deployment[2]}.sh"
+  ADMIN_HOST="${deployment[3]}"
+  BACKEND_DIR="${deployment[4]}"
+  BACKEND_USER="${deployment[5]}"
+  ADMIN_PORT="${deployment[6]}"
   test "$(id -u)" -eq 0 || { echo 'Deployment requires the existing privileged SSH account' >&2; return 1; }
   test "$(realpath "$APP_ROOT")" = "$APP_ROOT" && test ! -L "$APP_ROOT"
   test "$(realpath "$STAGE")" = "$STAGE" && test "$(realpath "$BUNDLE")" = "$BUNDLE"
@@ -160,25 +174,37 @@ main() {
   local metadata
   metadata=$(ruby "$SCRIPT_DIR/release.rb" verify "$BUNDLE")
   mapfile -t fields <<< "$metadata"
+  test "${fields[4]}" = "$DEPLOY_ENV" || { echo 'Bundle environment does not match deployment target' >&2; return 1; }
   MODE="${fields[0]}"
   BACKEND_VERSION="${fields[1]}"
   ADMIN_VERSION="${fields[2]:-}"
   APK_NAME="${fields[3]:-}"
   test -r "$APP_ROOT/.env" && test -r "$BAOTA_START_SCRIPT"
-  for directory in config backend backend/releases admin admin/releases database database/migrations packages packages/android scripts backups backups/deploy; do
+  for directory in config admin admin/releases database database/migrations packages packages/android scripts backups backups/deploy; do
     check_directory "$APP_ROOT/$directory"
   done
+  if [ "$BACKEND_DIR" != "$APP_ROOT" ]; then check_directory "$BACKEND_DIR"; fi
+  check_directory "$BACKEND_DIR/releases"
   for module in backend admin; do
-    if [ -e "$APP_ROOT/$module/current" ] && [ ! -L "$APP_ROOT/$module/current" ]; then
+    directory="$APP_ROOT/$module"
+    if [ "$module" = backend ]; then directory="$BACKEND_DIR"; fi
+    if [ -e "$directory/current" ] && [ ! -L "$directory/current" ]; then
       echo "$module/current must be a symlink" >&2
       return 1
     fi
-    if [ -L "$APP_ROOT/$module/current" ]; then
-      [[ "$(realpath "$APP_ROOT/$module/current")" == "$APP_ROOT/$module/releases/"* ]] || return 1
+    if [ -L "$directory/current" ]; then
+      [[ "$(realpath "$directory/current")" == "$directory/releases/"* ]] || return 1
     fi
   done
-  APP_PORT=$(ruby "$SCRIPT_DIR/release.rb" server-config "$CONFIG_FILE")
-  readonly APP_ROOT RUN_ID STAGE BUNDLE CONFIG_FILE BAOTA_PID_FILE BAOTA_START_SCRIPT ADMIN_HOST APP_PORT MODE BACKEND_VERSION ADMIN_VERSION APK_NAME
+  APP_PORT=$(ruby "$SCRIPT_DIR/release.rb" server-config "$CONFIG_FILE" "$DEPLOY_ENV")
+  # The service's automatic config search must resolve to the same YAML as migrations.
+  for config in config.local.yaml config.test.yaml config.server.yaml; do
+    if [ "$config" != "${deployment[1]}" ] && [ -e "$APP_ROOT/config/$config" ]; then
+      echo "Unexpected environment config in deployment root: $config" >&2
+      return 1
+    fi
+  done
+  readonly DEPLOY_ENV APP_ROOT BACKEND_DIR BACKEND_USER RUN_ID STAGE BUNDLE CONFIG_FILE BAOTA_PID_FILE BAOTA_START_SCRIPT ADMIN_HOST ADMIN_PORT APP_PORT MODE BACKEND_VERSION ADMIN_VERSION APK_NAME
   set -a
   source "$APP_ROOT/.env"
   set +a

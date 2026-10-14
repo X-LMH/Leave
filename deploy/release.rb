@@ -7,7 +7,45 @@ require 'yaml'
 # Shared by the runner and the server. It never loads business credentials.
 module Release
   ROOT = File.expand_path('..', __dir__)
-  TAG = /\A(back|admin|app)-test-v([1-9]\d*|\d+\.\d+\.\d+)\z/
+  TAG = /\A(back|admin|app)-(test-)?v([1-9]\d*|\d+\.\d+\.\d+)\z/
+  ENVIRONMENTS = {
+    'test' => {
+      'root' => '/www/wwwroot/Leave_test', 'database' => 'leave_list_test',
+      'config' => 'config.test.yaml', 'project' => 'Leave_test',
+      'admin_host' => 'admin-test.leave.mhspace.dpdns.org', 'admin_dist' => 'dist-test',
+      'backend_dir' => '/www/wwwroot/Leave_test/backend', 'process_user' => 'www',
+      'admin_port' => 80
+    },
+    'prod' => {
+      'root' => '/www/wwwroot/Leave', 'database' => 'leave_list',
+      'config' => 'config.server.yaml', 'project' => 'Leave',
+      'admin_host' => 'admin.leave.mhspace.dpdns.org', 'admin_dist' => 'dist',
+      'backend_dir' => '/www/wwwroot/Leave', 'process_user' => 'root',
+      'admin_port' => 8001
+    }
+  }.freeze
+
+  def self.environment(info)
+    match = TAG.match(info.fetch('tag'))
+    raise 'Invalid release tag' unless match
+    name = match[2] ? 'test' : 'prod'
+    raise 'Release environment does not match tag' if info.key?('environment') && info['environment'] != name
+    name
+  end
+
+  def self.server_config(path, environment)
+    profile = ENVIRONMENTS.fetch(environment)
+    config = YAML.safe_load(File.read(path), aliases: false)
+    mysql = config.fetch('mysql')
+    raise "Refusing database outside #{environment}: expected #{profile['database']}" unless mysql.fetch('database') == profile['database']
+    raise 'MySQL must use loopback' unless %w[127.0.0.1 localhost ::1].include?(mysql.fetch('host'))
+    root = profile.fetch('root')
+    raise 'Unexpected APK storage path' unless config.fetch('app').fetch('package_dir') == "#{root}/packages/android"
+    raise 'Unexpected uploads path' unless config.fetch('storage').fetch('root_dir') == "#{root}/uploads"
+    port = integer(config.fetch('app').fetch('port'), 'app.port')
+    raise 'Invalid app.port' unless port <= 65_535
+    config
+  end
 
   def self.integer(value, name)
     raise "#{name} must be a positive integer" unless value.is_a?(Integer) && value.positive?
@@ -16,12 +54,13 @@ module Release
 
   def self.read(tag, root = ROOT)
     match = TAG.match(tag.to_s)
-    raise 'Only back/admin/app test tags are supported' unless match
-    mode, version = match.captures
+    raise 'Only back/admin/app release tags are supported' unless match
+    mode, test_prefix, version = match.captures
     config = YAML.safe_load(File.read(File.join(root, 'deploy/release.yaml')), aliases: false)
     info = {
       'tag' => tag,
       'mode' => mode,
+      'environment' => test_prefix ? 'test' : 'prod',
       'backend_version' => integer(config.fetch('backend').fetch('version'), 'backend.version')
     }
     if mode == 'app'
@@ -65,7 +104,8 @@ module Release
   def self.validate(info)
     match = TAG.match(info.fetch('tag'))
     raise 'Invalid release tag' unless match && match[1] == info.fetch('mode')
-    mode, version = match.captures
+    mode, _, version = match.captures
+    environment(info)
     backend = integer(info.fetch('backend_version'), 'backend_version')
     case mode
     when 'back'
@@ -97,7 +137,8 @@ module Release
       FileUtils.cp(File.join(root, 'deploy', name), File.join(destination, 'scripts', name))
     end
     if info['mode'] == 'admin'
-      FileUtils.cp_r(File.join(root, 'admin/dist-test'), File.join(destination, 'admin'))
+      dist = ENVIRONMENTS.fetch(environment(info)).fetch('admin_dist')
+      FileUtils.cp_r(File.join(root, 'admin', dist), File.join(destination, 'admin'))
     elsif info['mode'] == 'app'
       FileUtils.mkdir_p(File.join(destination, 'app'))
       FileUtils.cp(info.fetch('app').fetch('apk_path'), File.join(destination, 'app', info['app']['apk_name']))
@@ -158,6 +199,7 @@ module Release
       metadata = File.join(target, 'release.json')
       raise "Existing backend version is incomplete: #{target}" unless File.file?(metadata)
       previous = validate(JSON.parse(File.read(metadata)))
+      raise 'Existing backend metadata has a different environment' unless environment(previous) == environment(info)
       raise 'Existing backend metadata has a different version' unless previous.fetch('backend_version') == info.fetch('backend_version')
       { 'Leave' => File.join(bundle, 'backend/Leave'), 'migrate' => File.join(bundle, 'tools/migrate') }
     elsif kind == 'admin'
@@ -207,22 +249,20 @@ if $PROGRAM_NAME == __FILE__
     case ARGV.shift
     when 'verify'
       info = Release.verify_bundle(ARGV.fetch(0))
-      puts info.fetch('mode'), info.fetch('backend_version'), info.fetch('admin_version', ''), info.dig('app', 'apk_name').to_s
+      puts info.fetch('mode'), info.fetch('backend_version'), info.fetch('admin_version', ''), info.dig('app', 'apk_name').to_s, Release.environment(info)
+    when 'environment'
+      profile = Release::ENVIRONMENTS.fetch(ARGV.fetch(0))
+      puts profile.fetch('root'), profile.fetch('config'), profile.fetch('project'), profile.fetch('admin_host'), profile.fetch('backend_dir'), profile.fetch('process_user'), profile.fetch('admin_port')
     when 'server-config'
-      config = YAML.safe_load(File.read(ARGV.fetch(0)), aliases: false)
-      mysql = config.fetch('mysql')
-      raise 'Refusing a non-test database' unless mysql.fetch('database') == 'leave_list_test'
-      raise 'Test MySQL must use loopback' unless %w[127.0.0.1 localhost ::1].include?(mysql.fetch('host'))
-      root = '/www/wwwroot/Leave_test'
-      raise 'Unexpected APK storage path' unless config.fetch('app').fetch('package_dir') == "#{root}/packages/android"
-      raise 'Unexpected uploads path' unless config.fetch('storage').fetch('root_dir') == "#{root}/uploads"
-      port = Release.integer(config.fetch('app').fetch('port'), 'app.port')
-      raise 'Invalid app.port' unless port <= 65_535
-      puts port
+      config = Release.server_config(ARGV.fetch(0), ARGV.fetch(1, 'test'))
+      puts config.fetch('app').fetch('port')
+    when 'database-config'
+      config = Release.server_config(ARGV.fetch(0), ARGV.fetch(1))
+      %w[host port database user].each { |key| puts config.fetch('mysql').fetch(key) }
     when 'check-version'
       Release.check_version(ARGV.fetch(0), ARGV.fetch(1), ARGV.fetch(2))
     else
-      abort 'Usage: release.rb verify BUNDLE | server-config YAML'
+      abort 'Usage: release.rb verify BUNDLE | environment test|prod | server-config YAML ENV | database-config YAML ENV | check-version KIND BUNDLE TARGET'
     end
   rescue StandardError => e
     warn e.message

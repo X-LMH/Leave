@@ -1,4 +1,4 @@
-name: Leave Test CD
+name: Leave CD
 
 on:
   push:
@@ -6,16 +6,22 @@ on:
       - 'back-test-v*'
       - 'admin-test-v*'
       - 'app-test-v*'
+      - 'back-v*'
+      - 'admin-v*'
+      - 'app-v*'
 
 permissions:
   contents: read
 
 jobs:
   metadata:
-    name: Validate test release
+    name: Validate release
     runs-on: ubuntu-22.04
     outputs:
       mode: ${{ steps.release.outputs.mode }}
+      environment: ${{ steps.release.outputs.environment }}
+      app_root: ${{ steps.release.outputs.app_root }}
+      admin_dist: ${{ steps.release.outputs.admin_dist }}
     steps:
       - uses: actions/checkout@v5
       - name: Read unified release metadata
@@ -39,7 +45,7 @@ jobs:
       release_artifact: true
 
   admin:
-    name: Check and build test admin
+    name: Check and build admin
     needs: metadata
     if: needs.metadata.outputs.mode == 'admin'
     runs-on: ubuntu-22.04
@@ -56,8 +62,10 @@ jobs:
           node-version: 22
           cache: pnpm
           cache-dependency-path: admin/pnpm-lock.yaml
-      - name: Prepare test environment
-        run: cp .env.test.example .env.test
+      - name: Prepare selected environment
+        env:
+          RELEASE_ENV: ${{ needs.metadata.outputs.environment }}
+        run: cp ".env.$RELEASE_ENV.example" ".env.$RELEASE_ENV"
       - name: Install locked dependencies
         run: pnpm install --frozen-lockfile
       - name: Check types
@@ -66,16 +74,18 @@ jobs:
         run: pnpm exec oxlint && pnpm exec eslint .
       - name: Run existing Node tests
         run: node --test tests/*.test.mjs
-      - name: Build test admin
-        run: pnpm build:test
+      - name: Build admin
+        env:
+          RELEASE_ENV: ${{ needs.metadata.outputs.environment }}
+        run: pnpm "build:$RELEASE_ENV"
       - uses: actions/upload-artifact@v6
         with:
           name: admin-dist
-          path: admin/dist-test/
+          path: admin/${{ needs.metadata.outputs.admin_dist }}/
           if-no-files-found: error
 
   deploy:
-    name: Deploy to Baota test project
+    name: Deploy to selected Baota project
     needs: [metadata, backend, admin]
     if: >-
       always() && !cancelled() &&
@@ -83,9 +93,10 @@ jobs:
       needs.backend.result == 'success' &&
       (needs.metadata.outputs.mode != 'admin' || needs.admin.result == 'success')
     runs-on: ubuntu-22.04
+    environment: ${{ needs.metadata.outputs.environment }}
     timeout-minutes: 30
     concurrency:
-      group: leave-test-deploy
+      group: leave-${{ needs.metadata.outputs.environment }}-deploy
       cancel-in-progress: false
       queue: max
     steps:
@@ -98,7 +109,7 @@ jobs:
         if: needs.metadata.outputs.mode == 'admin'
         with:
           name: admin-dist
-          path: admin/dist-test
+          path: admin/${{ needs.metadata.outputs.admin_dist }}
       - name: Prepare verified deployment bundle
         env:
           RELEASE_TAG: ${{ github.ref_name }}
@@ -117,15 +128,20 @@ jobs:
         uses: appleboy/ssh-action@v1
         env:
           RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}
+          RELEASE_ENV: ${{ needs.metadata.outputs.environment }}
         with:
           host: ${{ secrets.SERVER_HOST }}
           port: ${{ secrets.SERVER_PORT }}
           username: ${{ secrets.SERVER_USERNAME }}
           key: ${{ secrets.SERVER_SSH_KEY }}
-          envs: RUN_ID
+          envs: RUN_ID,RELEASE_ENV
           script: |
             set -eu
-            root=/www/wwwroot/Leave_test
+            case "$RELEASE_ENV" in
+              test) root=/www/wwwroot/Leave_test ;;
+              prod) root=/www/wwwroot/Leave ;;
+              *) echo 'Invalid release environment' >&2; exit 1 ;;
+            esac
             test "$(realpath "$root")" = "$root" && test ! -L "$root"
             test ! -L "$root/.deploy"
             mkdir -p "$root/.deploy"
@@ -139,22 +155,28 @@ jobs:
           username: ${{ secrets.SERVER_USERNAME }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           source: bundle.tar.gz
-          target: /www/wwwroot/Leave_test/.deploy/${{ github.run_id }}-${{ github.run_attempt }}
-      - name: Coordinate test deployment
+          target: ${{ needs.metadata.outputs.app_root }}/.deploy/${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Coordinate deployment
         uses: appleboy/ssh-action@v1
         env:
           RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}
+          RELEASE_ENV: ${{ needs.metadata.outputs.environment }}
         with:
           host: ${{ secrets.SERVER_HOST }}
           port: ${{ secrets.SERVER_PORT }}
           username: ${{ secrets.SERVER_USERNAME }}
           key: ${{ secrets.SERVER_SSH_KEY }}
-          envs: RUN_ID
+          envs: RUN_ID,RELEASE_ENV
           command_timeout: 25m
           script: |
             set -eu
-            stage="/www/wwwroot/Leave_test/.deploy/$RUN_ID"
+            case "$RELEASE_ENV" in
+              test) root=/www/wwwroot/Leave_test ;;
+              prod) root=/www/wwwroot/Leave ;;
+              *) echo 'Invalid release environment' >&2; exit 1 ;;
+            esac
+            stage="$root/.deploy/$RUN_ID"
             test "$(realpath "$stage")" = "$stage"
             cd "$stage"
             tar -xzf bundle.tar.gz
-            bash "$stage/bundle/scripts/deploy-release.sh" "$RUN_ID"
+            bash "$stage/bundle/scripts/deploy-release.sh" "$RUN_ID" "$RELEASE_ENV"
