@@ -13,7 +13,7 @@ import (
 
 func TestFeedbackQueryValidation(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	for _, query := range []string{"page=0", "page_size=101", "is_anonymous=other"} {
+	for _, query := range []string{"page=0", "page_size=101", "is_anonymous=other", "is_handled=other"} {
 		c, _ := gin.CreateTestContext(httptest.NewRecorder())
 		c.Request = httptest.NewRequest("GET", "/?"+query, nil)
 		if _, ok := parseFeedbackQuery(c); ok {
@@ -25,6 +25,15 @@ func TestFeedbackQueryValidation(t *testing.T) {
 	q, ok := parseFeedbackQuery(c)
 	if !ok || q.IsAnonymous == nil || *q.IsAnonymous || q.Page != 1 || q.PageSize != 20 {
 		t.Fatalf("valid query: %+v", q)
+	}
+	for _, value := range []string{"false", "true", ""} {
+		c, _ := gin.CreateTestContext(httptest.NewRecorder())
+		c.Request = httptest.NewRequest("GET", "/?is_handled="+value, nil)
+		q, ok := parseFeedbackQuery(c)
+		if !ok || (value == "" && q.IsHandled != nil) ||
+			(value != "" && (q.IsHandled == nil || *q.IsHandled != (value == "true"))) {
+			t.Fatalf("handling filter %q: %+v", value, q)
+		}
 	}
 }
 func TestApartmentRequestRejectsInvalidWireValues(t *testing.T) {
@@ -56,6 +65,8 @@ func TestFeedbackApartmentRoutesRejectStudentRole(t *testing.T) {
 	}{
 		{"GET", "/feedbacks", GetFeedbacksHandler},
 		{"GET", "/feedbacks/:id", GetFeedbackHandler},
+		{"PATCH", "/feedbacks/:id/handling", UpdateFeedbackHandlingHandler},
+		{"GET", "/feedbacks/:id/attachments/:index", GetFeedbackAttachmentHandler},
 		{"DELETE", "/feedbacks/:id", DeleteFeedbackHandler},
 		{"GET", "/apartments", GetApartmentsHandler},
 		{"POST", "/apartments", CreateApartmentHandler},

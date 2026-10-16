@@ -5,6 +5,7 @@ import (
 	"backend/internal/models"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 func InsertFeedback(feedback *models.Feedback) error {
@@ -22,6 +23,9 @@ func GetFeedbackList(query dto.FeedbackListQuery) ([]*models.Feedback, int64, er
 	}
 	if query.IsAnonymous != nil {
 		q = q.Where("is_anonymous = ?", *query.IsAnonymous)
+	}
+	if query.IsHandled != nil {
+		q = q.Where("is_handled = ?", *query.IsHandled)
 	}
 	var total int64
 	if err := q.Count(&total).Error; err != nil {
@@ -50,4 +54,16 @@ func DeleteFeedback(id uint) error {
 		return gorm.ErrRecordNotFound
 	}
 	return nil
+}
+
+func GetFeedbackForUpdate(tx *gorm.DB, id uint) (*models.Feedback, error) {
+	var row models.Feedback
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&row, id).Error; err != nil {
+		return nil, err
+	}
+	return &row, nil
+}
+
+func UpdateFeedbackHandling(tx *gorm.DB, row *models.Feedback, handled bool) error {
+	return tx.Model(row).Update("is_handled", handled).Error
 }

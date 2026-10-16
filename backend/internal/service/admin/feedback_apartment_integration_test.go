@@ -90,6 +90,9 @@ func TestFeedbackApartmentIntegration(t *testing.T) {
 		t.Fatal("cannot initialize isolated test database")
 	}
 
+	t.Run("feedback migration", func(t *testing.T) { testFeedbackMigration(t, testDB) })
+	t.Run("feedback attachments and handling", func(t *testing.T) { testFeedbackAttachmentsIntegration(t, testDB) })
+
 	order := uint32(0)
 	enabled := true
 	input := dto.ApartmentRequest{Name: "测试楼", Gender: models.GenderMale, SortOrder: &order, IsEnabled: &enabled}

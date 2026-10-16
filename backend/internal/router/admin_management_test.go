@@ -34,6 +34,8 @@ func TestStudentRoutesRequireLogin(t *testing.T) {
 		{"GET", "/api/v1/admin/app-versions/1"},
 		{"GET", "/api/v1/admin/feedbacks"},
 		{"GET", "/api/v1/admin/feedbacks/1"},
+		{"PATCH", "/api/v1/admin/feedbacks/1/handling"},
+		{"GET", "/api/v1/admin/feedbacks/1/attachments/0"},
 		{"DELETE", "/api/v1/admin/feedbacks/1"},
 		{"GET", "/api/v1/admin/students"},
 		{"GET", "/api/v1/admin/records"},

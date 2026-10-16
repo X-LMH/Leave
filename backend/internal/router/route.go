@@ -90,6 +90,8 @@ func SetupRouter() *gin.Engine {
 
 		admin.GET("/feedbacks", admincontroller.GetFeedbacksHandler)
 		admin.GET("/feedbacks/:id", admincontroller.GetFeedbackHandler)
+		admin.PATCH("/feedbacks/:id/handling", admincontroller.UpdateFeedbackHandlingHandler)
+		admin.GET("/feedbacks/:id/attachments/:index", admincontroller.GetFeedbackAttachmentHandler)
 		admin.DELETE("/feedbacks/:id", admincontroller.DeleteFeedbackHandler)
 
 		admin.GET("/apartments", admincontroller.GetApartmentsHandler)

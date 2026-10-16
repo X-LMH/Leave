@@ -1,4 +1,4 @@
-// Package file 提供本地文件保存工具，不负责 HTTP 参数解析和业务校验。
+// Package file 提供本地文件存储与图片内容校验工具，不负责 HTTP 参数解析和业务规则。
 package file
 
 import (
@@ -15,10 +15,38 @@ import (
 
 var ErrInvalidPath = errors.New("invalid file path")
 
-// Save 将文件保存到 root 下的业务目录，返回使用 / 分隔的相对文件路径。
-// directory 和 extension 由服务端指定；调用方负责校验文件内容并限制大小。
-// root 应使用受控的持久化目录，目录内不能放置指向外部的符号链接。
-func Save(root, directory, extension string, content io.Reader) (string, error) {
+// Input 描述待保存的文件，扩展名由服务端根据校验结果指定。
+type Input struct {
+	Extension string
+	Content   io.Reader
+}
+
+// Save 按输入顺序保存一个或多个文件，返回相对路径。
+// 任一文件保存失败时清理本批次文件，清理错误与原错误一起返回。
+// 调用方负责内容校验、大小限制与 Reader 的关闭。
+// root 内不能放置指向外部的符号链接。
+func Save(root, directory string, files ...Input) ([]string, error) {
+	if len(files) == 0 {
+		return []string{}, nil
+	}
+	if root == "" || !validPath(directory) {
+		return nil, ErrInvalidPath
+	}
+	keys := make([]string, 0, len(files))
+	for _, input := range files {
+		key, err := saveOne(root, directory, input.Extension, input.Content)
+		if err != nil {
+			for _, saved := range keys {
+				err = errors.Join(err, Delete(root, saved))
+			}
+			return nil, err
+		}
+		keys = append(keys, key)
+	}
+	return keys, nil
+}
+
+func saveOne(root, directory, extension string, content io.Reader) (string, error) {
 	if root == "" || !validPath(directory) {
 		return "", ErrInvalidPath
 	}
@@ -60,6 +88,14 @@ func Save(root, directory, extension string, content io.Reader) (string, error) 
 		return "", errors.Join(err, os.Remove(filename))
 	}
 	return key, nil
+}
+
+// Open 读取上传根目录内的相对路径；调用方仍需校验业务目录和访问权限。
+func Open(root, key string) (*os.File, error) {
+	if root == "" || !validPath(key) {
+		return nil, ErrInvalidPath
+	}
+	return os.Open(filepath.Join(root, filepath.FromSlash(key)))
 }
 
 // Delete 删除 Save 返回的相对路径；文件已不存在时视为清理成功。

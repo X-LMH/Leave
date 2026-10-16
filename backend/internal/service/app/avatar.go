@@ -8,9 +8,6 @@ import (
 	"backend/internal/utils/file"
 	"bytes"
 	"errors"
-	"image"
-	_ "image/jpeg"
-	_ "image/png"
 	"io"
 	"log"
 	"strings"
@@ -34,10 +31,14 @@ func UploadAvatar(studentID string, content io.Reader) (*dto.AvatarUploadRespons
 	}
 	root := config.Cfg.Storage.RootDir
 	baseURL := config.Cfg.Storage.BaseURL
-	key, err := file.Save(root, "avatars", extension, bytes.NewReader(data))
+	keys, err := file.Save(root, "avatars", file.Input{
+		Extension: extension,
+		Content:   bytes.NewReader(data),
+	})
 	if err != nil {
 		return nil, err
 	}
+	key := keys[0]
 	avatarURL, err := file.AccessURL(baseURL, key)
 	if err != nil {
 		return nil, errors.Join(err, file.Delete(root, key))
@@ -65,29 +66,9 @@ func deleteOldAvatar(root, key string) error {
 }
 
 func readAvatar(content io.Reader) ([]byte, string, error) {
-	// 调用方在解析上传请求时限制大小，此处只校验图片内容。
-	data, err := io.ReadAll(content)
-	if err != nil {
-		return nil, "", err
-	}
-	if len(data) == 0 {
+	data, extension, err := file.ReadImage(content, 4096)
+	if errors.Is(err, file.ErrInvalidImage) {
 		return nil, "", ErrorInvalidAvatar
 	}
-	// 根据图片内容判定格式，不信任客户端的文件名或 Content-Type。
-	metadata, format, err := image.DecodeConfig(bytes.NewReader(data))
-	if err != nil || (format != "jpeg" && format != "png") {
-		return nil, "", ErrorInvalidAvatar
-	}
-	// 解码前限制尺寸，防止小文件解压后占用大量内存。
-	if metadata.Width <= 0 || metadata.Height <= 0 || metadata.Width > 4096 || metadata.Height > 4096 {
-		return nil, "", ErrorInvalidAvatar
-	}
-	if _, _, err := image.Decode(bytes.NewReader(data)); err != nil {
-		return nil, "", ErrorInvalidAvatar
-	}
-	extension := ".png"
-	if format == "jpeg" {
-		extension = ".jpg"
-	}
-	return data, extension, nil
+	return data, extension, err
 }

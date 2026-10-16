@@ -489,9 +489,9 @@ export class AvatarUploadError extends Error {
 }
 
 // 上传响应是字符串，不能复用 JSON 请求的 Content-Type 和响应泛型。
-export function uploadAvatar(filePath: string): Promise<string> {
-	const studentID = getCurrentUser().student_id
-	return new Promise((resolve, reject) => {
+// 两类上传共用 Token、版本头和错误处理，业务调用方解析各自响应。
+function uploadAppFiles(endpoint: string, files: UploadFileOptionFiles[], formData: UTSJSONObject): Promise<UTSJSONObject> {
+	return new Promise<UTSJSONObject>((resolve, reject) => {
 		const storedToken = uni.getStorageSync(STORAGE_TOKEN_KEY)
 		const token = typeof storedToken == 'string' ? storedToken : ''
 		if (token == '') {
@@ -499,16 +499,15 @@ export function uploadAvatar(filePath: string): Promise<string> {
 			reject(new AvatarUploadError('请先登录'))
 			return
 		}
-		const header = {
-			'Authorization': 'Bearer ' + token,
-			'X-App-Platform': APP_PLATFORM,
-			'X-App-Version-Code': getAppVersionCode().toString()
-		} as UTSJSONObject
 		uni.uploadFile({
-			url: API_BASE_URL + '/profile/avatar',
-			filePath: filePath,
-			name: 'file',
-			header: header,
+			url: API_BASE_URL + endpoint,
+			files: files,
+			formData: formData,
+			header: {
+				'Authorization': 'Bearer ' + token,
+				'X-App-Platform': APP_PLATFORM,
+				'X-App-Version-Code': getAppVersionCode().toString()
+			} as UTSJSONObject,
 			timeout: 60000,
 			success: (response) => {
 				try {
@@ -530,33 +529,38 @@ export function uploadAvatar(filePath: string): Promise<string> {
 					}
 					if (code != 0 || response.statusCode < 200 || response.statusCode >= 300) {
 						const message = body['message'] as string | null
-						reject(new Error(message == null || message == '' ? '头像上传失败' : message))
+						reject(new Error(message == null || message == '' ? '上传失败' : message))
 						return
 					}
 					const data = body['data'] as UTSJSONObject | null
-					if (data == null || typeof data['avatar_url'] != 'string') {
-						reject(new Error('服务器未返回有效头像地址'))
+					if (data == null) {
+						reject(new Error('服务器未返回有效数据'))
 						return
 					}
-					const avatarURL = data['avatar_url'] as string
-					if (avatarURL == '') {
-						reject(new Error('服务器未返回有效头像地址'))
-						return
-					}
-					if (uni.getStorageSync(STORAGE_TOKEN_KEY) == token && getCurrentUser().student_id == studentID) {
-						avatarCacheVersion++
-						cacheAvatarURL(studentID, avatarURL)
-					}
-					resolve(avatarURL)
+					resolve(data)
 				} catch (_) {
 					reject(new Error('服务器未返回有效数据'))
 				}
 			},
 			fail: (_) => {
-				reject(new Error('头像上传失败，请检查网络后重试'))
+				reject(new Error('上传失败，请检查网络后重试'))
 			}
 		})
 	})
+}
+
+export async function uploadAvatar(filePath: string): Promise<string> {
+	const studentID = getCurrentUser().student_id
+	const token = uni.getStorageSync(STORAGE_TOKEN_KEY)
+	const data = await uploadAppFiles('/profile/avatar', [{ name: 'file', uri: filePath } as UploadFileOptionFiles], {} as UTSJSONObject)
+	if (typeof data['avatar_url'] != 'string') throw new Error('服务器未返回有效头像地址')
+	const avatarURL = data['avatar_url'] as string
+	if (avatarURL == '') throw new Error('服务器未返回有效头像地址')
+	if (uni.getStorageSync(STORAGE_TOKEN_KEY) == token && getCurrentUser().student_id == studentID) {
+		avatarCacheVersion++
+		cacheAvatarURL(studentID, avatarURL)
+	}
+	return avatarURL
 }
 
 export async function getClassOptions(): Promise<ClassOption[]> {
@@ -598,7 +602,23 @@ export async function createRecord(payload: RecordCreatePayload): Promise<Record
 	return recordDetailFromJSON(await request<UTSJSONObject>('/record', 'POST', payload, true))
 }
 
-export function submitFeedback(content: string, isAnonymous: boolean): Promise<FeedbackResponse> {
+export async function submitFeedback(content: string, isAnonymous: boolean, imagePaths: string[] = []): Promise<FeedbackResponse> {
+	if (imagePaths.length > 3) throw new Error('最多上传 3 张图片')
+	if (imagePaths.length > 0) {
+		const files = imagePaths.map((path: string, index: number): UploadFileOptionFiles => {
+			return { name: 'attachment_' + index.toString(), uri: path } as UploadFileOptionFiles
+		})
+		const data = await uploadAppFiles('/feedback', files, {
+			content: content,
+			is_anonymous: isAnonymous ? 'true' : 'false'
+		} as UTSJSONObject)
+		return {
+			id: data['id'] as number,
+			content: data['content'] as string,
+			is_anonymous: data['is_anonymous'] as boolean,
+			created_at: data['created_at'] as string
+		} as FeedbackResponse
+	}
 	const payload: FeedbackPayload = {
 		content: content,
 		is_anonymous: isAnonymous

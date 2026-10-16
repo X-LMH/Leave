@@ -7,15 +7,30 @@
 					<text class="required">*</text>
 				</view>
 				<view class="content-box">
-					<textarea class="content-input" v-model="content" maxlength="500" placeholder="请描述你遇到的问题或建议" placeholder-class="content-placeholder" />
+					<textarea class="content-input" :disabled="submitting" v-model="content" maxlength="500" placeholder="请描述你遇到的问题或建议" placeholder-class="content-placeholder" />
 					<text class="word-count">{{ content.length }}/500</text>
+				</view>
+			</view>
+
+			<view class="feedback-card attachment-card">
+				<view class="field-header">
+					<text class="field-title">附件图片（选填）</text>
+					<text class="attachment-count">{{ imagePaths.length }}/3</text>
+				</view>
+				<view class="attachment-list">
+					<view v-for="(path, index) in imagePaths" :key="path" class="attachment-item">
+						<image class="attachment-preview" :src="path" mode="aspectFill" @click="previewImage(index)" />
+						<view v-if="!submitting" class="attachment-remove" @click="removeImage(index)"><text class="attachment-remove-text">×</text></view>
+					</view>
+					<view v-if="imagePaths.length < 3" class="attachment-add" @click="addImage">
+						<text class="attachment-add-text">{{ choosing ? '读取中…' : '+ 添加图片' }}</text>
+					</view>
 				</view>
 			</view>
 
 			<view class="feedback-card anonymous-card" @click="toggleAnonymous">
 				<view class="anonymous-copy">
 					<text class="field-title">匿名提交</text>
-					<text class="anonymous-description">{{ isAnonymous ? '匿名提交后不会保存你的学号' : '关闭后将按当前学号提交' }}</text>
 				</view>
 				<view :class="isAnonymous ? 'toggle toggle-active' : 'toggle'">
 					<view :class="isAnonymous ? 'toggle-dot toggle-dot-active' : 'toggle-dot'"></view>
@@ -33,17 +48,43 @@
 import { ref } from 'vue'
 import ProfilePageShell from '@/components/ProfilePageShell.uvue'
 import { submitFeedback } from '@/utils/api.uts'
+import { chooseUploadImages } from '@/utils/avatar-picker.uts'
 
 const content = ref('')
 const isAnonymous = ref(false)
 const submitting = ref(false)
+const choosing = ref(false)
+const imagePaths = ref<string[]>([])
+
+async function addImage() {
+	if (submitting.value || choosing.value || imagePaths.value.length >= 3) return
+	choosing.value = true
+	try {
+		const paths = await chooseUploadImages('图片', 3 - imagePaths.value.length)
+		for (let index = 0; index < paths.length; index++) {
+			const path = paths[index]
+			if (imagePaths.value.length < 3 && !imagePaths.value.includes(path)) imagePaths.value.push(path)
+		}
+	} finally {
+		choosing.value = false
+	}
+}
+function removeImage(index: number) {
+	if (submitting.value || choosing.value) return
+	imagePaths.value.splice(index, 1)
+}
+function previewImage(index: number) {
+	if (submitting.value) return
+	uni.previewImage({ urls: imagePaths.value, current: index })
+}
 
 function toggleAnonymous() {
+	if (submitting.value) return
 	isAnonymous.value = !isAnonymous.value
 }
 
 async function submit() {
-	if (submitting.value) return
+	if (submitting.value || choosing.value) return
 
 	const normalizedContent = content.value.trim()
 	if (normalizedContent == '') {
@@ -54,9 +95,9 @@ async function submit() {
 	submitting.value = true
 	let submitted = false
 	try {
-		await submitFeedback(normalizedContent, isAnonymous.value)
+		await submitFeedback(normalizedContent, isAnonymous.value, imagePaths.value)
 		submitted = true
-		uni.showToast({ title: '反馈已提交，感谢你的支持', icon: 'success' })
+		uni.showToast({ title: '提交成功', icon: 'success' })
 		setTimeout(() => {
 			uni.navigateBack({})
 		}, 1200)
@@ -123,6 +164,58 @@ async function submit() {
 	font-size: 22rpx;
 	line-height: 32rpx;
 }
+.attachment-card {
+	margin-top: 30rpx;
+}
+.attachment-count {
+	margin-left: 16rpx;
+	font-size: 24rpx;
+	color: #7890bc;
+}
+.attachment-list {
+	flex-direction: row;
+	flex-wrap: wrap;
+	margin-top: 24rpx;
+}
+.attachment-item {
+	position: relative;
+	width: 164rpx;
+	height: 164rpx;
+	margin-right: 16rpx;
+	margin-bottom: 16rpx;
+}
+.attachment-preview {
+	width: 164rpx;
+	height: 164rpx;
+	border-radius: 16rpx;
+}
+.attachment-remove {
+	position: absolute;
+	right: 0;
+	top: 0;
+	width: 44rpx;
+	height: 44rpx;
+	border-radius: 22rpx;
+	align-items: center;
+	justify-content: center;
+	background-color: rgba(0, 0, 0, 0.6);
+}
+.attachment-remove-text {
+	font-size: 32rpx;
+	color: #ffffff;
+}
+.attachment-add {
+	width: 164rpx;
+	height: 164rpx;
+	border-radius: 16rpx;
+	background-color: #edf2ff;
+	align-items: center;
+	justify-content: center;
+}
+.attachment-add-text {
+	color: #245cf0;
+	font-size: 24rpx;
+}
 .anonymous-card {
 	margin-top: 30rpx;
 	flex-direction: row;
@@ -132,12 +225,6 @@ async function submit() {
 	flex: 1;
 	min-width: 0;
 }
-.anonymous-description {
-	margin-top: 10rpx;
-	color: #7890bc;
-	font-size: 23rpx;
-	line-height: 34rpx;
-}
 .toggle {
 	width: 88rpx;
 	height: 52rpx;
@@ -145,6 +232,9 @@ async function submit() {
 	padding: 5rpx;
 	border-radius: 30rpx;
 	background-color: #c5d2eb;
+	transition-property: background-color;
+	transition-duration: 180ms;
+	transition-timing-function: ease-out;
 }
 .toggle-active {
 	background-color: #527df3;
@@ -155,9 +245,13 @@ async function submit() {
 	border-radius: 22rpx;
 	background-color: #ffffff;
 	box-shadow: 0 3rpx 8rpx rgba(68, 95, 148, 0.2);
+	transform: translateX(0);
+	transition-property: transform;
+	transition-duration: 180ms;
+	transition-timing-function: ease-out;
 }
 .toggle-dot-active {
-	margin-left: 36rpx;
+	transform: translateX(36rpx);
 }
 .submit-button {
 	height: 104rpx;

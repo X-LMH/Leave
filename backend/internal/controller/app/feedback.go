@@ -6,14 +6,29 @@ import (
 	"backend/internal/response"
 	appservice "backend/internal/service/app"
 	"errors"
+	"fmt"
+	"log"
+	"mime/multipart"
+	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
 
-// CreateFeedbackHandler submits text feedback from the current user.
+// CreateFeedbackHandler 接收文字反馈及可选图片，兼容旧版 JSON 请求。
 func CreateFeedbackHandler(c *gin.Context) {
-	req := new(dto.FeedbackCreateRequest)
-	if err := c.ShouldBindJSON(req); err != nil {
+	// 解析前限制请求总大小，三张图片之外预留 multipart 表单开销。
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body,
+		appservice.MaxFeedbackAttachments*appservice.MaxFeedbackAttachmentSize+(64<<10))
+	defer func() {
+		if c.Request.MultipartForm != nil {
+			if err := c.Request.MultipartForm.RemoveAll(); err != nil {
+				log.Printf("清理反馈上传临时文件失败: %v", err)
+			}
+		}
+	}()
+	req, uploads, err := parseFeedbackSubmission(c)
+	if err != nil {
 		response.Error(c, response.CodeInvalidParam)
 		return
 	}
@@ -24,7 +39,7 @@ func CreateFeedbackHandler(c *gin.Context) {
 		return
 	}
 
-	feedback, err := appservice.CreateFeedback(studentID, req)
+	feedback, err := appservice.CreateFeedback(studentID, req, uploads...)
 	if err != nil {
 		if errors.Is(err, appservice.ErrorInvalidFeedback) {
 			response.Error(c, response.CodeInvalidParam)
@@ -34,4 +49,37 @@ func CreateFeedbackHandler(c *gin.Context) {
 		return
 	}
 	response.Success(c, feedback)
+}
+
+func parseFeedbackSubmission(c *gin.Context) (*dto.FeedbackCreateRequest, []*multipart.FileHeader, error) {
+	req := new(dto.FeedbackCreateRequest)
+	if c.ContentType() != "multipart/form-data" {
+		return req, nil, c.ShouldBindJSON(req)
+	}
+	if err := c.Request.ParseMultipartForm(1 << 20); err != nil {
+		return nil, nil, err
+	}
+	form := c.Request.MultipartForm
+	if len(form.Value["content"]) != 1 || len(form.Value["is_anonymous"]) != 1 {
+		return nil, nil, appservice.ErrorInvalidFeedback
+	}
+	anonymous, err := strconv.ParseBool(form.Value["is_anonymous"][0])
+	if err != nil {
+		return nil, nil, err
+	}
+	req.Content = form.Value["content"][0]
+	req.IsAnonymous = anonymous
+	if len(form.File) > appservice.MaxFeedbackAttachments {
+		return nil, nil, appservice.ErrorInvalidFeedback
+	}
+	uploads := make([]*multipart.FileHeader, 0, len(form.File))
+	// 文件字段连续编号，同时拒绝重复字段、未知字段和超量文件。
+	for index := 0; index < len(form.File); index++ {
+		files := form.File[fmt.Sprintf("attachment_%d", index)]
+		if len(files) != 1 || files[0].Size > appservice.MaxFeedbackAttachmentSize {
+			return nil, nil, appservice.ErrorInvalidFeedback
+		}
+		uploads = append(uploads, files[0])
+	}
+	return req, uploads, nil
 }

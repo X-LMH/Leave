@@ -1,42 +1,23 @@
 // 两个头像入口共用选图和校验，取消或校验失败时返回空路径。
 export function chooseAvatarImage(): Promise<string> {
-	return new Promise<string>((resolve) => {
+	return chooseUploadImage('头像')
+}
+
+export async function chooseUploadImage(label: string): Promise<string> {
+	const paths = await chooseUploadImages(label, 1)
+	return paths.length > 0 ? paths[0] : ''
+}
+
+// 反馈按剩余名额多选；整批校验通过后才交给页面添加，避免只添加部分图片。
+export async function chooseUploadImages(label: string, count: number): Promise<string[]> {
+	// 原生 success 回调必须返回 void，异步图片校验放在选择完成之后。
+	const result = await new Promise<ChooseImageSuccess | null>((resolve) => {
 		uni.chooseImage({
-			count: 1,
+			count: count,
 			sizeType: ['original'],
 			sourceType: ['album', 'camera'],
-			success: (result) => {
-				if (result.tempFiles.length == 0 || result.tempFilePaths.length == 0) {
-					resolve('')
-					return
-				}
-				if (result.tempFiles[0].size > 5 * 1024 * 1024) {
-					uni.showToast({ title: '头像不能超过 5 MiB', icon: 'none' })
-					resolve('')
-					return
-				}
-				const path = result.tempFilePaths[0]
-				uni.getImageInfo({
-					src: path,
-					success: (info) => {
-						if (info.width <= 0 || info.height <= 0 || info.width > 4096 || info.height > 4096) {
-							uni.showToast({ title: '图片宽高不能超过 4096 像素', icon: 'none' })
-							resolve('')
-							return
-						}
-						const format = info.type
-						if (format != null && format != '' && format.toLowerCase() != 'jpeg' && format.toLowerCase() != 'jpg' && format.toLowerCase() != 'png') {
-							uni.showToast({ title: '请选择 JPEG 或 PNG 图片', icon: 'none' })
-							resolve('')
-							return
-						}
-						resolve(path)
-					},
-					fail: (_) => {
-						uni.showToast({ title: '图片读取失败，请重新选择', icon: 'none' })
-						resolve('')
-					}
-				})
+			success: (selection) => {
+				resolve(selection)
 			},
 			fail: (error) => {
 				if (error.errCode != 1101001) {
@@ -45,7 +26,47 @@ export function chooseAvatarImage(): Promise<string> {
 						icon: 'none'
 					})
 				}
-				resolve('')
+				resolve(null)
+			}
+		})
+	})
+	if (result == null || result.tempFiles.length == 0 || result.tempFilePaths.length == 0) return []
+	// 同时校验返回数量，不能只依赖不同平台的选择器上限。
+	if (result.tempFilePaths.length > count || result.tempFiles.length != result.tempFilePaths.length) {
+		uni.showToast({ title: '本次最多选择 ' + count.toString() + ' 张图片', icon: 'none' })
+		return []
+	}
+	for (let index = 0; index < result.tempFilePaths.length; index++) {
+		if (result.tempFiles[index].size > 5 * 1024 * 1024) {
+			uni.showToast({ title: label + '不能超过 5 MiB', icon: 'none' })
+			return []
+		}
+		if (!await validateUploadImage(result.tempFilePaths[index])) return []
+	}
+	return result.tempFilePaths
+}
+
+function validateUploadImage(path: string): Promise<boolean> {
+	return new Promise<boolean>((resolve) => {
+		uni.getImageInfo({
+			src: path,
+			success: (info) => {
+				if (info.width <= 0 || info.height <= 0 || info.width > 4096 || info.height > 4096) {
+					uni.showToast({ title: '图片宽高不能超过 4096 像素', icon: 'none' })
+					resolve(false)
+					return
+				}
+				const format = info.type
+				if (format != null && format != '' && format.toLowerCase() != 'jpeg' && format.toLowerCase() != 'jpg' && format.toLowerCase() != 'png') {
+					uni.showToast({ title: '请选择 JPEG 或 PNG 图片', icon: 'none' })
+					resolve(false)
+					return
+				}
+				resolve(true)
+			},
+			fail: (_) => {
+				uni.showToast({ title: '图片读取失败，请重新选择', icon: 'none' })
+				resolve(false)
 			}
 		})
 	})

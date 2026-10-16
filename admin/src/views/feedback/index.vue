@@ -1,10 +1,16 @@
 <script setup lang="ts">
-import { computed, h, reactive, ref } from 'vue';
+import { computed, h, onBeforeUnmount, reactive, ref, watch } from 'vue';
 import { NButton, NSpace, NTag, useThemeVars } from 'naive-ui';
 import type { DataTableColumns } from 'naive-ui';
 import { useAppStore } from '@/store/modules/app';
-import { queryFeedbacks, getFeedback, deleteFeedback } from '@/service/api/feedback';
-import type { FeedbackRecord } from '@/service/api/feedback';
+import {
+  queryFeedbacks,
+  getFeedback,
+  deleteFeedback,
+  updateFeedbackHandling,
+  getFeedbackAttachment
+} from '@/service/api/feedback';
+import type { FeedbackRecord, FeedbackDetail } from '@/service/api/feedback';
 
 const appStore = useAppStore();
 const themeVars = useThemeVars();
@@ -19,7 +25,8 @@ const themeStyle = computed(() => ({
 const emptySearch = () => ({
   keyword: '',
   studentId: '',
-  isAnonymous: null as boolean | null
+  isAnonymous: null as boolean | null,
+  isHandled: null as boolean | null
 });
 const search = reactive(emptySearch());
 const applied = reactive(emptySearch());
@@ -27,6 +34,16 @@ const anonymousOptions = [
   { label: '匿名反馈', value: 'anonymous' },
   { label: '实名反馈', value: 'identified' }
 ];
+const handlingOptions = [
+  { label: '未处理', value: 'unhandled' },
+  { label: '已处理', value: 'handled' }
+];
+const searchHandling = computed({
+  get: () => (search.isHandled === null ? null : search.isHandled ? 'handled' : 'unhandled'),
+  set: (value: string | null) => {
+    search.isHandled = value === null ? null : value === 'handled';
+  }
+});
 const searchAnonymous = computed({
   get: () => (search.isAnonymous === null ? null : search.isAnonymous ? 'anonymous' : 'identified'),
   set: (value: string | null) => {
@@ -57,8 +74,72 @@ const pagination = computed(() => ({
 }));
 const drawerVisible = ref(false);
 const detailLoading = ref(false);
-const detail = ref<FeedbackRecord | null>(null);
+const detail = ref<FeedbackDetail | null>(null);
 let detailSequence = 0;
+const handling = ref(false);
+const attachmentPreviews = ref<{ index: number; url: string; failed: boolean }[]>([]);
+const attachmentsLoading = ref(false);
+
+function clearAttachmentPreviews() {
+  attachmentPreviews.value.forEach(item => {
+    if (item.url) URL.revokeObjectURL(item.url);
+  });
+  attachmentPreviews.value = [];
+}
+function invalidateDetail() {
+  detailSequence++;
+  clearAttachmentPreviews();
+  attachmentsLoading.value = false;
+  detail.value = null;
+  detailLoading.value = false;
+}
+watch(drawerVisible, visible => {
+  if (!visible) invalidateDetail();
+});
+onBeforeUnmount(invalidateDetail);
+
+async function loadAttachments(value: FeedbackDetail, sequence: number) {
+  attachmentsLoading.value = true;
+  try {
+    const images = await Promise.all(
+      value.attachments.map(async item => {
+        try {
+          const blob = await getFeedbackAttachment(value.id, item.index);
+          return { index: item.index, blob };
+        } catch {
+          return { index: item.index, blob: null };
+        }
+      })
+    );
+    // 全部请求结束且详情仍有效时才创建 URL，避免关闭期间留下无人持有的资源。
+    if (sequence !== detailSequence || !drawerVisible.value) return;
+    attachmentPreviews.value = images.map(item => ({
+      index: item.index,
+      url: item.blob ? URL.createObjectURL(item.blob) : '',
+      failed: item.blob === null
+    }));
+  } finally {
+    if (sequence === detailSequence) attachmentsLoading.value = false;
+  }
+}
+
+async function toggleHandling() {
+  if (!detail.value || handling.value) return;
+  const id = detail.value.id;
+  const sequence = detailSequence;
+  handling.value = true;
+  try {
+    const { data, error } = await updateFeedbackHandling(id, !detail.value.isHandled);
+    if (error) return;
+    if (sequence === detailSequence && drawerVisible.value) detail.value = data;
+    window.$message?.success('处理状态已更新');
+    await reload();
+  } catch (error) {
+    window.$message?.error(error instanceof Error ? error.message : '更新失败，请重试');
+  } finally {
+    handling.value = false;
+  }
+}
 
 async function reload(): Promise<void> {
   const sequence = ++querySequence;
@@ -99,6 +180,7 @@ function resetSearch() {
   applySearch();
 }
 async function openDetail(row: FeedbackRecord) {
+  clearAttachmentPreviews();
   const sequence = ++detailSequence;
   detail.value = null;
   detailLoading.value = true;
@@ -111,6 +193,7 @@ async function openDetail(row: FeedbackRecord) {
       return;
     }
     detail.value = data;
+    void loadAttachments(data, sequence);
   } catch (error) {
     if (sequence !== detailSequence) return;
     drawerVisible.value = false;
@@ -170,6 +253,16 @@ const columns: DataTableColumns<FeedbackRecord> = [
     title: '反馈内容',
     width: 360,
     ellipsis: { tooltip: true }
+  },
+  {
+    key: 'isHandled',
+    title: '处理状态',
+    width: 100,
+    align: 'center',
+    render: row =>
+      h(NTag, { type: row.isHandled ? 'success' : 'warning', bordered: false }, () =>
+        row.isHandled ? '已处理' : '未处理'
+      )
   },
   {
     key: 'createdAt',
@@ -250,6 +343,9 @@ void reload();
         <NFormItem label="匿名状态">
           <NSelect v-model:value="searchAnonymous" :options="anonymousOptions" clearable placeholder="全部反馈" />
         </NFormItem>
+        <NFormItem label="处理状态">
+          <NSelect v-model:value="searchHandling" :options="handlingOptions" clearable placeholder="全部状态" />
+        </NFormItem>
         <div class="search-actions">
           <NButton type="primary" :loading="loading" @click="applySearch">
             <template #icon><SvgIcon icon="mdi:magnify" /></template>
@@ -286,7 +382,7 @@ void reload();
         :loading="loading"
         :row-key="row => row.id"
         :pagination="pagination"
-        :scroll-x="1000"
+        :scroll-x="1100"
       >
         <template #empty>
           <div class="table-empty">
@@ -318,8 +414,7 @@ void reload();
               </div>
             </div>
             <section class="detail-section">
-              <div class="detail-section__heading"><h2>提交信息</h2></div>
-              <NDescriptions :column="1" label-placement="left">
+              <NDescriptions class="feedback-metadata" :column="1" label-placement="left">
                 <NDescriptionsItem label="提交者学号">
                   {{ submitter(detail) }}
                 </NDescriptionsItem>
@@ -328,6 +423,11 @@ void reload();
                 </NDescriptionsItem>
                 <NDescriptionsItem label="提交时间">
                   {{ formatTime(detail.createdAt) }}
+                </NDescriptionsItem>
+                <NDescriptionsItem label="处理状态">
+                  <NTag :type="detail.isHandled ? 'success' : 'warning'" :bordered="false">
+                    {{ detail.isHandled ? '已处理' : '未处理' }}
+                  </NTag>
                 </NDescriptionsItem>
                 <NDescriptionsItem label="更新时间">
                   {{ formatTime(detail.updatedAt) }}
@@ -338,6 +438,38 @@ void reload();
               <div class="detail-section__heading"><h2>反馈内容</h2></div>
               <p class="feedback-content">{{ detail.content }}</p>
             </section>
+            <section class="detail-section">
+              <div class="detail-section__heading"><h2>附件图片</h2></div>
+              <NSpin :show="attachmentsLoading">
+                <p v-if="detail.attachments.length === 0" class="feedback-attachment-empty">无附件</p>
+                <NImageGroup v-else>
+                  <div class="feedback-attachments">
+                    <div v-for="item in attachmentPreviews" :key="item.index" class="feedback-attachment">
+                      <NImage
+                        v-if="!item.failed"
+                        :src="item.url"
+                        :width="140"
+                        :height="110"
+                        object-fit="cover"
+                        :alt="`附件 ${item.index + 1}`"
+                      />
+                      <span v-else>附件 {{ item.index + 1 }} 加载失败</span>
+                    </div>
+                  </div>
+                </NImageGroup>
+                <NButton
+                  v-if="attachmentPreviews.some(item => item.failed)"
+                  size="small"
+                  :disabled="attachmentsLoading"
+                  @click="
+                    clearAttachmentPreviews();
+                    loadAttachments(detail, detailSequence);
+                  "
+                >
+                  重新加载附件
+                </NButton>
+              </NSpin>
+            </section>
           </template>
         </NSpin>
         <template #footer>
@@ -345,7 +477,18 @@ void reload();
             <span class="drawer-footer__hint">
               {{ detail?.isAnonymous ? '匿名反馈不保留提交者学号' : '用户提交的原始反馈内容' }}
             </span>
-            <NButton @click="drawerVisible = false">关闭</NButton>
+            <NSpace>
+              <NButton
+                v-if="detail"
+                type="primary"
+                :loading="handling"
+                :disabled="detailLoading || handling"
+                @click="toggleHandling"
+              >
+                {{ detail.isHandled ? '恢复未处理' : '标记已处理' }}
+              </NButton>
+              <NButton @click="drawerVisible = false">关闭</NButton>
+            </NSpace>
           </div>
         </template>
       </NDrawerContent>
@@ -358,10 +501,32 @@ void reload();
 
 @container management-search (min-width: 1000px) {
   .management-page--feedback .search-form--compact {
-    grid-template-columns: minmax(160px, 1fr) minmax(150px, 1fr) minmax(130px, 0.8fr);
+    grid-template-columns: minmax(160px, 1fr) minmax(150px, 1fr) repeat(2, minmax(130px, 0.8fr));
   }
 }
 
+.feedback-metadata {
+  :deep(.n-descriptions-table-content__label),
+  :deep(.n-descriptions-table-content__content) {
+    display: inline-block;
+    vertical-align: middle;
+  }
+}
+
+.feedback-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  min-height: 40px;
+}
+.feedback-attachment {
+  overflow: hidden;
+  border-radius: 8px;
+  color: var(--management-muted);
+}
+.feedback-attachment-empty {
+  color: var(--management-muted);
+}
 .feedback-content {
   margin: 0;
   color: var(--management-text);

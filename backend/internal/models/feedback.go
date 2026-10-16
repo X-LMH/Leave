@@ -11,6 +11,8 @@ type Feedback struct {
 	ID          uint           `gorm:"column:id;primaryKey;autoIncrement"`
 	StudentID   *string        `gorm:"column:student_id"`
 	IsAnonymous bool           `gorm:"column:is_anonymous"`
+	IsHandled   bool           `gorm:"column:is_handled"`
+	Attachments *string        `gorm:"column:attachments"`
 	Content     string         `gorm:"column:content"`
 	CreatedAt   time.Time      `gorm:"column:created_at"`
 	UpdatedAt   time.Time      `gorm:"column:updated_at"`
