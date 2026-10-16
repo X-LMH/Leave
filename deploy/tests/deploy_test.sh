@@ -57,7 +57,6 @@ ADMIN_VERSION=1
 APK_NAME=leave-android-11-1.0.0.apk
 ADMIN_HOST=fixture.invalid
 ADMIN_PORT=80
-if [ "$DEPLOY_ENV" = prod ]; then ADMIN_PORT=8001; fi
 APP_PORT=19999
 MODE=admin
 BACKEND_RUNNING=1

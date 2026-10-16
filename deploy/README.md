@@ -28,7 +28,7 @@
 | YAML | `config/config.test.yaml` | `config/config.server.yaml` |
 | loopback MySQL | `leave_list_test` | `leave_list` |
 | 后端 HTTP 端口 | `9000` | `8000` |
-| admin HTTP 端口 | `80` | `8001` |
+| admin HTTP 端口 | `80` | `80` |
 | 宝塔 Go 项目 | `Leave_test` | `Leave` |
 | 宝塔配置的运行用户 | `www` | `www` |
 | admin 域名 | `admin-test.leave.mhspace.dpdns.org` | `admin.leave.mhspace.dpdns.org` |
@@ -93,14 +93,14 @@ CI 从干净检出复制所选模板构建，并仅打包所选目录。Vite 还
 
 ## 首次生产 admin 建站
 
-本次只读检查时，生产 API 健康，但生产 admin Nginx 站点尚未创建。首次发布 admin 前，在宝塔新增 `admin.leave.mhspace.dpdns.org` 静态站点，监听端口设为 `8001`，根目录设为 `/www/wwwroot/Leave/admin/current`，合入 [`nginx.admin.prod.conf`](nginx.admin.prod.conf) 的 location 配置，保留面板生成的证书与验证目录配置，并将 DNS 指向生产服务器。
+生产 admin 站点通过 Nginx 的 `80` 端口按域名提供服务，CD 使用相同端口检查同域 API。新环境首次建站时，在宝塔新增 `admin.leave.mhspace.dpdns.org` 静态站点，监听端口设为 `80`，根目录设为 `/www/wwwroot/Leave/admin/current`，合入 [`nginx.admin.prod.conf`](nginx.admin.prod.conf) 的 location 配置，保留面板生成的证书与验证目录配置，并将 DNS 指向生产服务器。已有站点无需重复创建。
 
 模板将同域 `/api/v1/` 转发到 127.0.0.1:8000，保留接口前缀；头像使用生产 uploads 目录，history 路由回退 index.html，首页不缓存，缺失 assets 返回 404。站点根目录可等待首次发布创建，API 代理必须先就绪。
 
 ```bash
 nginx -t
 # 检查通过后在宝塔重载 Nginx，再核验同域代理：
-curl --fail -H 'Host: admin.leave.mhspace.dpdns.org' http://127.0.0.1:8001/api/v1/health
+curl --fail -H 'Host: admin.leave.mhspace.dpdns.org' http://127.0.0.1:80/api/v1/health
 ```
 
 日常发布不会创建站点、修改 DNS 或改写 Nginx。admin 发布先启动后端并确认其健康，再检查站点的同域健康接口；检查失败时保留已启动的后端，不切换 admin。这样旧后端已停止或上次重启失败时，重试仍可恢复后端。上述首次服务器准备需另行执行，源码构建通过不代表已上线。

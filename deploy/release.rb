@@ -21,7 +21,7 @@ module Release
       'config' => 'config.server.yaml', 'project' => 'Leave',
       'admin_host' => 'admin.leave.mhspace.dpdns.org', 'admin_dist' => 'dist',
       'backend_dir' => '/www/wwwroot/Leave/backend', 'process_user' => 'www',
-      'admin_port' => 8001
+      'admin_port' => 80
     }
   }.freeze
 
