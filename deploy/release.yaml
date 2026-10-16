@@ -1,11 +1,12 @@
 backend:
-  version: 1
+  version: 2
 
 admin:
-  version: 1
+  version: 2
 
 app:
   android:
     apk_directory: deploy/releases
     release_notes:
-      - 一个测试版本
+      - 意见反馈支持上传图片
+      - 优化反馈提交体验
