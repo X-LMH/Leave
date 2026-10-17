@@ -1,12 +1,13 @@
 backend:
-  version: 2
+  version: 3
 
 admin:
-  version: 2
+  version: 3
 
 app:
   android:
     apk_directory: deploy/releases
     release_notes:
-      - 意见反馈支持上传图片
-      - 优化反馈提交体验
+      - 优化登录注册流程，注册后自动登录
+      - 优化修改密码体验，提升账号安全性
+      - 避免请假申请提交成功后重复提交
