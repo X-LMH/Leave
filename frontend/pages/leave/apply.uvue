@@ -129,7 +129,7 @@
 					</view>
 				</view>
 				<view class="submit-button" @click="submit">
-					<text class="submit-text">提交申请</text>
+					<text class="submit-text">{{ isSubmitting ? '提交中…' : createdRecordID > 0 ? '查看已提交申请' : '提交申请' }}</text>
 				</view>
 			</view>
 		</scroll-view>
@@ -256,6 +256,8 @@ for (let value = 0; value < 60; value++) {
 }
 const dateDays = ref<number[]>([])
 const isSubmitting = ref(false)
+const createdRecordID = ref(0)
+const openingDetail = ref(false)
 const appliedAt = ref('')
 function twoDigits(value: number): string {
 	return value < 10 ? `0${value}` : `${value}`
@@ -464,6 +466,7 @@ function initializeDestinationRegion() {
 initializeDestinationRegion()
 
 function goHome() {
+	if (isSubmitting.value || openingDetail.value) return
 	uni.reLaunch({ url: '/pages/home/index' })
 }
 function toRFC3339(value: string): string {
@@ -482,8 +485,26 @@ async function loadLeaveTypes() {
 	}
 }
 
+function openCreatedRecord() {
+	if (openingDetail.value || createdRecordID.value <= 0) return
+	openingDetail.value = true
+	uni.redirectTo({
+		url: `/pages/leave/detail?id=${createdRecordID.value}`,
+		fail: () => {
+			uni.showToast({ title: '申请已提交，点击按钮查看详情', icon: 'none' })
+		},
+		complete: () => { openingDetail.value = false }
+	})
+}
+
+onBackPress((): boolean => isSubmitting.value || openingDetail.value)
+
 async function submit() {
 	if (isSubmitting.value) return
+	if (createdRecordID.value > 0) {
+		openCreatedRecord()
+		return
+	}
 	if (leaveType.value == '' || leaveTypeID.value == 0) {
 		uni.showToast({ title: '请选择请假类型', icon: 'none' })
 		return
@@ -504,6 +525,7 @@ async function submit() {
 		uni.showToast({ title: '请选择请假去向', icon: 'none' })
 		return
 	}
+	uni.hideKeyboard()
 	isSubmitting.value = true
 	try {
 		const now = new Date().toISOString()
@@ -519,7 +541,8 @@ async function submit() {
 			applied_at: appliedAt.value,
 			approved_at: now
 		})
-		uni.navigateTo({ url: `/pages/leave/detail?id=${record.id}` })
+		createdRecordID.value = record.id
+		openCreatedRecord()
 	} catch (error) {
 		const message = (error as Error).message
 		uni.showToast({ title: message == null || message == '' ? '提交申请失败' : message, icon: 'none' })
