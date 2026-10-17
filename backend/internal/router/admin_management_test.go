@@ -44,6 +44,7 @@ func TestStudentRoutesRequireLogin(t *testing.T) {
 		{"GET", "/api/v1/admin/students/1"},
 		{"PUT", "/api/v1/admin/students/1"},
 		{"PUT", "/api/v1/admin/students/1/status"},
+		{"POST", "/api/v1/admin/students/1/reset-password"},
 		{"GET", "/api/v1/admin/class-options"},
 		{"GET", "/api/v1/admin/apartment-options"},
 		{"GET", "/api/v1/admin/leave-type-options"},

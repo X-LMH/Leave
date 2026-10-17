@@ -4,7 +4,7 @@ import { NButton, NTag, useThemeVars } from 'naive-ui';
 import type { DataTableColumns, FormInst, FormRules } from 'naive-ui';
 import StudentVersion from './components/student-version.vue';
 import { useAppStore } from '@/store/modules/app';
-import { getStudent, queryStudents, saveStudent, setStudentStatus } from '@/service/api/student';
+import { getStudent, queryStudents, saveStudent, setStudentStatus, resetStudentPassword } from '@/service/api/student';
 import type { Student, StudentListItem, StudentProfile, StudentQuery } from '@/service/api/student';
 import { getClassOptions, getApartmentOptions } from '@/service/api/options';
 import type { ClassOption, ApartmentOption } from '@/service/api/options';
@@ -133,6 +133,7 @@ const editing = ref(false);
 const saving = ref(false);
 const opening = ref(false);
 const changingId = ref<number | null>(null);
+const resettingPassword = ref(false);
 const formRef = ref<FormInst | null>(null);
 const model = reactive<StudentProfile>({
   name: '',
@@ -190,7 +191,7 @@ const rules: FormRules = {
   dormitoryNumber: { max: 32, message: '宿舍号最多32字符', trigger: 'input' }
 };
 async function openDrawer(row: Pick<StudentListItem, 'id'>, edit: boolean) {
-  if (opening.value || saving.value || changingId.value !== null) return;
+  if (opening.value || saving.value || resettingPassword.value || changingId.value !== null) return;
   opening.value = true;
   try {
     const { data: student, error } = await getStudent(row.id);
@@ -249,8 +250,33 @@ async function submit() {
     saving.value = false;
   }
 }
+function confirmResetPassword(row: Pick<StudentListItem, 'id' | 'studentId'>) {
+  if (editing.value || opening.value || saving.value || resettingPassword.value || changingId.value !== null) return;
+  const { id, studentId } = row;
+  window.$dialog?.warning({
+    title: '重置密码确认',
+    content: `确认将学生账号「${studentId}」的密码重置为 12345678 吗？`,
+    positiveText: '重置密码',
+    negativeText: '取消',
+    onPositiveClick: async () => {
+      if (editing.value || opening.value || saving.value || resettingPassword.value || changingId.value !== null) return false;
+      resettingPassword.value = true;
+      try {
+        const { error } = await resetStudentPassword(id);
+        if (error) return false;
+        window.$message?.success('密码已重置为 12345678');
+        return true;
+      } catch {
+        window.$message?.error('重置密码失败，请重试');
+        return false;
+      } finally {
+        resettingPassword.value = false;
+      }
+    }
+  });
+}
 function confirmStatus(row: Pick<StudentListItem, 'id' | 'studentId' | 'status'>) {
-  if (editing.value || opening.value || saving.value || changingId.value !== null) return;
+  if (editing.value || opening.value || saving.value || resettingPassword.value || changingId.value !== null) return;
   const status = row.status === 1 ? 0 : 1;
   const label = status === 1 ? '启用' : '停用';
   window.$dialog?.warning({
@@ -259,7 +285,7 @@ function confirmStatus(row: Pick<StudentListItem, 'id' | 'studentId' | 'status'>
     positiveText: label,
     negativeText: '取消',
     onPositiveClick: async () => {
-      if (changingId.value !== null) return false;
+      if (opening.value || saving.value || resettingPassword.value || changingId.value !== null) return false;
       changingId.value = row.id;
       try {
         const { data: updated, error } = await setStudentStatus(row.id, status);
@@ -330,7 +356,7 @@ const columns: DataTableColumns<StudentListItem> = [
           type: 'primary',
           secondary: true,
           class: 'table-detail-button',
-          disabled: opening.value || saving.value,
+          disabled: opening.value || saving.value || resettingPassword.value,
           onClick: () => openDrawer(row, false)
         },
         () => '详情'
@@ -430,14 +456,14 @@ void reload();
     <NDrawer
       v-model:show="drawerVisible"
       :width="appStore.isMobile ? '100%' : 720"
-      :close-on-esc="!saving"
-      :mask-closable="!saving"
+      :close-on-esc="!saving && !resettingPassword"
+      :mask-closable="!saving && !resettingPassword"
     >
       <NDrawerContent
         class="management-drawer"
         :style="themeStyle"
         :title="editing ? '编辑学生资料' : '学生详情'"
-        :closable="!saving"
+        :closable="!saving && !resettingPassword"
         :native-scrollbar="false"
       >
         <template v-if="selected">
@@ -573,22 +599,32 @@ void reload();
             <div class="drawer-actions">
               <NButton
                 v-if="!editing"
+                type="warning"
+                secondary
+                :loading="resettingPassword"
+                :disabled="opening || saving || resettingPassword || changingId !== null"
+                @click="confirmResetPassword(selected)"
+              >
+                重置密码
+              </NButton>
+              <NButton
+                v-if="!editing"
                 :type="selected.status === 1 ? 'warning' : 'success'"
                 secondary
                 :loading="changingId === selected.id"
-                :disabled="opening || saving || changingId !== null"
+                :disabled="opening || saving || resettingPassword || changingId !== null"
                 @click="confirmStatus(selected)"
               >
                 {{ selected.status === 1 ? '停用账号' : '启用账号' }}
               </NButton>
-              <NButton :disabled="saving" @click="editing ? (editing = false) : (drawerVisible = false)">
+              <NButton :disabled="saving || resettingPassword" @click="editing ? (editing = false) : (drawerVisible = false)">
                 {{ editing ? '取消编辑' : '关闭' }}
               </NButton>
               <NButton v-if="editing" type="primary" :loading="saving" @click="submit">保存修改</NButton>
               <NButton
                 v-else
                 type="primary"
-                :disabled="opening || saving || changingId !== null"
+                :disabled="opening || saving || resettingPassword || changingId !== null"
                 @click="openDrawer(selected, true)"
               >
                 编辑资料

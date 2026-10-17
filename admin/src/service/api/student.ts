@@ -139,3 +139,7 @@ export async function setStudentStatus(id: number, status: number) {
   if (result.error) return result;
   return { ...result, data: studentRecord(result.data) };
 }
+
+export function resetStudentPassword(id: number) {
+  return request<null>({ url: `/admin/students/${id}/reset-password`, method: 'post' });
+}

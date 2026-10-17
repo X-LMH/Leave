@@ -96,3 +96,15 @@ func UpdateStudentStatusHandler(c *gin.Context) {
 	}
 	response.Success(c, data)
 }
+
+func ResetStudentPasswordHandler(c *gin.Context) {
+	id, ok := managementID(c)
+	if !ok {
+		return
+	}
+	if err := adminservice.ResetAdminStudentPassword(id); err != nil {
+		managementError(c, err)
+		return
+	}
+	response.Success(c, nil)
+}

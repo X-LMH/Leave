@@ -7,6 +7,7 @@ import (
 	"backend/internal/models"
 	"backend/internal/response"
 	adminservice "backend/internal/service/admin"
+	appservice "backend/internal/service/app"
 	"backend/internal/utils/jwt"
 	passwordutil "backend/internal/utils/password"
 	"encoding/json"
@@ -16,6 +17,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 	"testing"
@@ -213,4 +215,135 @@ func TestAdminPasswordIntegration(t *testing.T) {
 	if firstErr != nil || secondErr != nil || first == second || user.Role != models.RoleAdmin || user.Status != models.UserStatusActive {
 		t.Fatal("unexpected persisted account state")
 	}
+	t.Run("student password reset", func(t *testing.T) {
+		definition, err := os.ReadFile(filepath.Join("..", "..", "database", "tables", "profiles.sql"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := testDB.Exec(string(definition)).Error; err != nil {
+			t.Fatal(err)
+		}
+
+		callReset := func(auth, id string) response.Response {
+			t.Helper()
+			req := httptest.NewRequest("POST", "/api/v1/admin/students/"+id+"/reset-password", nil)
+			if auth != "" {
+				req.Header.Set("Authorization", "Bearer "+auth)
+			}
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+			var result response.Response
+			if err := json.Unmarshal(w.Body.Bytes(), &result); err != nil {
+				t.Fatal(err)
+			}
+			if w.Code != result.Code.HTTPStatus() || result.Data != nil {
+				t.Fatal("unexpected status or credential response")
+			}
+			return result
+		}
+		var student models.User
+		if err := testDB.Where("student_id = ?", "student").First(&student).Error; err != nil {
+			t.Fatal(err)
+		}
+		id := strconv.FormatUint(uint64(student.ID), 10)
+		if got := callReset("", id); got.Code != response.CodeNeedLogin {
+			t.Fatal("anonymous reset allowed")
+		}
+		for _, role := range []string{models.RoleStudent, models.RoleAdmin} {
+			auth, err := jwt.GenerateToken("student", role)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := callReset(auth, id); got.Code != response.CodeNeedLogin {
+				t.Fatal("student reset allowed")
+			}
+		}
+		for _, invalid := range []string{"0", "-1", "abc", "4294967296"} {
+			if got := callReset(token, invalid); got.Code != response.CodeInvalidParam {
+				t.Fatal("invalid ID accepted")
+			}
+		}
+		var admin models.User
+		if err := testDB.Where("student_id = ?", "admin").First(&admin).Error; err != nil {
+			t.Fatal(err)
+		}
+		if got := callReset(token, strconv.FormatUint(uint64(admin.ID), 10)); got.Code != response.CodeManagementNotFound {
+			t.Fatal("admin target accepted")
+		}
+		if got := callReset(token, "4294967295"); got.Code != response.CodeManagementNotFound {
+			t.Fatal("missing target accepted")
+		}
+		for _, target := range []*models.User{
+			&student,
+			{StudentID: "disabled-student", Password: initialHash, Role: models.RoleStudent, Status: models.UserStatusDisabled},
+			{StudentID: "deleted-student", Password: initialHash, Role: models.RoleStudent, Status: models.UserStatusActive},
+		} {
+			if target.ID == 0 {
+				if err := testDB.Create(target).Error; err != nil {
+					t.Fatal(err)
+				}
+			}
+			deleted := target.StudentID == "deleted-student"
+			if deleted {
+				if err := testDB.Delete(target).Error; err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := testDB.Unscoped().First(target, target.ID).Error; err != nil {
+				t.Fatal(err)
+			}
+			before := *target
+			got := callReset(token, strconv.FormatUint(uint64(target.ID), 10))
+			expected := response.CodeSuccess
+			if deleted {
+				expected = response.CodeManagementNotFound
+			}
+			if got.Code != expected {
+				t.Fatalf("reset %s: %d", target.StudentID, got.Code)
+			}
+			var after models.User
+			if err := testDB.Unscoped().First(&after, target.ID).Error; err != nil {
+				t.Fatal(err)
+			}
+			if deleted {
+				if after.Password != before.Password {
+					t.Fatal("deleted account changed")
+				}
+			} else {
+				matched, err := passwordutil.Verify(after.Password, "12345678")
+				if err != nil || !matched || after.Password == "12345678" {
+					t.Fatal("default password hash invalid")
+				}
+				matched, err = passwordutil.Verify(after.Password, "old-pass")
+				if err != nil || matched {
+					t.Fatal("old password still valid")
+				}
+			}
+			after.Password, after.UpdatedAt = before.Password, before.UpdatedAt
+			if !reflect.DeepEqual(after, before) {
+				t.Fatal("reset changed unrelated account fields")
+			}
+		}
+
+		if _, err := appservice.Login(&dto.LoginRequest{StudentID: "student", Password: "old-pass"}); !errors.Is(err, mysql.ErrorInvalidPassword) {
+			t.Fatal("old student password can still log in")
+		}
+		if _, err := appservice.Login(&dto.LoginRequest{StudentID: "student", Password: "12345678"}); err != nil {
+			t.Fatalf("default password cannot log in: %v", err)
+		}
+		var unchangedAdmin models.User
+		if err := testDB.First(&unchangedAdmin, admin.ID).Error; err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(admin, unchangedAdmin) {
+			t.Fatal("reset changed administrator")
+		}
+		var untouched models.User
+		if err := testDB.Where("student_id = ?", "disabled").First(&untouched).Error; err != nil {
+			t.Fatal(err)
+		}
+		if untouched.Password != initialHash {
+			t.Fatal("unrelated password changed")
+		}
+	})
 }

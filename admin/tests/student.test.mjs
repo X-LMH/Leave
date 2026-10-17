@@ -80,3 +80,67 @@ test('student detail continues to load complete profile fields by account id', a
   assert.equal(data.lastSeenDevice, 'Android');
   assert.equal(data.updatedAt, Date.parse(listRow.created_at));
 });
+
+
+test('reset password sends only the selected account ID', async () => {
+  const { api, calls } = setup();
+  const pending = api.resetStudentPassword(7);
+  assert.equal(calls[0].config.url, '/admin/students/7/reset-password');
+  assert.equal(calls[0].config.method, 'post');
+  assert.equal(calls[0].config.data, undefined);
+  calls[0].resolve({ error: null, data: null });
+  assert.equal((await pending).error, null);
+});
+
+function setupReset() {
+  const calls = [], dialogs = [], messages = [];
+  const source = readFileSync(new URL('../src/views/student/index.vue', import.meta.url), 'utf8');
+  const handler = source.slice(source.indexOf('function confirmResetPassword('), source.indexOf('function confirmStatus('));
+  const state = Object.fromEntries(['editing', 'opening', 'saving', 'resettingPassword'].map(key => [key, { value: false }]));
+  state.changingId = { value: null };
+  const context = {
+    ...state,
+    resetStudentPassword: id => new Promise((resolve, reject) => calls.push({ id, resolve, reject })),
+    window: { $dialog: { warning: config => dialogs.push(config) }, $message: {
+      success: value => messages.push(value), error: value => messages.push(value)
+    } }
+  };
+  vm.runInNewContext(ts.transpileModule(handler, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText, context);
+  return { state, calls, dialogs, messages, confirm: context.confirmResetPassword };
+}
+
+test('reset requires confirmation and blocks duplicate requests until completion', async () => {
+  const { state, calls, dialogs, messages, confirm } = setupReset();
+  const row = { id: 7, studentId: '202600010001' };
+  confirm(row);
+  assert.equal(calls.length, 0);
+  assert.ok(dialogs[0].content.includes(row.studentId));
+  assert.ok(dialogs[0].content.includes('12345678'));
+  const pending = dialogs[0].onPositiveClick();
+  row.id = 8;
+  assert.equal(calls[0].id, 7);
+  assert.equal(state.resettingPassword.value, true);
+  assert.equal(await dialogs[0].onPositiveClick(), false);
+  confirm(row);
+  assert.equal(dialogs.length, 1);
+  calls[0].resolve({ error: null });
+  assert.equal(await pending, true);
+  assert.equal(state.resettingPassword.value, false);
+  assert.equal(messages[0], '\u5bc6\u7801\u5df2\u91cd\u7f6e\u4e3a 12345678');
+});
+
+test('reset failures release the busy state and allow retry', async () => {
+  for (const throws of [false, true]) {
+    const { state, calls, dialogs, confirm } = setupReset();
+    confirm({ id: 7, studentId: 'student' });
+    const pending = dialogs[0].onPositiveClick();
+    if (throws) calls[0].reject(new Error('offline'));
+    else calls[0].resolve({ error: {} });
+    assert.equal(await pending, false);
+    assert.equal(state.resettingPassword.value, false);
+    const retry = dialogs[0].onPositiveClick();
+    assert.equal(calls.length, 2);
+    calls[1].resolve({ error: null });
+    assert.equal(await retry, true);
+  }
+});

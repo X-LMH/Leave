@@ -7,6 +7,7 @@ import (
 	"backend/internal/models"
 	"backend/internal/service"
 	"backend/internal/utils/file"
+	passwordutil "backend/internal/utils/password"
 	"backend/internal/utils/validator"
 	"errors"
 	"strings"
@@ -191,4 +192,21 @@ func studentProfile(studentID string, input *dto.ProfileRequest) *models.Profile
 		ApartmentID:     input.ApartmentID,
 		DormitoryNumber: input.DormitoryNumber,
 	}
+}
+
+const defaultStudentPassword = "12345678"
+
+// ResetAdminStudentPassword only changes the explicitly selected student account.
+func ResetAdminStudentPassword(id uint) error {
+	hash, err := passwordutil.Hash(defaultStudentPassword)
+	if err != nil {
+		return err
+	}
+	return mysql.Transaction(func(tx *gorm.DB) error {
+		user, err := mysql.GetStudentForUpdate(tx, id)
+		if err != nil {
+			return err
+		}
+		return mysql.UpdateUserPassword(tx, user.ID, hash)
+	})
 }
