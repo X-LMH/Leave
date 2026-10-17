@@ -45,42 +45,44 @@ try {
         }
     }
 
-    # Check both ports before changing anything; preserve unrelated mappings.
+    # The backend is required; the avatar server is optional.
+    $readyPorts = @()
     foreach ($port in @(8080, 8081)) {
-        $endpoint = "tcp:$port"
-        if ($mappings.ContainsKey($endpoint) -and $mappings[$endpoint] -ne $endpoint) {
-            throw "$endpoint already maps to $($mappings[$endpoint]); no mappings were changed."
-        }
-        $client = New-Object System.Net.Sockets.TcpClient
         try {
-            $connection = $client.ConnectAsync('127.0.0.1', $port)
-            if (-not $connection.Wait(2000)) { throw "Port $port timed out." }
-        } finally {
-            $client.Dispose()
-        }
-    }
+            $endpoint = "tcp:$port"
+            if ($mappings.ContainsKey($endpoint) -and $mappings[$endpoint] -ne $endpoint) {
+                throw "$endpoint already maps to $($mappings[$endpoint]); existing mapping was preserved."
+            }
+            $client = New-Object System.Net.Sockets.TcpClient
+            try {
+                $connection = $client.ConnectAsync('127.0.0.1', $port)
+                if (-not $connection.Wait(2000)) { throw "Port $port timed out." }
+            } finally {
+                $client.Dispose()
+            }
 
-    foreach ($port in @(8080, 8081)) {
-        $endpoint = "tcp:$port"
-        if (-not $mappings.ContainsKey($endpoint)) {
-            & $AdbPath -s $DeviceSerial reverse $endpoint $endpoint
-            if ($LASTEXITCODE -ne 0) { throw "Could not forward $endpoint. Run this script again after reconnecting." }
-        }
-    }
+            if (-not $mappings.ContainsKey($endpoint)) {
+                & $AdbPath -s $DeviceSerial reverse $endpoint $endpoint
+                if ($LASTEXITCODE -ne 0) { throw "Could not forward $endpoint." }
+            }
 
-    $verifiedLines = @(& $AdbPath -s $DeviceSerial reverse --list)
-    if ($LASTEXITCODE -ne 0) { throw 'Could not verify port mappings.' }
-    foreach ($port in @(8080, 8081)) {
-        if (-not ($verifiedLines -match "\stcp:$port\s+tcp:$port\s*$")) {
-            throw "Port $port mapping is missing. Run this script again after reconnecting."
+            $verifiedLines = @(& $AdbPath -s $DeviceSerial reverse --list)
+            if ($LASTEXITCODE -ne 0) { throw 'Could not verify port mappings.' }
+            if (-not ($verifiedLines -match "\stcp:$port\s+tcp:$port\s*$")) {
+                throw "Port $port mapping is missing."
+            }
+            $readyPorts += $port
+        } catch {
+            if ($port -eq 8080) { throw }
+            Write-Host "Skipping optional port 8081: $($_.Exception.Message)" -ForegroundColor Yellow
         }
     }
-    Write-Host "USB forwarding is ready for device $DeviceSerial." -ForegroundColor Green
-    Write-Host '8080: Go backend; 8081: avatar server. Reopen or retry the App.'
+    Write-Host "USB forwarding is ready for device $DeviceSerial. Ports: $($readyPorts -join ', ')." -ForegroundColor Green
+    Write-Host '8080: Go backend; 8081: optional avatar server. Reopen or retry the App.'
     Write-Host 'Run this script again after reconnecting USB or restarting ADB.'
     exit 0
 } catch {
     Write-Host "Failed: $($_.Exception.Message)" -ForegroundColor Red
-    Write-Host 'Keep the Go backend and Nginx avatar server running; allow USB debugging on the phone.'
+    Write-Host 'Keep the Go backend running; allow USB debugging on the phone.'
     exit 1
 }
