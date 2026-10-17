@@ -29,16 +29,6 @@
 			}
 		},
 		{
-			"path": "pages/auth/register",
-			"style": {
-				"navigationStyle": "custom",
-				"disableScroll": true,
-				"backgroundColor": "#F4F7FF",
-				"backgroundColorContent": "#F4F7FF",
-				"swipeBackAsBackPress": true
-			}
-		},
-		{
 			"path": "pages/home/index",
 			"style": {
 				"navigationStyle": "custom",

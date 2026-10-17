@@ -7,23 +7,36 @@ import (
 	"backend/internal/utils/jwt"
 	passwordutil "backend/internal/utils/password"
 	"strings"
+	"time"
 
 	"gorm.io/gorm"
 )
 
-func Register(req *dto.RegisterRequest) (err error) {
+func Register(req *dto.RegisterRequest) (*dto.LoginResponse, error) {
 	studentID := strings.TrimSpace(req.StudentID)
+	// 先准备会话，再一次性写入账号，避免签发失败时留下已创建的账号。
+	data, err := newLoginResponse(dto.User{StudentID: studentID}, models.RoleStudent, false)
+	if err != nil {
+		return nil, err
+	}
 	hash, err := passwordutil.Hash(req.Password)
 	if err != nil {
-		return err
+		return nil, err
 	}
+	now := time.Now()
 	student := &models.User{
-		StudentID: studentID,
-		Password:  hash,
-		Role:      models.RoleStudent,
-		Status:    models.UserStatusActive,
+		StudentID:      studentID,
+		Password:       hash,
+		Role:           models.RoleStudent,
+		Status:         models.UserStatusActive,
+		LastSeenAt:     &now,
+		LastSeenDevice: strings.TrimSpace(req.DeviceName),
+		AppVersion:     strings.TrimSpace(req.AppVersion),
 	}
-	return mysql.CreateUser(student)
+	if err := mysql.CreateUser(student); err != nil {
+		return nil, err
+	}
+	return data, nil
 }
 
 func Login(req *dto.LoginRequest) (*dto.LoginResponse, error) {
@@ -53,19 +66,22 @@ func Login(req *dto.LoginRequest) (*dto.LoginResponse, error) {
 		return nil, err
 	}
 
-	token, err := jwt.GenerateToken(user.StudentID, user.Role)
-	if err != nil {
-		return nil, err
-	}
-
 	loginUser, profileCompleted, err := buildLoginUser(user.StudentID)
 	if err != nil {
 		return nil, err
 	}
 
+	return newLoginResponse(loginUser, user.Role, profileCompleted)
+}
+
+func newLoginResponse(user dto.User, role string, profileCompleted bool) (*dto.LoginResponse, error) {
+	token, err := jwt.GenerateToken(user.StudentID, role)
+	if err != nil {
+		return nil, err
+	}
 	return &dto.LoginResponse{
 		Token:            token,
-		User:             loginUser,
+		User:             user,
 		ProfileCompleted: profileCompleted,
 	}, nil
 }

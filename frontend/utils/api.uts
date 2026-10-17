@@ -27,6 +27,14 @@ export type ApiResponse<T> = {
 	data: T
 }
 
+export class ApiError extends Error {
+	code: number
+	constructor(code: number, message: string) {
+		super(message)
+		this.code = code
+	}
+}
+
 export type AppVersionInfo = {
 	platform: string
 	latest_version_code: number
@@ -399,7 +407,7 @@ export function request<T>(path: string, method: 'GET' | 'POST' | 'DELETE' = 'GE
 				if (code == 5002) {
 					handleForceUpdate(body['data'] as UTSJSONObject | null)
 				}
-				reject(new Error(message == '' ? '请求失败' : message))
+				reject(new ApiError(code, message == '' ? '请求失败' : message))
 			},
 			fail: (error) => {
 				const detail = error.errMsg
@@ -409,12 +417,15 @@ export function request<T>(path: string, method: 'GET' | 'POST' | 'DELETE' = 'GE
 	})
 }
 
-export function register(studentID: string, password: string, rePassword: string): Promise<void> {
-	return request<void>('/auth/register', 'POST', {
+export async function register(studentID: string, password: string, rePassword: string, deviceName: string, appVersion: string): Promise<LoginData> {
+	const data = await request<UTSJSONObject>('/auth/register', 'POST', {
 		student_id: studentID,
 		password: password,
-		re_password: rePassword
+		re_password: rePassword,
+		device_name: deviceName,
+		app_version: appVersion
 	})
+	return loginDataFromJSON(data)
 }
 
 export async function login(studentID: string, password: string, deviceName: string, appVersion: string): Promise<LoginData> {
@@ -424,6 +435,10 @@ export async function login(studentID: string, password: string, deviceName: str
 		device_name: deviceName,
 		app_version: appVersion
 	})
+	return loginDataFromJSON(data)
+}
+
+function loginDataFromJSON(data: UTSJSONObject): LoginData {
 	const loginData = new LoginData()
 	loginData.token = data['token'] as string
 	const userData = data['user'] as UTSJSONObject

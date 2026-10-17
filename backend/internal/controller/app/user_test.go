@@ -1,6 +1,55 @@
 package app
 
-import "testing"
+import (
+	"backend/internal/dto"
+	"backend/internal/response"
+	"bytes"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+
+	"github.com/gin-gonic/gin"
+)
+
+func TestRegisterRejectsInvalidRequests(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	for _, tc := range []struct {
+		name string
+		edit func(*dto.RegisterRequest)
+	}{
+		{"invalid student ID", func(p *dto.RegisterRequest) { p.StudentID = "123" }},
+		{"short password", func(p *dto.RegisterRequest) {
+			p.Password = "123"
+			p.RePassword = "123"
+		}},
+		{"password mismatch", func(p *dto.RegisterRequest) { p.RePassword = "different" }},
+		{"long device name", func(p *dto.RegisterRequest) { p.DeviceName = strings.Repeat("机", 256) }},
+		{"long version", func(p *dto.RegisterRequest) { p.AppVersion = strings.Repeat("v", 65) }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			p := dto.RegisterRequest{StudentID: "202410201016", Password: "123456", RePassword: "123456"}
+			tc.edit(&p)
+			body, err := json.Marshal(p)
+			if err != nil {
+				t.Fatal(err)
+			}
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+			c.Request = httptest.NewRequest(http.MethodPost, "/api/v1/auth/register", bytes.NewReader(body))
+			c.Request.Header.Set("Content-Type", "application/json")
+			RegisterHandler(c)
+			var result response.Response
+			if err := json.Unmarshal(w.Body.Bytes(), &result); err != nil {
+				t.Fatal(err)
+			}
+			if result.Code != response.CodeInvalidParam || w.Code != http.StatusBadRequest {
+				t.Fatalf("status=%d body=%s", w.Code, w.Body.String())
+			}
+		})
+	}
+}
 
 func TestValidStudentID(t *testing.T) {
 	tests := []struct {

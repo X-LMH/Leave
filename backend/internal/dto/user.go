@@ -6,6 +6,8 @@ type RegisterRequest struct {
 	StudentID  string `json:"student_id" binding:"required"`
 	Password   string `json:"password" binding:"required"`
 	RePassword string `json:"re_password" binding:"required"`
+	DeviceName string `json:"device_name" binding:"max=255"`
+	AppVersion string `json:"app_version" binding:"max=64"`
 }
 
 // LoginRequest is the JSON body accepted by the login endpoint.
@@ -23,7 +25,7 @@ type User struct {
 	ClassName string `json:"class_name"`
 }
 
-// LoginResponse is returned in the data field after a successful login.
+// LoginResponse is returned after successful registration or login.
 type LoginResponse struct {
 	Token            string `json:"token"`
 	User             User   `json:"user"`

@@ -1,38 +1,75 @@
 <template>
-	<AuthPageShell ref="pageShell" enter-direction="forward" title="登录" subtitle="欢迎使用请假申请系统" button-text="登录" switch-prefix="还没有账号?" switch-text="立即注册" card-class="auth-login-card" @submit="login" @switch-page="goRegister">
-		<AuthInputField v-model="studentID" label="学号" placeholder="请输入学号" icon="/static/auth/icons/denglu.svg" :password="false" :required="true" :maxlength="12" field-class="" />
-		<AuthInputField v-model="password" label="密码" placeholder="请输入密码" icon="/static/auth/icons/mima.svg" :password="true" :required="true" :maxlength="30" field-class="auth-field-spaced" />
-		<template #card-footer>
-			<view class="register-link" @click="goRegister">
-				<text class="register-link-text">去注册</text>
-				<text class="register-arrow">›</text>
-			</view>
-		</template>
+	<AuthPageShell enter-direction="forward" :title="isRegister ? '注册' : '登录'" :subtitle="isRegister ? '创建账号后即可使用请假申请系统' : '欢迎使用请假申请系统'" :button-text="submitText" :busy="submitting" :switch-prefix="isRegister ? '已有账号?' : '还没有账号?'" :switch-text="isRegister ? '立即登录' : '立即注册'" :card-class="isRegister ? 'auth-register-card' : 'auth-login-card'" @submit="submit" @switch-page="switchMode">
+		<AuthInputField :disabled="formLocked" v-model="studentID" label="学号" placeholder="请输入学号" icon="/static/auth/icons/denglu.svg" :password="false" :required="true" :maxlength="12" field-class="" />
+		<AuthInputField :key="isRegister ? 'register-password' : 'login-password'" :disabled="formLocked" v-model="password" @confirm="confirmPassword" label="密码" placeholder="请输入密码" icon="/static/auth/icons/mima.svg" :password="true" :required="true" :maxlength="30" field-class="auth-field-spaced" />
+		<AuthInputField v-if="isRegister" :disabled="formLocked" v-model="rePassword" @confirm="submit" label="确认密码" placeholder="请再次输入密码" icon="/static/auth/icons/mima.svg" :password="true" :required="true" :maxlength="30" field-class="auth-field-spaced" />
 	</AuthPageShell>
 </template>
 
 <script setup lang="uts">
 import AuthPageShell from '@/components/AuthPageShell.uvue'
 import AuthInputField from '@/components/AuthInputField.uvue'
-import { ref } from 'vue'
-import { login as loginRequest, saveSession } from '@/utils/api.uts'
+import { computed, ref } from 'vue'
+import { ApiError, login as loginRequest, register, saveSession } from '@/utils/api.uts'
 import { getAppVersion, getDeviceName } from '@/utils/device.uts'
 
 const studentID = ref('')
 const password = ref('')
-const submitting = ref(false)
+const rePassword = ref('')
+const isRegister = ref(false)
+const status = ref('')
+const destination = ref('')
+let pageActive = true
 
-function goRegister() {
-	uni.navigateTo({ url: '/pages/auth/register' })
+const submitting = computed((): boolean => status.value != '')
+const formLocked = computed((): boolean => submitting.value || destination.value != '')
+const submitText = computed((): string => {
+	if (status.value != '') return status.value
+	if (destination.value != '') return '重新进入'
+	return isRegister.value ? '注册' : '登录'
+})
+
+onLoad((options) => {
+	studentID.value = options?.student_id ?? ''
+	if (options?.password_changed == '1') {
+		uni.showToast({ title: '密码修改成功，请重新登录', icon: 'none' })
+	}
+})
+
+onUnload(() => { pageActive = false })
+
+function switchMode() {
+	if (formLocked.value) return
+	uni.hideKeyboard()
+	password.value = ''
+	rePassword.value = ''
+	isRegister.value = !isRegister.value
 }
 
-function validStudentID(value: string): boolean {
-	return /^\d{12}$/.test(value.trim())
+function enterDestination() {
+	if (!pageActive || destination.value == '') return
+	status.value = '正在进入…'
+	uni.reLaunch({
+		url: destination.value,
+		success: () => {
+			password.value = ''
+			rePassword.value = ''
+		},
+		fail: () => {
+			if (!pageActive) return
+			status.value = ''
+			uni.showToast({ title: '页面打开失败，请点击重新进入', icon: 'none' })
+		}
+	})
 }
 
-async function login() {
+async function submit() {
 	if (submitting.value) return
-	if (!validStudentID(studentID.value)) {
+	if (destination.value != '') {
+		enterDestination()
+		return
+	}
+	if (!/^\d{12}$/.test(studentID.value.trim())) {
 		uni.showToast({ title: '请输入 12 位学号', icon: 'none' })
 		return
 	}
@@ -40,29 +77,65 @@ async function login() {
 		uni.showToast({ title: '请输入密码', icon: 'none' })
 		return
 	}
+	if (isRegister.value) {
+		if (rePassword.value.trim().length == 0) {
+			uni.showToast({ title: '请再次输入密码', icon: 'none' })
+			return
+		}
+		if (password.value.length < 6 || password.value.length > 30) {
+			uni.showToast({ title: '密码长度应为 6 至 30 位', icon: 'none' })
+			return
+		}
+		if (password.value != rePassword.value) {
+			uni.showToast({ title: '两次输入的密码不一致', icon: 'none' })
+			return
+		}
+	}
 
-	submitting.value = true
+	const submittedStudentID = studentID.value.trim()
+	const submittedPassword = password.value
+	const submittedRePassword = rePassword.value
+	const registering = isRegister.value
+	uni.hideKeyboard()
+	status.value = registering ? '注册中…' : '登录中…'
 	try {
 		const deviceName = getDeviceName()
 		const appVersion = getAppVersion()
-		const data = await loginRequest(studentID.value.trim(), password.value, deviceName, appVersion)
-		saveSession(studentID.value.trim(), data, deviceName)
-		if (!data.profile_completed) {
-			uni.reLaunch({ url: '/pages/profile/edit?first=1' })
-			return
-		}
-		uni.reLaunch({ url: '/pages/home/index' })
+		const data = registering
+			? await register(submittedStudentID, submittedPassword, submittedRePassword, deviceName, appVersion)
+			: await loginRequest(submittedStudentID, submittedPassword, deviceName, appVersion)
+		if (!pageActive) return
+		saveSession(submittedStudentID, data, deviceName)
+		destination.value = data.profile_completed ? '/pages/home/index' : '/pages/profile/edit?first=1'
+		enterDestination()
 	} catch (error) {
+		if (!pageActive) return
+		if (error instanceof ApiError) {
+			// 请求封装已经发起公共跳转，保持锁定，避免覆盖目标页面。
+			if (error.code == 1004 || error.code == 1005 || error.code == 5002) return
+		}
+		status.value = ''
+		if (!registering && error instanceof ApiError) {
+			if (error.code == 1003) {
+				studentID.value = ''
+				password.value = ''
+			}
+		}
 		const message = (error as Error).message
-		uni.showToast({ title: message == null || message == '' ? '登录失败' : message, icon: 'none' })
-	} finally {
-		submitting.value = false
+		uni.showToast({ title: message == null || message == '' ? (registering ? '注册失败' : '登录失败') : message, icon: 'none' })
 	}
 }
-</script>
 
-<style>
-.register-link { height: 76rpx; padding-right: 18rpx; flex-direction: row; justify-content: flex-end; align-items: center; }
-.register-link-text { color: #5475d8; font-size: 25rpx; }
-.register-arrow { margin-left: 8rpx; color: #5475d8; font-size: 38rpx; line-height: 38rpx; }
-</style>
+function confirmPassword() {
+	if (!isRegister.value) submit()
+}
+
+onBackPress((): boolean => {
+	if (formLocked.value) return true
+	if (isRegister.value) {
+		switchMode()
+		return true
+	}
+	return false
+})
+</script>

@@ -27,7 +27,7 @@
 				<slot></slot>
 			</view>
 			<slot name="card-footer"></slot>
-			<view class="auth-submit-button" @click="submit">
+			<view class="auth-submit-button" :class="busy ? 'auth-submit-busy' : ''" @click="submit">
 				<view class="auth-button-light"></view>
 				<text class="auth-submit-text">{{ buttonText }}</text>
 				<view class="auth-button-arrow">
@@ -46,7 +46,7 @@
 <script setup lang="uts">
 import PageTransition from '@/components/PageTransition.uvue'
 
-defineProps<{
+const props = withDefaults(defineProps<{
 	title: string
 	subtitle: string
 	buttonText: string
@@ -54,7 +54,8 @@ defineProps<{
 	switchText: string
 	cardClass: string
 	enterDirection: string
-}>()
+	busy?: boolean
+}>(), { busy: false })
 
 const emit = defineEmits(['submit', 'switch-page'])
 function navigate(url: string, method: string = 'navigateTo', direction: string = 'forward') {
@@ -65,10 +66,12 @@ function navigate(url: string, method: string = 'navigateTo', direction: string 
 }
 
 function submit() {
+	if (props.busy) return
 	emit('submit')
 }
 
 function switchPage() {
+	if (props.busy) return
 	emit('switch-page')
 }
 
@@ -76,6 +79,7 @@ defineExpose({ navigate })
 </script>
 
 <style>
+.auth-submit-busy { opacity: 0.65; }
 .auth-page { position: relative; flex: 1; overflow: hidden; background-color: #f4f7ff; }
 .auth-background { position: absolute; top: 0; right: 0; bottom: 0; left: 0; width: 100%; height: 100%; }
 .auth-safe-top { height: var(--status-bar-height); }

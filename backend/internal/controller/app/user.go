@@ -26,13 +26,16 @@ func RegisterHandler(c *gin.Context) {
 	}
 	if !validStudentID(p.StudentID) ||
 		len(p.Password) < 6 || len(p.Password) > 30 || len(p.RePassword) == 0 ||
-		strings.TrimSpace(p.Password) == "" || p.Password != p.RePassword {
+		strings.TrimSpace(p.Password) == "" || p.Password != p.RePassword ||
+		utf8.RuneCountInString(strings.TrimSpace(p.DeviceName)) > 255 ||
+		len(p.AppVersion) > 64 {
 		response.Error(c, response.CodeInvalidParam)
 		return
 	}
 
 	// 业务逻辑
-	if err := appservice.Register(p); err != nil {
+	data, err := appservice.Register(p)
+	if err != nil {
 		switch {
 		case errors.Is(err, mysql.ErrorUserExist):
 			response.Error(c, response.CodeUserExist)
@@ -43,7 +46,7 @@ func RegisterHandler(c *gin.Context) {
 		}
 	}
 	// 返回响应
-	response.Success(c, nil)
+	response.Success(c, data)
 }
 
 // LoginHandler 用户登录
