@@ -8,6 +8,7 @@ import (
 	"backend/internal/response"
 	adminservice "backend/internal/service/admin"
 	"backend/internal/utils/jwt"
+	passwordutil "backend/internal/utils/password"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -93,10 +94,14 @@ func TestAdminPasswordIntegration(t *testing.T) {
 	if err := mysql.Init(); err != nil {
 		t.Fatal("cannot initialize isolated test database")
 	}
+	initialHash, err := passwordutil.Hash("old-pass")
+	if err != nil {
+		t.Fatal(err)
+	}
 	for _, user := range []models.User{
-		{StudentID: "admin", Password: "old-pass", Role: models.RoleAdmin, Status: models.UserStatusActive},
-		{StudentID: "student", Password: "old-pass", Role: models.RoleStudent, Status: models.UserStatusActive},
-		{StudentID: "disabled", Password: "old-pass", Role: models.RoleAdmin, Status: models.UserStatusDisabled},
+		{StudentID: "admin", Password: initialHash, Role: models.RoleAdmin, Status: models.UserStatusActive},
+		{StudentID: "student", Password: initialHash, Role: models.RoleStudent, Status: models.UserStatusActive},
+		{StudentID: "disabled", Password: initialHash, Role: models.RoleAdmin, Status: models.UserStatusDisabled},
 	} {
 		if err := testDB.Create(&user).Error; err != nil {
 			t.Fatal(err)
@@ -158,7 +163,7 @@ func TestAdminPasswordIntegration(t *testing.T) {
 		t.Fatal("incorrect original password accepted")
 	}
 	user, err := mysql.FindUserByStudentID("admin")
-	if err != nil || user.Password != "old-pass" {
+	if err != nil || user.Password != initialHash {
 		t.Fatal("failed request modified password")
 	}
 	// No App version headers are sent, and the same token remains valid after success.
@@ -200,7 +205,12 @@ func TestAdminPasswordIntegration(t *testing.T) {
 		t.Fatalf("concurrent successes: %d", successes)
 	}
 	user, err = mysql.FindUserByStudentID("admin")
-	if err != nil || (user.Password != "winner-one" && user.Password != "winner-two") || user.Role != models.RoleAdmin || user.Status != models.UserStatusActive {
+	if err != nil {
+		t.Fatal(err)
+	}
+	first, firstErr := passwordutil.Verify(user.Password, "winner-one")
+	second, secondErr := passwordutil.Verify(user.Password, "winner-two")
+	if firstErr != nil || secondErr != nil || first == second || user.Role != models.RoleAdmin || user.Status != models.UserStatusActive {
 		t.Fatal("unexpected persisted account state")
 	}
 }

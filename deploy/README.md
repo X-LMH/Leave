@@ -135,6 +135,10 @@ admin 入口先检查同域健康接口，再发布 admin；或发布 APK / 结�
 
 同名 migration 内容相同则复用，不同则拒绝；仅新增不存在的文件，不删除历史。迁移在旧后端运行期间执行，必须兼容旧版本；删除、重命名旧程序仍使用的字段需分阶段发布。迁移失败时旧服务继续运行，新版本文件可保留供重试。
 
+## 历史密码迁移
+
+历史明文密码通过独立的 `password-migrate` 命令手动转换为 Argon2id，不通过 HTTP 接口，也不随 CI/CD 自动执行。构建、上传、预览、停服迁移和恢复步骤见 [密码迁移说明](password-migration.md)。此数据转换需要暂停账号写入，与可兼容旧服务的表结构迁移分开执行。
+
 ## Secrets 与生产发布操作
 
 部署 job 按标签引用 GitHub Environment test 或 prod。沿用四项 Secrets：SERVER_HOST、SERVER_PORT、SERVER_USERNAME、SERVER_SSH_KEY。可以继续使用仓库级 Secrets，也可在各环境配置同名 Secrets（不同服务器使用各自环境配置）。Actions 仍使用密钥，不将服务器密码写入工作流。环境限制在 GitHub 设置中维护，参见 [GitHub 部署环境](https://docs.github.com/en/actions/concepts/workflows-and-actions/deployment-environments)。

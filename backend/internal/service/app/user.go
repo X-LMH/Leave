@@ -5,14 +5,21 @@ import (
 	"backend/internal/dto"
 	"backend/internal/models"
 	"backend/internal/utils/jwt"
+	passwordutil "backend/internal/utils/password"
 	"strings"
+
+	"gorm.io/gorm"
 )
 
 func Register(req *dto.RegisterRequest) (err error) {
 	studentID := strings.TrimSpace(req.StudentID)
+	hash, err := passwordutil.Hash(req.Password)
+	if err != nil {
+		return err
+	}
 	student := &models.User{
 		StudentID: studentID,
-		Password:  req.Password,
+		Password:  hash,
 		Role:      models.RoleStudent,
 		Status:    models.UserStatusActive,
 	}
@@ -27,7 +34,14 @@ func Login(req *dto.LoginRequest) (*dto.LoginResponse, error) {
 		return nil, err
 	}
 
-	if req.Password != user.Password || user.Status != models.UserStatusActive {
+	if user.Status != models.UserStatusActive {
+		return nil, mysql.ErrorInvalidPassword
+	}
+	matched, err := passwordutil.Verify(user.Password, req.Password)
+	if err != nil {
+		return nil, err
+	}
+	if !matched {
 		return nil, mysql.ErrorInvalidPassword
 	}
 
@@ -83,7 +97,24 @@ func buildLoginUser(studentID string) (dto.User, bool, error) {
 }
 
 func ChangePassword(p *dto.PasswordChangeRequest, studentID string) error {
-	return mysql.ChangePassword(p, studentID)
+	return mysql.Transaction(func(tx *gorm.DB) error {
+		user, err := mysql.GetUserForUpdate(tx, studentID)
+		if err != nil {
+			return err
+		}
+		matched, err := passwordutil.Verify(user.Password, p.Password)
+		if err != nil {
+			return err
+		}
+		if !matched {
+			return mysql.ErrorNotRightPassword
+		}
+		hash, err := passwordutil.Hash(p.NewPassword)
+		if err != nil {
+			return err
+		}
+		return mysql.UpdateUserPassword(tx, user.ID, hash)
+	})
 }
 
 func UpdateAppInfo(p *dto.ClientInfoRequest, studentID string) error {
