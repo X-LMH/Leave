@@ -14,6 +14,7 @@ Thumbs.db
 *.njsproj
 
 # 环境变量和本地配置
+/.private/
 .env
 .env.*
 !.env.example
