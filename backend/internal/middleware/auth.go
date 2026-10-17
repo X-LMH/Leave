@@ -45,6 +45,15 @@ func JWTAuthMiddleware() gin.HandlerFunc {
 			c.Abort()
 			return
 		}
+		if claims.Role == models.RoleAdmin {
+			// 角色可能在令牌签发后变更，管理员声明须与数据库当前角色一致。
+			user, err := mysql.FindUserByStudentID(claims.StudentID)
+			if err != nil || user.Role != models.RoleAdmin || user.Status != models.UserStatusActive {
+				response.Error(c, response.CodeNeedLogin)
+				c.Abort()
+				return
+			}
+		}
 
 		// 令牌验证通过，将用户信息存入上下文
 		c.Set(request.CtxStuID, claims.StudentID)

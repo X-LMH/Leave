@@ -249,14 +249,26 @@ func TestAdminPasswordIntegration(t *testing.T) {
 		if got := callReset("", id); got.Code != response.CodeNeedLogin {
 			t.Fatal("anonymous reset allowed")
 		}
-		for _, role := range []string{models.RoleStudent, models.RoleAdmin} {
-			auth, err := jwt.GenerateToken("student", role)
+		for _, account := range []struct{ id, role string }{
+			{"student", models.RoleStudent},
+			{"student", models.RoleAdmin}, // 数据库角色必须覆盖令牌中的过期角色声明。
+			{"disabled", models.RoleAdmin},
+			{"missing", models.RoleAdmin},
+		} {
+			auth, err := jwt.GenerateToken(account.id, account.role)
 			if err != nil {
 				t.Fatal(err)
 			}
 			if got := callReset(auth, id); got.Code != response.CodeNeedLogin {
-				t.Fatal("student reset allowed")
+				t.Fatalf("account %s reset allowed", account.id)
 			}
+		}
+		var unchangedStudent models.User
+		if err := testDB.First(&unchangedStudent, student.ID).Error; err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(student, unchangedStudent) {
+			t.Fatal("rejected reset changed student account")
 		}
 		for _, invalid := range []string{"0", "-1", "abc", "4294967296"} {
 			if got := callReset(token, invalid); got.Code != response.CodeInvalidParam {
