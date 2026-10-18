@@ -106,6 +106,16 @@
 			}
 		},
 		{
+			"path": "pages/profile/appearance",
+			"style": {
+				"navigationStyle": "custom",
+				"disableScroll": true,
+				"backgroundColor": "#F2F2F7",
+				"backgroundColorContent": "#F2F2F7",
+				"swipeBackAsBackPress": true
+			}
+		},
+		{
 			"path": "pages/leave/records",
 			"style": {
 				"navigationStyle": "custom",

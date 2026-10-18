@@ -1,0 +1,133 @@
+// #ifdef APP-ANDROID
+import Settings from 'android.provider.Settings'
+import View from 'android.view.View'
+import ViewGroup from 'android.view.ViewGroup'
+import HapticFeedbackConstants from 'android.view.HapticFeedbackConstants'
+import AccessibilityDelegate from 'android.view.View.AccessibilityDelegate'
+import AccessibilityNodeInfo from 'android.view.accessibility.AccessibilityNodeInfo'
+
+class NavigationControlDelegate extends AccessibilityDelegate {
+	private isSwitch: boolean
+	private checked: boolean
+
+	constructor(isSwitch: boolean, checked: boolean) {
+		super()
+		this.isSwitch = isSwitch
+		this.checked = checked
+	}
+
+	override onInitializeAccessibilityNodeInfo(host: View, info: AccessibilityNodeInfo) {
+		super.onInitializeAccessibilityNodeInfo(host, info)
+		info.setClassName(this.isSwitch ? 'android.widget.Switch' : 'android.widget.Button')
+		if (this.isSwitch) {
+			info.setCheckable(true)
+			info.setChecked(this.checked)
+		}
+	}
+}
+// #endif
+
+export type NavigationPreferences = {
+	reduceMotion: boolean
+	reduceTransparency: boolean
+	highContrast: boolean
+	haptics: boolean
+}
+
+export function readNavigationPreferences(): NavigationPreferences {
+	return {
+		reduceMotion: uni.getStorageSync('navigation_reduce_motion') == true,
+		reduceTransparency: uni.getStorageSync('navigation_reduce_transparency') == true,
+		highContrast: uni.getStorageSync('navigation_high_contrast') == true,
+		haptics: uni.getStorageSync('navigation_haptics') != false
+	}
+}
+
+export function saveNavigationPreferences(preferences: NavigationPreferences) {
+	uni.setStorageSync('navigation_reduce_motion', preferences.reduceMotion)
+	uni.setStorageSync('navigation_reduce_transparency', preferences.reduceTransparency)
+	uni.setStorageSync('navigation_high_contrast', preferences.highContrast)
+	uni.setStorageSync('navigation_haptics', preferences.haptics)
+}
+
+export function systemReducesMotion(): boolean {
+	// #ifdef APP-ANDROID
+	const context = UTSAndroid.getAppContext()
+	if (context != null) {
+		try {
+			const scale = Settings.Global.getString(context.getContentResolver(), Settings.Global.ANIMATOR_DURATION_SCALE)
+			return scale != null && parseFloat(scale) == 0
+		} catch (_) {
+			return false
+		}
+	}
+	// #endif
+	return false
+}
+
+export function systemIncreasesContrast(): boolean {
+	// #ifdef APP-ANDROID
+	const context = UTSAndroid.getAppContext()
+	if (context != null) {
+		try {
+			return Settings.Secure.getString(context.getContentResolver(), 'high_text_contrast_enabled') == '1'
+		} catch (_) {
+			return false
+		}
+	}
+	// #endif
+	return false
+}
+
+export function configureNavigationAccessibility(element: UniElement | null, label: string, selected: boolean, activate: () => void) {
+	// #ifdef APP-ANDROID
+	const view = element?.getAndroidView<ViewGroup>()
+	if (view == null) return
+	view.setContentDescription(label + '，标签页')
+	view.setSelected(selected)
+	view.setFocusable(true)
+	view.setAccessibilityDelegate(new NavigationControlDelegate(false, false))
+	view.setOnClickListener((_) => {
+		activate()
+	})
+	view.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_YES)
+	// 整个入口作为一个读屏节点，避免图标、文字被重复聚焦。
+	for (let index = 0; index < view.getChildCount(); index++) {
+		view.getChildAt(index.toInt())?.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS)
+	}
+	// #endif
+}
+
+export function configureNavigationSwitch(element: UniElement | null, label: string, checked: boolean, activate: () => void) {
+	configureNavigationAccessibility(element, label, false, activate)
+	// #ifdef APP-ANDROID
+	const view = element?.getAndroidView<ViewGroup>()
+	if (view == null) return
+	view.setContentDescription(label)
+	view.setAccessibilityDelegate(new NavigationControlDelegate(true, checked))
+	// #endif
+}
+
+export function navigationSelectionFeedback(element: UniElement | null) {
+	// #ifdef APP-ANDROID
+	// 系统轻触反馈遵循设备的触觉设置，无需新增振动权限。
+	element?.getAndroidView<View>()?.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+	// #endif
+	// #ifdef APP-IOS
+	uni.vibrateShort({ type: 'light', fail: (_) => {} })
+	// #endif
+}
+
+export function labelNavigationPreference(element: UniElement | null, label: string, activate: (() => void) | null = null) {
+	// #ifdef APP-ANDROID
+	const view = element?.getAndroidView<View>()
+	if (view == null) return
+	view.setContentDescription(label)
+	if (activate != null) {
+		view.setFocusable(true)
+		view.setOnClickListener((_) => {
+			activate?.()
+		})
+	}
+	// #endif
+}

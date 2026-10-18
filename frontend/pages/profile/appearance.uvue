@@ -1,0 +1,223 @@
+<template>
+	<view class="appearance-page">
+		<view class="appearance-header">
+			<view id="appearance-back" class="appearance-back" role="button" aria-label="返回我的" @click="goBack">
+				<text class="appearance-chevron">‹</text>
+				<text class="appearance-back-label">我的</text>
+			</view>
+			<text class="appearance-title">显示与触感</text>
+		</view>
+		<scroll-view class="appearance-scroll" scroll-y="true" :show-scrollbar="false">
+			<view class="appearance-content">
+				<text class="appearance-section">导航外观</text>
+				<view class="appearance-group">
+					<view id="preference-motion" class="appearance-row" role="switch" aria-label="减少动态效果" :aria-checked="reduceMotion" @click="toggleReduceMotion">
+						<view class="appearance-copy">
+							<text class="appearance-label">减少动态效果</text>
+							<text class="appearance-detail">关闭胶囊伸缩与弹性回弹</text>
+						</view>
+						<view :class="reduceMotion ? 'preference-switch preference-switch-on' : 'preference-switch'">
+							<view :class="reduceMotion ? 'preference-knob preference-knob-on' : 'preference-knob'"></view>
+						</view>
+					</view>
+					<view class="appearance-divider"></view>
+					<view id="preference-transparency" class="appearance-row" role="switch" aria-label="减少透明度" :aria-checked="reduceTransparency" @click="toggleReduceTransparency">
+						<view class="appearance-copy">
+							<text class="appearance-label">减少透明度</text>
+							<text class="appearance-detail">使用实色底座，提高内容辨识度</text>
+						</view>
+						<view :class="reduceTransparency ? 'preference-switch preference-switch-on' : 'preference-switch'">
+							<view :class="reduceTransparency ? 'preference-knob preference-knob-on' : 'preference-knob'"></view>
+						</view>
+					</view>
+					<view class="appearance-divider"></view>
+					<view id="preference-contrast" class="appearance-row" role="switch" aria-label="增强对比度" :aria-checked="highContrast" @click="toggleHighContrast">
+						<view class="appearance-copy">
+							<text class="appearance-label">增强对比度</text>
+							<text class="appearance-detail">加深文字与边界，同时减少透明度</text>
+						</view>
+						<view :class="highContrast ? 'preference-switch preference-switch-on' : 'preference-switch'">
+							<view :class="highContrast ? 'preference-knob preference-knob-on' : 'preference-knob'"></view>
+						</view>
+					</view>
+				</view>
+				<text class="appearance-footnote">系统关闭动画或启用高对比度时，导航也会应用相应的辅助效果。</text>
+				<text class="appearance-section appearance-section-next">触觉反馈</text>
+				<view class="appearance-group">
+					<view id="preference-haptics" class="appearance-row" role="switch" aria-label="切换轻触反馈" :aria-checked="haptics" @click="toggleHaptics">
+						<view class="appearance-copy">
+							<text class="appearance-label">切换轻触反馈</text>
+							<text class="appearance-detail">切换标签页时给予一次轻微反馈</text>
+						</view>
+						<view :class="haptics ? 'preference-switch preference-switch-on' : 'preference-switch'">
+							<view :class="haptics ? 'preference-knob preference-knob-on' : 'preference-knob'"></view>
+						</view>
+					</view>
+				</view>
+				<text class="appearance-footnote">触觉反馈同时遵循设备的系统设置。更改会自动保存到此设备。</text>
+			</view>
+		</scroll-view>
+	</view>
+</template>
+
+<script setup lang="uts">
+import { nextTick, ref, watch } from 'vue'
+import { configureNavigationSwitch, labelNavigationPreference, readNavigationPreferences, saveNavigationPreferences } from '@/utils/navigation-preferences.uts'
+
+const preferences = readNavigationPreferences()
+const reduceMotion = ref(preferences.reduceMotion)
+const reduceTransparency = ref(preferences.reduceTransparency)
+const highContrast = ref(preferences.highContrast)
+const haptics = ref(preferences.haptics)
+
+function save() {
+	saveNavigationPreferences({
+		reduceMotion: reduceMotion.value,
+		reduceTransparency: reduceTransparency.value,
+		highContrast: highContrast.value,
+		haptics: haptics.value
+	})
+}
+function toggleReduceMotion() {
+	reduceMotion.value = !reduceMotion.value
+	save()
+}
+function toggleReduceTransparency() {
+	reduceTransparency.value = !reduceTransparency.value
+	save()
+}
+function toggleHighContrast() {
+	highContrast.value = !highContrast.value
+	save()
+}
+function toggleHaptics() {
+	haptics.value = !haptics.value
+	save()
+}
+function goBack() {
+	uni.navigateBack({
+		fail: () => {
+			uni.reLaunch({ url: '/pages/home/index?tab=profile' })
+		}
+	})
+}
+function updateAccessibility() {
+	labelNavigationPreference(uni.getElementById('appearance-back'), '返回我的', () => goBack())
+	configureNavigationSwitch(uni.getElementById('preference-motion'), '减少动态效果', reduceMotion.value, () => toggleReduceMotion())
+	configureNavigationSwitch(uni.getElementById('preference-transparency'), '减少透明度', reduceTransparency.value, () => toggleReduceTransparency())
+	configureNavigationSwitch(uni.getElementById('preference-contrast'), '增强对比度', highContrast.value, () => toggleHighContrast())
+	configureNavigationSwitch(uni.getElementById('preference-haptics'), '切换轻触反馈', haptics.value, () => toggleHaptics())
+}
+onReady(() => updateAccessibility())
+watch((): string => '' + reduceMotion.value + reduceTransparency.value + highContrast.value + haptics.value, () => {
+	nextTick(() => updateAccessibility())
+})
+</script>
+
+<style>
+.appearance-page {
+	flex: 1;
+	background-color: #f2f2f7;
+}
+.appearance-header {
+	padding: 52px 24px 20px;
+}
+.appearance-back {
+	flex-direction: row;
+	align-items: center;
+	width: 90px;
+	height: 44px;
+	margin-left: -8px;
+}
+.appearance-chevron {
+	font-size: 38px;
+	line-height: 42px;
+	color: #007aff;
+}
+.appearance-back-label {
+	margin-left: 5px;
+	font-size: 17px;
+	color: #007aff;
+}
+.appearance-title {
+	margin-top: 12px;
+	font-size: 32px;
+	line-height: 40px;
+	font-weight: 700;
+	color: #1c1c1e;
+}
+.appearance-scroll {
+	flex: 1;
+}
+.appearance-content {
+	padding: 8px 20px 36px;
+}
+.appearance-section {
+	margin: 0 16px 9px;
+	font-size: 13px;
+	color: #636366;
+}
+.appearance-section-next {
+	margin-top: 28px;
+}
+.appearance-group {
+	border-radius: 14px;
+	background-color: #ffffff;
+}
+.appearance-row {
+	box-sizing: border-box;
+	min-height: 82px;
+	padding: 16px;
+	flex-direction: row;
+	align-items: center;
+}
+.appearance-copy {
+	flex: 1;
+	margin-right: 12px;
+}
+.appearance-label {
+	font-size: 16px;
+	line-height: 23px;
+	color: #1c1c1e;
+}
+.appearance-detail {
+	margin-top: 4px;
+	font-size: 12px;
+	line-height: 18px;
+	color: #636366;
+}
+.appearance-divider {
+	height: 0.5px;
+	margin-left: 16px;
+	background-color: #d1d1d6;
+}
+.appearance-footnote {
+	margin: 9px 16px 0;
+	font-size: 12px;
+	line-height: 19px;
+	color: #636366;
+}
+.preference-switch {
+	position: relative;
+	width: 51px;
+	height: 31px;
+	border-radius: 16px;
+	background-color: #e9e9eb;
+}
+.preference-switch-on {
+	background-color: #34c759;
+}
+.preference-knob {
+	position: absolute;
+	top: 2px;
+	left: 2px;
+	width: 27px;
+	height: 27px;
+	border-radius: 14px;
+	background-color: #ffffff;
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+.preference-knob-on {
+	transform: translateX(20px);
+}
+</style>

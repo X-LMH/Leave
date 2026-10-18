@@ -1,61 +1,324 @@
 <template>
-	<view class="bottom-navigation">
-		<view class="nav-item" @click="goHome">
-			<image v-if="active === 'home'" class="nav-state nav-state-active" src="/static/common/tabbar/home-active.png" mode="aspectFit"></image>
-			<image v-else class="nav-state" src="/static/common/tabbar/home.png" mode="aspectFit"></image>
-		</view>
-		<view class="nav-item" @click="goProfile">
-			<image v-if="active === 'profile'" class="nav-state nav-state-active" src="/static/common/tabbar/mine-active.png" mode="aspectFit"></image>
-			<image v-else class="nav-state" src="/static/common/tabbar/mine.png" mode="aspectFit"></image>
+	<view :class="navigationClass" :style="navigationStyle"
+		@touchstart="handleTouchStart" @touchmove="handleTouchMove"
+		@touchend="handleTouchEnd" @touchcancel="handleTouchCancel">
+		<view class="nav-glass-sheen" :style="sheenStyle"></view>
+		<view :class="selectionClass" :style="selectionStyle"></view>
+		<view class="nav-items" role="tablist">
+			<view id="navigation-home" class="nav-item" role="tab" aria-label="首页" :aria-selected="active == 'home'" @click="selectTab(0)">
+				<image :class="iconClass(0)" :src="selectedIndex == 0 ? '/static/common/tabbar/home-filled.svg' : '/static/common/tabbar/home-outline.svg'" mode="aspectFit"></image>
+				<text :class="labelClass(0)">首页</text>
+			</view>
+			<view id="navigation-profile" class="nav-item" role="tab" aria-label="我的" :aria-selected="active == 'profile'" @click="selectTab(1)">
+				<image :class="iconClass(1)" :src="selectedIndex == 1 ? '/static/common/tabbar/profile-filled.svg' : '/static/common/tabbar/profile-outline.svg'" mode="aspectFit"></image>
+				<text :class="labelClass(1)">我的</text>
+			</view>
 		</view>
 	</view>
 </template>
 
 <script setup lang="uts">
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import {
+	configureNavigationAccessibility,
+	navigationSelectionFeedback,
+	readNavigationPreferences,
+	systemIncreasesContrast,
+	systemReducesMotion
+} from '@/utils/navigation-preferences.uts'
+
 const props = defineProps<{ active: string }>()
 const emit = defineEmits(['navigate'])
-function goHome() {
-	if (props.active !== 'home') {
-		emit('navigate', '/pages/home/index')
+const windowWidth = ref(uni.getWindowInfo().windowWidth)
+const navigationWidth = computed((): number => Math.min(264, windowWidth.value - 48))
+const selectedIndex = ref(props.active == 'profile' ? 1 : 0)
+const selectionX = ref(0)
+const dragging = ref(false)
+const pressed = ref(false)
+const reduceMotion = ref(false)
+const reduceTransparency = ref(false)
+const highContrast = ref(false)
+const haptics = ref(true)
+let tracking = false
+let gestureCancelled = false
+let moved = false
+let locked = false
+let startX = 0
+let startY = 0
+let startSelectionX = 0
+let suppressClickUntil = 0
+let settleTimer = 0
+
+// Android 页面未开启底部穿透，系统导航区域已在页面之外。
+const navigationStyle = computed((): string => {
+	return 'width:' + navigationWidth.value + 'px;left:' + ((windowWidth.value - navigationWidth.value) / 2) + 'px;'
+})
+const navigationClass = computed((): string => {
+	let value = 'bottom-navigation'
+	if (reduceTransparency.value) value += ' bottom-navigation-solid'
+	if (highContrast.value) value += ' bottom-navigation-contrast'
+	return value
+})
+const selectionWidth = computed((): number => (navigationWidth.value - 12) / 2)
+const selectionClass = computed((): string => {
+	let value = 'nav-selection'
+	if (highContrast.value) value += ' nav-selection-contrast'
+	if (dragging.value || reduceMotion.value) value += ' nav-selection-instant'
+	return value
+})
+const selectionStyle = computed((): string => {
+	let scaleX = 1
+	let scaleY = 1
+	if (!reduceMotion.value && pressed.value) {
+		scaleX = dragging.value ? 1.075 : 1.035
+		scaleY = dragging.value ? 0.96 : 1.06
+	}
+	return 'width:' + selectionWidth.value + 'px;transform:translateX(' + selectionX.value + 'px) scaleX(' + scaleX + ') scaleY(' + scaleY + ');'
+})
+const sheenStyle = computed((): string => {
+	return 'opacity:' + (reduceTransparency.value || highContrast.value ? '0' : (pressed.value ? '0.9' : '0.5')) + ';'
+})
+
+function iconClass(index: number): string {
+	let value = 'nav-icon'
+	if (selectedIndex.value == index && !reduceMotion.value) value += pressed.value ? ' nav-icon-pressed' : ' nav-icon-active'
+	if (reduceMotion.value) value += ' nav-icon-instant'
+	return value
+}
+
+function labelClass(index: number): string {
+	if (selectedIndex.value != index) return highContrast.value ? 'nav-label nav-label-contrast' : 'nav-label'
+	return highContrast.value ? 'nav-label nav-label-active nav-label-active-contrast' : 'nav-label nav-label-active'
+}
+
+function restore() {
+	clearTimeout(settleTimer)
+	tracking = false
+	dragging.value = false
+	pressed.value = false
+	locked = false
+	selectedIndex.value = props.active == 'profile' ? 1 : 0
+	selectionX.value = selectedIndex.value * selectionWidth.value
+}
+
+function updateLayout() {
+	windowWidth.value = uni.getWindowInfo().windowWidth
+	restore()
+}
+
+function settle(index: number) {
+	selectedIndex.value = index
+	selectionX.value = index * selectionWidth.value
+	dragging.value = false
+	pressed.value = false
+	locked = true
+	settleTimer = setTimeout(() => {
+		locked = false
+	}, reduceMotion.value ? 0 : 320)
+	if (index != (props.active == 'profile' ? 1 : 0)) {
+		// 常驻主页面立即确认切换，胶囊在同一视图中继续完成回弹。
+		emit('navigate', index == 0 ? '/pages/home/index' : '/pages/profile/index')
 	}
 }
 
-function goProfile() {
-	if (props.active !== 'profile') {
-		emit('navigate', '/pages/profile/index')
-	}
+function selectTab(index: number) {
+	if (locked || tracking || Date.now() < suppressClickUntil) return
+	if (index == (props.active == 'profile' ? 1 : 0)) return
+	settle(index)
 }
+
+function updateAccessibility() {
+	configureNavigationAccessibility(uni.getElementById('navigation-home'), '首页', props.active == 'home', () => selectTab(0))
+	configureNavigationAccessibility(uni.getElementById('navigation-profile'), '我的', props.active == 'profile', () => selectTab(1))
+}
+
+function refreshPreferences() {
+	const preferences = readNavigationPreferences()
+	reduceMotion.value = preferences.reduceMotion || systemReducesMotion()
+	highContrast.value = preferences.highContrast || systemIncreasesContrast()
+	reduceTransparency.value = preferences.reduceTransparency || highContrast.value
+	haptics.value = preferences.haptics
+	restore()
+	nextTick(() => updateAccessibility())
+}
+
+function handleTouchCancel() {
+	if (locked) return
+	gestureCancelled = true
+	suppressClickUntil = Date.now() + 350
+	restore()
+}
+
+function handleTouchStart(event: UniTouchEvent) {
+	if (locked) return
+	if (event.touches.length != 1) {
+		handleTouchCancel()
+		return
+	}
+	const touch = event.touches[0]
+	gestureCancelled = false
+	tracking = true
+	moved = false
+	pressed.value = true
+	startX = touch.pageX
+	startY = touch.pageY
+	startSelectionX = selectionX.value
+}
+
+function handleTouchMove(event: UniTouchEvent) {
+	if (locked || !tracking) return
+	if (event.touches.length != 1) {
+		handleTouchCancel()
+		return
+	}
+	const touch = event.touches[0]
+	const dx = touch.pageX - startX
+	const dy = touch.pageY - startY
+	if (!moved && Math.abs(dy) > 8 && Math.abs(dy) > Math.abs(dx)) {
+		handleTouchCancel()
+		return
+	}
+	if (!moved && Math.abs(dx) <= 8) return
+	moved = true
+	dragging.value = true
+	event.preventDefault()
+	selectionX.value = Math.max(0, Math.min(selectionWidth.value, startSelectionX + dx))
+	selectedIndex.value = selectionX.value >= selectionWidth.value / 2 ? 1 : 0
+}
+
+function handleTouchEnd(event: UniTouchEvent) {
+	if (gestureCancelled) {
+		suppressClickUntil = Date.now() + 350
+		if (event.touches.length == 0) gestureCancelled = false
+		return
+	}
+	if (locked || !tracking) return
+	if (event.touches.length > 0) {
+		handleTouchCancel()
+		return
+	}
+	tracking = false
+	pressed.value = false
+	if (!moved) return
+	suppressClickUntil = Date.now() + 350
+	settle(selectionX.value >= selectionWidth.value / 2 ? 1 : 0)
+}
+
+refreshPreferences()
+watch((): string => props.active, (active: string, previous: string) => {
+	selectedIndex.value = active == 'profile' ? 1 : 0
+	selectionX.value = selectedIndex.value * selectionWidth.value
+	nextTick(() => {
+		updateAccessibility()
+		if (active != previous && haptics.value) {
+			navigationSelectionFeedback(uni.getElementById(active == 'profile' ? 'navigation-profile' : 'navigation-home'))
+		}
+	})
+})
+onMounted(() => updateAccessibility())
+onPageShow(() => refreshPreferences())
+onPageHide(() => {
+	gestureCancelled = true
+	restore()
+})
+onUnmounted(() => clearTimeout(settleTimer))
+defineExpose({ restore, updateLayout })
 </script>
 
 <style>
 .bottom-navigation {
-	position:fixed;
-	left:28rpx;
-	right:28rpx;
-	bottom:28rpx;
-	z-index:6;
-	height:155rpx;
-	border-radius:42rpx;
-	background:#fff;
-	flex-direction:row;
-	align-items:center;
-	justify-content:space-around
+	position: fixed;
+	bottom: 12px;
+	z-index: 6;
+	height: 64px;
+	border-radius: 32px;
+	background-color: rgba(250, 251, 253, 0.83);
+	border: 1px solid rgba(255, 255, 255, 0.65);
+	box-shadow: 0 8px 24px rgba(20, 25, 36, 0.13);
+}
+.bottom-navigation-solid {
+	background-color: #f7f8fa;
+}
+.bottom-navigation-contrast {
+	background-color: #ffffff;
+	border-color: #727780;
+}
+.nav-glass-sheen {
+	position: absolute;
+	left: 12px;
+	right: 12px;
+	top: 1px;
+	height: 30px;
+	border-radius: 28px;
+	background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0));
+	transition-property: opacity;
+	transition-duration: 120ms;
+}
+.nav-selection {
+	position: absolute;
+	left: 5px;
+	top: 5px;
+	height: 52px;
+	border-radius: 26px;
+	background-color: rgba(218, 225, 234, 0.56);
+	border: 0.5px solid rgba(255, 255, 255, 0.68);
+	box-shadow: 0 2px 5px rgba(37, 44, 59, 0.06);
+	transition-property: transform;
+	transition-duration: 320ms;
+	transition-timing-function: cubic-bezier(0.2, 1.35, 0.35, 1);
+}
+.nav-selection-contrast {
+	background-color: #e1ebf9;
+	border-color: #0055b3;
+}
+.nav-selection-instant {
+	transition-duration: 0ms;
+}
+.nav-items {
+	position: absolute;
+	left: 5px;
+	right: 5px;
+	top: 5px;
+	height: 52px;
+	flex-direction: row;
 }
 .nav-item {
-	width:50%;
-	height:155rpx;
-	align-items:center;
-	justify-content:center
+	flex: 1;
+	height: 52px;
+	align-items: center;
+	justify-content: center;
 }
-.nav-state {
-	width:130rpx;
-	height:150rpx;
-	transition-property:transform;
-	transition-duration:180ms;
-	transition-timing-function:ease-out
+.nav-icon {
+	width: 25px;
+	height: 25px;
+	transition-property: transform;
+	transition-duration: 320ms;
+	transition-timing-function: cubic-bezier(0.2, 1.35, 0.35, 1);
 }
-.nav-state-active {
-	width:156rpx;
-	height:180rpx
+.nav-icon-active {
+	transform: scale(1.04);
+}
+.nav-icon-pressed {
+	transform: scale(1.12);
+}
+.nav-icon-instant {
+	transition-duration: 0ms;
+}
+.nav-label {
+	margin-top: 3px;
+	font-size: 11px;
+	line-height: 14px;
+	font-weight: 500;
+	color: #606773;
+}
+.nav-label-active {
+	color: #0063d1;
+	font-weight: 600;
+}
+.nav-label-contrast {
+	color: #252932;
+}
+.nav-label-active-contrast {
+	color: #004fa8;
 }
 </style>

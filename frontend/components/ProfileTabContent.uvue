@@ -1,0 +1,491 @@
+<template>
+	<view class="page">
+		<image class="page-background" src="/static/my/index/background.png" mode="aspectFill"></image>
+		<scroll-view class="content-scroll" scroll-y="true" :scroll-top="scrollTop" @scroll="rememberScroll" :show-scrollbar="false">
+			<view class="content">
+				<view class="header">
+					<text class="page-title">我的</text>
+					<text class="page-subtitle">管理个人信息与请假记录</text>
+				</view>
+				<view class="profile-card" @click="openInfo">
+					<image v-if="avatarURL != '' && !avatarLoadFailed" class="profile-avatar" :src="avatarURL" mode="aspectFill" @click.stop="openAvatar" @error="handleAvatarError"></image>
+					<view v-else class="profile-avatar profile-avatar-placeholder" @click.stop="openAvatar">
+						<text v-if="avatarLoadFailed" class="profile-avatar-hint">加载失败</text>
+					</view>
+					<view class="profile-details">
+						<view class="profile-name-row">
+							<text class="profile-name">{{ profileName == '' ? '未完善资料' : profileName }}</text>
+							<image class="edit-icon" src="/static/my/index/icons/edit.png" mode="aspectFit" @click.stop="openEdit"></image>
+						</view>
+						<view class="profile-meta-row">
+							<image class="profile-meta-icon" src="/static/my/index/icons/user-badge.png" mode="aspectFit"></image>
+							<text class="profile-meta-text">学号：{{ studentID }}</text>
+						</view>
+						<view class="profile-meta-row profile-school-row">
+							<image class="profile-meta-icon" src="/static/my/index/icons/school.png" mode="aspectFit"></image>
+							<text class="profile-meta-text">{{ className == '' ? '请完善个人资料' : className }}</text>
+						</view>
+					</view>
+					<image class="card-arrow" src="/static/my/index/icons/arrow-right.png" mode="aspectFit"></image>
+				</view>
+				<text class="section-title">我的服务</text>
+				<view class="service-card">
+					<view class="service-item" @click="openInfo">
+						<image class="service-icon" src="/static/my/index/icons/user-avatar.png" mode="aspectFit"></image>
+						<view class="service-copy">
+							<text class="service-title">个人信息</text>
+							<text class="service-description">查看与修改个人资料</text>
+						</view>
+						<image class="service-arrow" src="/static/my/index/icons/arrow-right.png" mode="aspectFit"></image>
+					</view>
+					<view class="service-divider">
+					</view>
+					<view class="service-item" @click="openRecords">
+						<image class="service-icon" src="/static/my/index/icons/form-edit.png" mode="aspectFit"></image>
+						<view class="service-copy">
+							<text class="service-title">请假记录</text>
+							<text class="service-description">查看我的请假申请记录</text>
+						</view>
+						<image class="service-arrow" src="/static/my/index/icons/arrow-right.png" mode="aspectFit"></image>
+					</view>
+					<view class="service-divider">
+					</view>
+					<view class="service-item" @click="openFeedback">
+						<image class="service-icon" src="/static/my/index/icons/feedback.svg" mode="aspectFit"></image>
+						<view class="service-copy">
+							<text class="service-title">用户反馈</text>
+							<text class="service-description">提出建议或反馈使用问题</text>
+						</view>
+						<image class="service-arrow" src="/static/my/index/icons/arrow-right.png" mode="aspectFit"></image>
+					</view>
+					<view class="service-divider">
+					</view>
+					<view class="service-item" @click="openPassword">
+						<image class="service-icon" src="/static/my/index/icons/lock.png" mode="aspectFit"></image>
+						<view class="service-copy">
+							<text class="service-title">修改密码</text>
+							<text class="service-description">修改账户登录密码</text>
+						</view>
+						<image class="service-arrow" src="/static/my/index/icons/arrow-right.png" mode="aspectFit"></image>
+					</view>
+					<view class="service-divider"></view>
+					<view class="service-item" @click.stop="openAppearance">
+						<image class="service-icon" src="/static/common/tabbar/appearance.svg" mode="aspectFit"></image>
+						<view class="service-copy">
+							<text class="service-title">显示与触感</text>
+							<text class="service-description">调整导航动效、对比度与触觉反馈</text>
+						</view>
+						<image class="service-arrow" src="/static/my/index/icons/arrow-right.png" mode="aspectFit"></image>
+					</view>
+				</view>
+				<view class="logout-card" @click="handleLogout">
+					<image class="logout-icon" src="/static/my/index/icons/power.png" mode="aspectFit"></image>
+					<text class="logout-text">退出登录</text>
+					<text class="logout-arrow">›</text>
+				</view>
+				<view class="bottom-spacer">
+				</view>
+			</view>
+		</scroll-view>
+	</view>
+</template>
+
+<script setup lang="uts">
+import { onUnmounted, ref, watch } from 'vue'
+import { cacheAvatarFile, clearAvatarFileCache, getCachedAvatarSource } from '@/utils/avatar-cache.uts'
+import { getCurrentUser, getProfile, getStoredAvatarURL, uploadAvatar, AvatarUploadError, logout as clearSession, logoutRequest } from '@/utils/api.uts'
+import { chooseAvatarImage } from '@/utils/avatar-picker.uts'
+
+const props = defineProps<{ active: boolean }>()
+const profileName = ref(getCurrentUser().name)
+const studentID = ref(getCurrentUser().student_id)
+const className = ref(getCurrentUser().class_name)
+const avatarURL = ref(getCachedAvatarSource(getCurrentUser().student_id, getStoredAvatarURL()))
+const avatarLoadFailed = ref(false)
+const changingAvatar = ref(false)
+const avatarMenuOpen = ref(false)
+let avatarUpdateVersion = 0
+let pageActive = props.active
+
+function handleAvatarError() {
+	const remoteURL = getStoredAvatarURL()
+	if (remoteURL != '' && avatarURL.value != remoteURL) {
+		clearAvatarFileCache(getCurrentUser().student_id)
+		avatarURL.value = remoteURL
+		return
+	}
+	avatarLoadFailed.value = true
+}
+
+async function changeAvatar(): Promise<void> {
+	if (changingAvatar.value) return
+	changingAvatar.value = true
+	const currentStudentID = getCurrentUser().student_id
+	let uploading = false
+	try {
+		const path = await chooseAvatarImage()
+		if (path == '' || !pageActive || currentStudentID != getCurrentUser().student_id) return
+		// 上传期间使旧的头像加载任务失效，避免覆盖新头像。
+		avatarUpdateVersion++
+		uploading = true
+		uni.showLoading({ title: '正在上传…', mask: true })
+		const remoteURL = await uploadAvatar(path)
+		if (!pageActive || currentStudentID != getCurrentUser().student_id) return
+		avatarLoadFailed.value = false
+		avatarURL.value = remoteURL
+		const source = await cacheAvatarFile(currentStudentID, remoteURL)
+		if (!pageActive || currentStudentID != getCurrentUser().student_id || remoteURL != getStoredAvatarURL()) return
+		avatarLoadFailed.value = false
+		avatarURL.value = source
+		uni.hideLoading()
+		uploading = false
+		uni.showToast({ title: '头像更新成功', icon: 'success' })
+	} catch (error) {
+		if (uploading) {
+			uni.hideLoading()
+			uploading = false
+		}
+		if (!pageActive || currentStudentID != getCurrentUser().student_id) return
+		if (error instanceof AvatarUploadError) return
+		const message = (error as Error).message
+		if (message == '请先完善个人信息') {
+			uni.reLaunch({ url: '/pages/profile/edit?first=1' })
+			return
+		}
+		uni.showToast({ title: message == null || message == '' ? '头像上传失败，请重试' : message, icon: 'none' })
+	} finally {
+		if (uploading) uni.hideLoading()
+		changingAvatar.value = false
+	}
+}
+
+function openAvatar() {
+	if (changingAvatar.value || avatarMenuOpen.value) return
+	avatarMenuOpen.value = true
+	const currentStudentID = getCurrentUser().student_id
+	uni.showActionSheet({
+		itemList: ['查看头像', '更换头像'],
+		success: (result) => {
+			if (!pageActive || currentStudentID != getCurrentUser().student_id) return
+			if (result.tapIndex == 1) {
+				changeAvatar()
+				return
+			}
+			if (result.tapIndex != 0) return
+			const source = avatarLoadFailed.value ? getStoredAvatarURL() : avatarURL.value
+			if (source == '') {
+				uni.showToast({ title: '暂无可查看的头像', icon: 'none' })
+				return
+			}
+			uni.previewImage({
+				urls: [source],
+				current: source,
+				fail: (_) => {
+					uni.showToast({ title: '头像预览失败，请重试', icon: 'none' })
+				}
+			})
+		},
+		complete: (_) => { avatarMenuOpen.value = false }
+	})
+}
+
+async function loadAvatar() {
+	if (changingAvatar.value) return
+	const updateVersion = avatarUpdateVersion
+	const currentStudentID = getCurrentUser().student_id
+	try {
+		const profile = await getProfile()
+		if (!pageActive || currentStudentID != getCurrentUser().student_id || updateVersion != avatarUpdateVersion) return
+		if (profile == null) {
+			uni.reLaunch({ url: '/pages/profile/edit?first=1' })
+			return
+		}
+		const cachedURL = getStoredAvatarURL()
+		const remoteURL = cachedURL == '' ? profile.avatar_url : cachedURL
+		const latestURL = await cacheAvatarFile(currentStudentID, remoteURL)
+		if (!pageActive || currentStudentID != getCurrentUser().student_id || updateVersion != avatarUpdateVersion || remoteURL != getStoredAvatarURL()) return
+		if (latestURL != '' && (latestURL != avatarURL.value || avatarLoadFailed.value)) {
+			avatarLoadFailed.value = false
+			avatarURL.value = latestURL
+		}
+	} catch (error) {
+		if (!pageActive || currentStudentID != getCurrentUser().student_id || updateVersion != avatarUpdateVersion) return
+		const message = (error as Error).message
+		if (message == '请先完善个人信息') {
+			uni.reLaunch({ url: '/pages/profile/edit?first=1' })
+			return
+		}
+		uni.showToast({ title: message == null || message == '' ? '头像加载失败' : message, icon: 'none' })
+	}
+}
+
+
+
+function openInfo() {
+	uni.navigateTo({ url: '/pages/profile/info' })
+}
+
+function openEdit() {
+	uni.navigateTo({ url: '/pages/profile/edit' })
+}
+
+function openRecords() {
+	uni.navigateTo({ url: '/pages/leave/records' })
+}
+
+function openFeedback() {
+	uni.navigateTo({ url: '/pages/profile/feedback' })
+}
+
+function openPassword() {
+	uni.navigateTo({ url: '/pages/profile/password' })
+}
+
+function openAppearance() {
+	uni.navigateTo({
+		url: '/pages/profile/appearance',
+		fail: () => uni.showToast({ title: '显示与触感页面打开失败，请重试', icon: 'none' })
+	})
+}
+
+async function handleLogout() {
+	try {
+		await logoutRequest()
+	} catch (error) {
+		const message = (error as Error).message
+		uni.showToast({ title: message == null || message == '' ? '退出登录失败' : message, icon: 'none' })
+	} finally {
+		clearSession()
+		uni.reLaunch({ url: '/pages/auth/login' })
+	}
+}
+function refresh() {
+	const user = getCurrentUser()
+	profileName.value = user.name
+	studentID.value = user.student_id
+	className.value = user.class_name
+	const cachedURL = getStoredAvatarURL()
+	const cachedSource = getCachedAvatarSource(user.student_id, cachedURL)
+	if (cachedSource != '' && cachedSource != avatarURL.value) {
+		avatarLoadFailed.value = false
+		avatarURL.value = cachedSource
+	}
+	loadAvatar()
+}
+watch((): boolean => props.active, (active: boolean) => {
+	pageActive = active
+	if (!active) avatarUpdateVersion++
+})
+onUnmounted(() => {
+	pageActive = false
+	avatarUpdateVersion++
+})
+
+const scrollTop = ref(0)
+function rememberScroll(event: UniScrollEvent) {
+	scrollTop.value = event.detail.scrollTop
+}
+defineExpose({ refresh })
+</script>
+
+<style>
+.page {
+	position: relative;
+	flex: 1;
+	overflow: hidden;
+	background-color: #f5f8ff;
+}
+.page-background {
+	position: absolute;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+}
+.content-scroll {
+	position: relative;
+	z-index: 1;
+	flex: 1;
+	overflow: hidden;
+}
+.content {
+	box-sizing: border-box;
+	padding-top: 120rpx;
+	padding-right: 44rpx;
+	padding-left: 44rpx;
+}
+.header {
+	padding-left: 6rpx;
+}
+.page-title {
+	color: #173e79;
+	font-size: 48rpx;
+	font-weight: 700;
+	line-height: 60rpx;
+}
+.page-subtitle {
+	margin-top: 18rpx;
+	color: #7890bd;
+	font-size: 27rpx;
+	line-height: 38rpx;
+}
+.profile-card {
+	box-sizing: border-box;
+	height: 284rpx;
+	margin-top: 44rpx;
+	padding: 42rpx;
+	border-radius: 36rpx;
+	background-color: rgba(255, 255, 255, 0.84);
+	box-shadow: 0 14rpx 34rpx rgba(96, 130, 202, 0.14);
+	flex-direction: row;
+	align-items: center;
+}
+.profile-avatar {
+	width: 136rpx;
+	height: 136rpx;
+	border-radius: 68rpx;
+	border-width: 8rpx;
+	border-style: solid;
+	border-color: rgba(255, 255, 255, 0.8);
+	box-shadow: 0 8rpx 24rpx rgba(89, 119, 205, 0.18);
+}
+.profile-avatar-placeholder {
+	align-items: center;
+	justify-content: center;
+	background-color: #edf2fc;
+}
+.profile-avatar-hint {
+	font-size: 24rpx;
+	color: #7890bc;
+}
+.profile-details {
+	flex: 1;
+	min-width: 0;
+	margin-left: 36rpx;
+}
+.profile-name-row {
+	flex-direction: row;
+	align-items: center;
+}
+.profile-name {
+	color: #153d79;
+	font-size: 36rpx;
+	font-weight: 700;
+	line-height: 48rpx;
+}
+.edit-icon {
+	width: 34rpx;
+	height: 34rpx;
+	margin-left: 22rpx;
+}
+.profile-meta-row {
+	margin-top: 22rpx;
+	flex-direction: row;
+	align-items: center;
+}
+.profile-school-row {
+	margin-top: 12rpx;
+}
+.profile-meta-icon {
+	width: 30rpx;
+	height: 30rpx;
+}
+.profile-meta-text {
+	margin-left: 12rpx;
+	color: #778db8;
+	font-size: 23rpx;
+	line-height: 32rpx;
+}
+.card-arrow {
+	width: 34rpx;
+	height: 34rpx;
+	margin-left: 12rpx;
+}
+.section-title {
+	margin-top: 36rpx;
+	margin-left: 26rpx;
+	margin-bottom: 26rpx;
+	color: #153d79;
+	font-size: 31rpx;
+	font-weight: 700;
+	line-height: 44rpx;
+}
+.service-card {
+	padding-right: 48rpx;
+	padding-left: 48rpx;
+	border-radius: 36rpx;
+	background-color: rgba(255, 255, 255, 0.84);
+	box-shadow: 0 14rpx 34rpx rgba(96, 130, 202, 0.12);
+}
+.service-item {
+	height: 124rpx;
+	flex-direction: row;
+	align-items: center;
+}
+.service-icon {
+	width: 84rpx;
+	height: 84rpx;
+}
+.service-copy {
+	flex: 1;
+	min-width: 0;
+	margin-left: 24rpx;
+}
+.service-title {
+	color: #153d79;
+	font-size: 28rpx;
+	font-weight: 600;
+	line-height: 38rpx;
+}
+.service-description {
+	margin-top: 8rpx;
+	color: #8297c0;
+	font-size: 23rpx;
+	line-height: 32rpx;
+}
+.service-arrow {
+	width: 32rpx;
+	height: 32rpx;
+	margin-left: 14rpx;
+}
+.service-divider {
+	height: 1rpx;
+	margin-left: 4rpx;
+	background-color: rgba(121, 150, 208, 0.18);
+}
+.logout-card {
+	height: 128rpx;
+	margin-top: 24rpx;
+	padding-right: 50rpx;
+	padding-left: 48rpx;
+	border-radius: 36rpx;
+	background-color: rgba(255, 255, 255, 0.88);
+	box-shadow: 0 14rpx 34rpx rgba(255, 116, 127, 0.1);
+	flex-direction: row;
+	align-items: center;
+}
+.logout-icon {
+	width: 86rpx;
+	height: 86rpx;
+}
+.logout-text {
+	flex: 1;
+	margin-left: 26rpx;
+	color: #ff4d54;
+	font-size: 29rpx;
+	font-weight: 500;
+	line-height: 40rpx;
+}
+.logout-arrow {
+	margin-top: -6rpx;
+	color: #ff7e86;
+	font-size: 58rpx;
+	font-weight: 300;
+	line-height: 60rpx;
+}
+.bottom-spacer {
+	height: 96px;
+}
+</style>
