@@ -1,10 +1,22 @@
 <template>
 	<PageTransition ref="pageTransition" enter-direction="forward">
 		<view class="compare-page">
-			<view class="safe-top">
+			<view class="safe-top" :class="{ 'nav-dark-background': isDarkMode }">
 			</view>
-			<view class="top-nav-wrap">
-				<image class="top-nav-image" src="/static/leave/detail/top-nav.png" mode="widthFix"></image>
+			<view class="top-nav-wrap" :class="{ 'nav-dark-background': isDarkMode }">
+				<view class="top-nav-content" :class="{ 'nav-dark-background': isDarkMode }">
+					<view class="top-back-shaft" :class="{ 'nav-dark-icon': isDarkMode }"></view>
+					<view class="top-back-upper" :class="{ 'nav-dark-icon': isDarkMode }"></view>
+					<view class="top-back-lower" :class="{ 'nav-dark-icon': isDarkMode }"></view>
+					<text class="top-nav-title" :class="{ 'nav-dark-title': isDarkMode }">请销假申请</text>
+					<view class="top-more-dots">
+						<view class="top-more-dot" :class="{ 'nav-dark-icon': isDarkMode }"></view>
+						<view class="top-more-dot" :class="{ 'nav-dark-icon': isDarkMode }"></view>
+						<view class="top-more-dot" :class="{ 'nav-dark-icon': isDarkMode }"></view>
+					</view>
+					<view class="top-nav-divider" :class="{ 'nav-dark-background': isDarkMode }"></view>
+					<view class="top-nav-bottom" :class="{ 'nav-dark-background': isDarkMode }"></view>
+				</view>
 				<view class="top-back-hit" @click="goHome">
 				</view>
 			</view>
@@ -20,6 +32,44 @@ import { getRecord, RecordDetail } from '@/utils/api.uts'
 
 const webSrc = ref('')
 const fromRecords = ref(false)
+const isDarkMode = ref(false)
+let isPageVisible = false
+
+function applyNavTheme(theme: string) {
+	isDarkMode.value = theme == 'dark'
+	// 该 API 作用于栈顶页面，隐藏时只更新本页状态。
+	if (!isPageVisible) return
+	uni.setNavigationBarColor({
+		frontColor: isDarkMode.value ? '#ffffff' : '#000000',
+		backgroundColor: isDarkMode.value ? '#000000' : '#ffffff'
+	})
+}
+
+function syncNavTheme() {
+	// #ifdef APP
+	applyNavTheme(uni.getDeviceInfo().osTheme ?? 'light')
+	// #endif
+}
+
+// #ifdef APP
+syncNavTheme()
+const osThemeChangeId = uni.onOsThemeChange((result: OsThemeChangeResult) => {
+	applyNavTheme(result.osTheme)
+})
+
+onUnload(() => {
+	uni.offOsThemeChange(osThemeChangeId)
+})
+// #endif
+
+onShow(() => {
+	isPageVisible = true
+	syncNavTheme()
+})
+
+onHide(() => {
+	isPageVisible = false
+})
 
 function twoDigits(value: number): string {
 	return value < 10 ? `0${value}` : `${value}`
@@ -101,15 +151,95 @@ function goHome() {
 	background-color:#fff
 }
 .top-nav-wrap {
-	position:relative;
-	background-color:#fff
+	position: relative;
+	/* 原图 1260 × 164，按 750rpx 等比换算，并保留原来的 4px 上移及占高。 */
+	height: 97.619rpx;
+	margin-bottom: -4px;
+	flex-shrink: 0;
+	background-color: #fff;
 }
-.top-nav-image {
-	width:100%;
-	background-color:#fff;
-	position:relative;
-	top:-4px;
-	margin-bottom:-4px
+.top-nav-content {
+	position: absolute;
+	left: 0;
+	top: -4px;
+	width: 100%;
+	height: 97.619rpx;
+	background-color: #fff;
+}
+.top-back-shaft {
+	position: absolute;
+	left: 26.19rpx;
+	top: 50.595rpx;
+	width: 27.976rpx;
+	height: 2.679rpx;
+	border-radius: 1.34rpx;
+	background-color: #000;
+	/* 保留亚像素线宽，避免 Android 布局取整后比原图偏粗。 */
+	transform: scaleY(0.92);
+}
+.top-back-upper {
+	position: absolute;
+	left: 22.916rpx;
+	top: 44.048rpx;
+	width: 19.048rpx;
+	height: 2.679rpx;
+	border-radius: 1.34rpx;
+	background-color: #000;
+	transform: rotate(-45deg) scaleY(0.92);
+}
+.top-back-lower {
+	position: absolute;
+	left: 22.916rpx;
+	top: 57.143rpx;
+	width: 19.048rpx;
+	height: 2.679rpx;
+	border-radius: 1.34rpx;
+	background-color: #000;
+	transform: rotate(45deg) scaleY(0.92);
+}
+.top-nav-title {
+	position: absolute;
+	/* Android 实机对照原图校准字重、字面宽度及基线。 */
+	left: -1.19rpx;
+	top: 30.357rpx;
+	width: 100%;
+	height: 42.857rpx;
+	line-height: 42.857rpx;
+	text-align: center;
+	font-size: 30.952rpx;
+	font-weight: 500;
+	color: #000;
+	transform: scale(1.02);
+}
+.top-more-dots {
+	position: absolute;
+	left: 702.381rpx;
+	top: 34.524rpx;
+	width: 7.143rpx;
+	height: 34.524rpx;
+	justify-content: space-between;
+}
+.top-more-dot {
+	width: 7.143rpx;
+	height: 7.143rpx;
+	border-radius: 3.572rpx;
+	background-color: #000;
+}
+.top-nav-divider {
+	position: absolute;
+	left: 0;
+	bottom: 1.19rpx;
+	width: 100%;
+	height: 0.595rpx;
+	background-color: #c7c9cc;
+}
+.top-nav-bottom {
+	position: absolute;
+	left: 0;
+	bottom: 0;
+	width: 100%;
+	height: 1.19rpx;
+	background-color: #f4f5fa;
 }
 .top-back-hit {
 	position:absolute;
@@ -121,5 +251,14 @@ function goHome() {
 }
 .compare-web-view {
 	flex:1
+}
+.nav-dark-background {
+	background-color: #000;
+}
+.nav-dark-icon {
+	background-color: #f8f8f8;
+}
+.nav-dark-title {
+	color: #f8f8f8;
 }
 </style>
