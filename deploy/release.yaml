@@ -1,5 +1,5 @@
 backend:
-  version: 3
+  version: 4
 
 admin:
   version: 3
@@ -8,6 +8,5 @@ app:
   android:
     apk_directory: deploy/releases
     release_notes:
-      - 优化登录注册流程，注册后自动登录
-      - 优化修改密码体验，提升账号安全性
-      - 避免请假申请提交成功后重复提交
+      - 优化页面交互体验
+      - 补齐暗色模式下的假条样式
