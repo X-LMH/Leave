@@ -10,8 +10,8 @@ import (
 )
 
 // 使用可重复读的只读事务，让总量、最近记录和版本分组读取同一数据库快照。
-func OverviewReadTransaction(fn func(*gorm.DB) error) error {
-	return db.Transaction(fn, &sql.TxOptions{
+func (s *DAO) OverviewReadTransaction(fn func(*gorm.DB) error) error {
+	return s.db.Transaction(fn, &sql.TxOptions{
 		Isolation: sql.LevelRepeatableRead,
 		ReadOnly:  true,
 	})
@@ -22,7 +22,7 @@ type OverviewReportedVersion struct {
 	Count   int64
 }
 
-func GetOverviewStatistics(tx *gorm.DB, now time.Time) (dto.OverviewStatistics, error) {
+func (s *DAO) GetOverviewStatistics(tx *gorm.DB, now time.Time) (dto.OverviewStatistics, error) {
 	// 学生从账号表统计，包含停用和未完善资料的账号；班级也包含停用项。
 	// 带 DeletedAt 的模型由 GORM 自动排除软删除记录。
 	var counts dto.OverviewStatistics
@@ -52,7 +52,7 @@ type OverviewWeekCount struct {
 const overviewWeekDuration = 7 * 24 * time.Hour
 
 // Service 按北京时间计算周边界，SQL 参数转换为现有 DATETIME 存储使用的本地时区。
-func GetOverviewWeekCounts(tx *gorm.DB, start, next, now time.Time) ([]OverviewWeekCount, error) {
+func (s *DAO) GetOverviewWeekCounts(tx *gorm.DB, start, next, now time.Time) ([]OverviewWeekCount, error) {
 	rows := make([]OverviewWeekCount, 0)
 	// 按记录创建时间归周，周范围左闭右开；排除统计时间之后创建的记录。
 	err := tx.Model(&models.Record{}).
@@ -67,7 +67,7 @@ func GetOverviewWeekCounts(tx *gorm.DB, start, next, now time.Time) ([]OverviewW
 	return rows, err
 }
 
-func GetOverviewRecentRecords(tx *gorm.DB, now time.Time) ([]dto.OverviewRecord, error) {
+func (s *DAO) GetOverviewRecentRecords(tx *gorm.DB, now time.Time) ([]dto.OverviewRecord, error) {
 	// 使用记录中的姓名、班级和类型快照，不关联当前资料，避免历史内容随资料修改而变化。
 	rows := make([]dto.OverviewRecord, 0)
 	err := tx.Model(&models.Record{}).
@@ -79,7 +79,7 @@ func GetOverviewRecentRecords(tx *gorm.DB, now time.Time) ([]dto.OverviewRecord,
 	return rows, err
 }
 
-func GetOverviewReportedVersions(tx *gorm.DB) ([]OverviewReportedVersion, error) {
+func (s *DAO) GetOverviewReportedVersions(tx *gorm.DB) ([]OverviewReportedVersion, error) {
 	rows := make([]OverviewReportedVersion, 0)
 	// 使用二进制分组，避免数据库忽略大小写而把未知版本合并到已知版本；空白由 Service 处理。
 	err := tx.Model(&models.User{}).
@@ -90,7 +90,7 @@ func GetOverviewReportedVersions(tx *gorm.DB) ([]OverviewReportedVersion, error)
 	return rows, err
 }
 
-func GetOverviewAndroidVersions(tx *gorm.DB, now time.Time) ([]models.AppVersion, error) {
+func (s *DAO) GetOverviewAndroidVersions(tx *gorm.DB, now time.Time) ([]models.AppVersion, error) {
 	rows := make([]models.AppVersion, 0)
 	err := tx.Model(&models.AppVersion{}).
 		Select("id", "version_code", "version_name", "status", "published_at", "release_notes").

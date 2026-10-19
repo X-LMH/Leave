@@ -11,9 +11,19 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+type AvatarHandler struct {
+	avatar *appservice.AvatarService
+}
+
+func NewAvatarHandler(avatar *appservice.AvatarService) *AvatarHandler {
+	return &AvatarHandler{
+		avatar: avatar,
+	}
+}
+
 const maxAvatarSize = 5 << 20
 
-func UploadAvatarHandler(c *gin.Context) {
+func (a *AvatarHandler) UploadAvatarHandler(c *gin.Context) {
 	studentID, err := request.GetCurrentStuID(c)
 	if err != nil {
 		response.Error(c, response.CodeNeedLogin)
@@ -50,7 +60,7 @@ func UploadAvatarHandler(c *gin.Context) {
 		}
 	}()
 
-	data, err := appservice.UploadAvatar(studentID, content)
+	data, err := a.avatar.UploadAvatar(studentID, content)
 	if err != nil {
 		switch {
 		case errors.Is(err, appservice.ErrorInvalidAvatar):

@@ -4,21 +4,36 @@ import (
 	"backend/internal/config"
 	"backend/internal/dao/mysql"
 	"backend/internal/router"
+	"errors"
 	"fmt"
 	"log"
 )
 
 func main() {
-	if err := config.Init(); err != nil {
-		log.Fatal("初始化配置失败, err:", err)
+	if err := run(); err != nil {
+		log.Fatal(err)
 	}
+}
 
-	if err := mysql.Init(); err != nil {
-		log.Fatal("数据库初始化配置失败, err:", err)
+func run() (err error) {
+	cfg, err := config.Load()
+	if err != nil {
+		return fmt.Errorf("初始化配置失败: %w", err)
 	}
-
-	r := router.SetupRouter()
-	if err := r.Run(fmt.Sprintf(":%d", config.Cfg.App.Port)); err != nil {
-		fmt.Printf("Run server failed, err:%v\n", err)
+	db, err := mysql.Open(cfg.Mysql)
+	if err != nil {
+		return fmt.Errorf("数据库初始化失败: %w", err)
 	}
+	connection, err := db.DB()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if closeErr := connection.Close(); closeErr != nil {
+			err = errors.Join(err, fmt.Errorf("关闭数据库连接失败: %w", closeErr))
+		}
+	}()
+	dao := mysql.NewDAO(db)
+	r := router.SetupRouter(buildDependencies(cfg, dao))
+	return r.Run(fmt.Sprintf(":%d", cfg.App.Port))
 }

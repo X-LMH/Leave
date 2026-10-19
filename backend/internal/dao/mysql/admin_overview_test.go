@@ -32,7 +32,8 @@ func TestOverviewWeekQueryUsesCreationTime(t *testing.T) {
 	start := time.Date(2026, 8, 10, 0, 0, 0, 0, time.FixedZone("Beijing", 8*60*60))
 	next := start.AddDate(0, 0, 63)
 	now := next.Add(-12 * time.Hour)
-	_, err = GetOverviewWeekCounts(tx, start, next, now)
+	dao := NewDAO(tx)
+	_, err = dao.GetOverviewWeekCounts(tx, start, next, now)
 	// DryRun 只生成 SQL，不读取数据库行，Scan 应返回该特定错误。
 	if !errors.Is(err, gorm.ErrDryRunModeUnsupported) {
 		t.Fatalf("unexpected dry-run error: %v", err)

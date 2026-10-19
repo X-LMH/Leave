@@ -10,13 +10,25 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func GetClassOptionsHandler(c *gin.Context) {
+type OptionsHandler struct {
+	options       *appservice.OptionsService
+	commonOptions *common.OptionsService
+}
+
+func NewOptionsHandler(options *appservice.OptionsService, commonOptions *common.OptionsService) *OptionsHandler {
+	return &OptionsHandler{
+		options:       options,
+		commonOptions: commonOptions,
+	}
+}
+
+func (o *OptionsHandler) GetClassOptionsHandler(c *gin.Context) {
 	studentID, err := request.GetCurrentStuID(c)
 	if err != nil {
 		response.Error(c, response.CodeNeedLogin)
 		return
 	}
-	data, err := appservice.GetProfileClassOptions(studentID)
+	data, err := o.options.GetProfileClassOptions(studentID)
 	if err != nil {
 		response.Error(c, response.CodeServerBusy)
 		return
@@ -24,13 +36,13 @@ func GetClassOptionsHandler(c *gin.Context) {
 	response.Success(c, data)
 }
 
-func GetApartmentOptionsHandler(c *gin.Context) {
+func (o *OptionsHandler) GetApartmentOptionsHandler(c *gin.Context) {
 	studentID, err := request.GetCurrentStuID(c)
 	if err != nil {
 		response.Error(c, response.CodeNeedLogin)
 		return
 	}
-	data, err := appservice.GetProfileApartmentOptions(studentID, c.Query("gender"))
+	data, err := o.options.GetProfileApartmentOptions(studentID, c.Query("gender"))
 	if err != nil {
 		if errors.Is(err, common.ErrorInvalidApartmentGender) {
 			response.Error(c, response.CodeInvalidParam)
@@ -42,8 +54,8 @@ func GetApartmentOptionsHandler(c *gin.Context) {
 	response.Success(c, data)
 }
 
-func GetLeaveTypeOptionsHandler(c *gin.Context) {
-	data, err := common.GetLeaveTypeOptions(true)
+func (o *OptionsHandler) GetLeaveTypeOptionsHandler(c *gin.Context) {
+	data, err := o.commonOptions.GetLeaveTypeOptions(true)
 	if err != nil {
 		response.Error(c, response.CodeServerBusy)
 		return

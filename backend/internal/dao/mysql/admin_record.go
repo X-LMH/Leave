@@ -8,8 +8,8 @@ import (
 	"time"
 )
 
-func GetAdminRecords(query dto.AdminRecordQuery) ([]*dto.AdminRecordListItem, int64, error) {
-	q := db.Model(&models.Record{})
+func (s *DAO) GetAdminRecords(query dto.AdminRecordQuery) ([]*dto.AdminRecordListItem, int64, error) {
+	q := s.db.Model(&models.Record{})
 	if query.StudentID != "" {
 		q = q.Where("student_id LIKE ?", "%"+query.StudentID+"%")
 	}
@@ -54,15 +54,15 @@ func GetAdminRecords(query dto.AdminRecordQuery) ([]*dto.AdminRecordListItem, in
 	return rows, total, err
 }
 
-func GetAdminRecord(id uint) (*models.Record, error) {
+func (s *DAO) GetAdminRecord(id uint) (*models.Record, error) {
 	var row models.Record
-	if err := db.First(&row, id).Error; err != nil {
+	if err := s.db.First(&row, id).Error; err != nil {
 		return nil, err
 	}
 	return &row, nil
 }
 
-func GetAdminRecordForUpdate(tx *gorm.DB, id uint) (*models.Record, error) {
+func (s *DAO) GetAdminRecordForUpdate(tx *gorm.DB, id uint) (*models.Record, error) {
 	var row models.Record
 	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&row, id).Error; err != nil {
 		return nil, err
@@ -70,7 +70,7 @@ func GetAdminRecordForUpdate(tx *gorm.DB, id uint) (*models.Record, error) {
 	return &row, nil
 }
 
-func GetRecordLeaveTypeForShare(tx *gorm.DB, id uint) (*models.LeaveType, error) {
+func (s *DAO) GetRecordLeaveTypeForShare(tx *gorm.DB, id uint) (*models.LeaveType, error) {
 	var row models.LeaveType
 	if err := tx.Clauses(clause.Locking{Strength: "SHARE"}).First(&row, id).Error; err != nil {
 		return nil, err
@@ -78,7 +78,7 @@ func GetRecordLeaveTypeForShare(tx *gorm.DB, id uint) (*models.LeaveType, error)
 	return &row, nil
 }
 
-func UpdateAdminRecordContent(tx *gorm.DB, record *models.Record) error {
+func (s *DAO) UpdateAdminRecordContent(tx *gorm.DB, record *models.Record) error {
 	return tx.Model(record).Updates(map[string]any{
 		"leave_type_id":   record.LeaveTypeID,
 		"leave_type_name": record.LeaveTypeName,

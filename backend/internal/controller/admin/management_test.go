@@ -1,11 +1,13 @@
 package admin
 
 import (
+	"backend/internal/config"
 	"backend/internal/dao/mysql"
 	"backend/internal/middleware"
 	"backend/internal/request"
 	"backend/internal/response"
 	adminservice "backend/internal/service/admin"
+	commonservice "backend/internal/service/common"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 	"net/http"
@@ -15,52 +17,59 @@ import (
 )
 
 func TestManagementRejectsInvalidRequests(t *testing.T) {
+	settings := config.Config{}
+	dao := mysql.NewDAO(nil)
 	gin.SetMode(gin.TestMode)
+	studentHandler := NewStudentHandler(adminservice.NewStudentService(dao, settings.Storage))
+	appVersionHandler := NewAppVersionHandler(adminservice.NewAppVersionService(dao))
+	leaveTypeHandler := NewLeaveTypeHandler(adminservice.NewLeaveTypeService(dao))
+	recordHandler := NewRecordHandler(adminservice.NewRecordService(dao))
+	classHandler := NewClassHandler(adminservice.NewClassService(dao))
 	for _, tc := range []struct {
 		handler            gin.HandlerFunc
 		method, path, body string
 	}{
-		{GetAppVersionsHandler, "GET", "/items?page=0", ""},
-		{GetAppVersionsHandler, "GET", "/items?page_size=101", ""},
-		{GetAppVersionsHandler, "GET", "/items?platform=unknown", ""},
-		{GetAppVersionsHandler, "GET", "/items?status=draft", ""},
-		{GetAppVersionHandler, "GET", "/items/0", ""},
-		{GetAppVersionHandler, "GET", "/items/-1", ""},
-		{GetAppVersionHandler, "GET", "/items/bad", ""},
-		{GetAppVersionHandler, "GET", "/items/18446744073709551616", ""},
-		{GetApartmentOptionsHandler, "GET", "/items?gender=unknown", ""},
-		{GetStudentsHandler, "GET", "/items?page=0", ""},
-		{GetRecordsHandler, "GET", "/items?page=0", ""},
-		{GetRecordsHandler, "GET", "/items?page_size=101", ""},
-		{GetRecordsHandler, "GET", "/items?class_name=test", ""},
-		{GetRecordsHandler, "GET", "/items?leave_type_id=-1", ""},
-		{GetRecordsHandler, "GET", "/items?is_leave_school=bad", ""},
-		{GetRecordsHandler, "GET", "/items?start_time_from=bad", ""},
-		{GetRecordsHandler, "GET", "/items?start_time_from=2026-10-11T00:00:00Z&start_time_to=2026-10-10T00:00:00Z", ""},
-		{GetRecordHandler, "GET", "/items/0", ""},
-		{GetRecordHandler, "GET", "/items/bad", ""},
-		{UpdateRecordHandler, "PUT", "/items/1", `{}`},
-		{UpdateRecordHandler, "PUT", "/items/1", `{"start_time":"bad"}`},
-		{GetStudentsHandler, "GET", "/items?page_size=101", ""},
-		{GetStudentsHandler, "GET", "/items?class_id=0", ""},
-		{GetStudentsHandler, "GET", "/items?class_id=bad", ""},
-		{GetStudentsHandler, "GET", "/items?status=2", ""},
-		{GetStudentsHandler, "GET", "/items?status=-1", ""},
-		{GetStudentHandler, "GET", "/items/0", ""},
-		{UpdateStudentHandler, "PUT", "/items/1", `{}`},
-		{UpdateStudentStatusHandler, "PUT", "/items/1", `{}`},
-		{UpdateStudentStatusHandler, "PUT", "/items/1", `{"status":2}`},
-		{UpdateStudentStatusHandler, "PUT", "/items/1", `{"status":-1}`},
-		{UpdateStudentStatusHandler, "PUT", "/items/1", `{"status":1.5}`},
-		{GetLeaveTypesHandler, "GET", "/items?page=0", ""},
-		{GetLeaveTypesHandler, "GET", "/items?is_enabled=bad", ""},
-		{GetClassesHandler, "GET", "/items?page_size=101", ""},
-		{CreateLeaveTypeHandler, "POST", "/items", `{"name":"a","sort_order":-1,"is_enabled":true}`},
-		{CreateLeaveTypeHandler, "POST", "/items", `{"name":"a","sort_order":0}`},
-		{CreateLeaveTypeHandler, "POST", "/items", `{"name":"a","sort_order":1.5,"is_enabled":true}`},
-		{CreateClassHandler, "POST", "/items", `{"college":"a","major":"b","class_name":"c"}`},
-		{UpdateClassHandler, "PUT", "/items/0", `{}`},
-		{DeleteLeaveTypeHandler, "DELETE", "/items/nope", ""},
+		{appVersionHandler.GetAppVersionsHandler, "GET", "/items?page=0", ""},
+		{appVersionHandler.GetAppVersionsHandler, "GET", "/items?page_size=101", ""},
+		{appVersionHandler.GetAppVersionsHandler, "GET", "/items?platform=unknown", ""},
+		{appVersionHandler.GetAppVersionsHandler, "GET", "/items?status=draft", ""},
+		{appVersionHandler.GetAppVersionHandler, "GET", "/items/0", ""},
+		{appVersionHandler.GetAppVersionHandler, "GET", "/items/-1", ""},
+		{appVersionHandler.GetAppVersionHandler, "GET", "/items/bad", ""},
+		{appVersionHandler.GetAppVersionHandler, "GET", "/items/18446744073709551616", ""},
+		{NewOptionsHandler(commonservice.NewOptionsService(dao)).GetApartmentOptionsHandler, "GET", "/items?gender=unknown", ""},
+		{studentHandler.GetStudentsHandler, "GET", "/items?page=0", ""},
+		{recordHandler.GetRecordsHandler, "GET", "/items?page=0", ""},
+		{recordHandler.GetRecordsHandler, "GET", "/items?page_size=101", ""},
+		{recordHandler.GetRecordsHandler, "GET", "/items?class_name=test", ""},
+		{recordHandler.GetRecordsHandler, "GET", "/items?leave_type_id=-1", ""},
+		{recordHandler.GetRecordsHandler, "GET", "/items?is_leave_school=bad", ""},
+		{recordHandler.GetRecordsHandler, "GET", "/items?start_time_from=bad", ""},
+		{recordHandler.GetRecordsHandler, "GET", "/items?start_time_from=2026-10-11T00:00:00Z&start_time_to=2026-10-10T00:00:00Z", ""},
+		{recordHandler.GetRecordHandler, "GET", "/items/0", ""},
+		{recordHandler.GetRecordHandler, "GET", "/items/bad", ""},
+		{recordHandler.UpdateRecordHandler, "PUT", "/items/1", `{}`},
+		{recordHandler.UpdateRecordHandler, "PUT", "/items/1", `{"start_time":"bad"}`},
+		{studentHandler.GetStudentsHandler, "GET", "/items?page_size=101", ""},
+		{studentHandler.GetStudentsHandler, "GET", "/items?class_id=0", ""},
+		{studentHandler.GetStudentsHandler, "GET", "/items?class_id=bad", ""},
+		{studentHandler.GetStudentsHandler, "GET", "/items?status=2", ""},
+		{studentHandler.GetStudentsHandler, "GET", "/items?status=-1", ""},
+		{studentHandler.GetStudentHandler, "GET", "/items/0", ""},
+		{studentHandler.UpdateStudentHandler, "PUT", "/items/1", `{}`},
+		{studentHandler.UpdateStudentStatusHandler, "PUT", "/items/1", `{}`},
+		{studentHandler.UpdateStudentStatusHandler, "PUT", "/items/1", `{"status":2}`},
+		{studentHandler.UpdateStudentStatusHandler, "PUT", "/items/1", `{"status":-1}`},
+		{studentHandler.UpdateStudentStatusHandler, "PUT", "/items/1", `{"status":1.5}`},
+		{leaveTypeHandler.GetLeaveTypesHandler, "GET", "/items?page=0", ""},
+		{leaveTypeHandler.GetLeaveTypesHandler, "GET", "/items?is_enabled=bad", ""},
+		{classHandler.GetClassesHandler, "GET", "/items?page_size=101", ""},
+		{leaveTypeHandler.CreateLeaveTypeHandler, "POST", "/items", `{"name":"a","sort_order":-1,"is_enabled":true}`},
+		{leaveTypeHandler.CreateLeaveTypeHandler, "POST", "/items", `{"name":"a","sort_order":0}`},
+		{leaveTypeHandler.CreateLeaveTypeHandler, "POST", "/items", `{"name":"a","sort_order":1.5,"is_enabled":true}`},
+		{classHandler.CreateClassHandler, "POST", "/items", `{"college":"a","major":"b","class_name":"c"}`},
+		{classHandler.UpdateClassHandler, "PUT", "/items/0", `{}`},
+		{leaveTypeHandler.DeleteLeaveTypeHandler, "DELETE", "/items/nope", ""},
 	} {
 		r := gin.New()
 		r.Handle(tc.method, "/items", tc.handler)

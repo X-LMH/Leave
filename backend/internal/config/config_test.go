@@ -6,8 +6,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"github.com/spf13/viper"
 )
 
 func TestFindConfigFile(t *testing.T) {
@@ -47,12 +45,7 @@ func TestFindConfigFile(t *testing.T) {
 }
 
 func TestInitReadsTestConfig(t *testing.T) {
-	previous := Cfg
-	t.Cleanup(func() {
-		Cfg = previous
-		viper.Reset()
-	})
-	viper.Reset()
+
 	t.Chdir(t.TempDir())
 	t.Setenv("MYSQL_PASSWORD", "test-password")
 	t.Setenv("JWT_SECRET", "test-secret")
@@ -63,23 +56,19 @@ func TestInitReadsTestConfig(t *testing.T) {
 	if err := os.WriteFile("config/config.test.yaml", []byte(content), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if err := Init(); err != nil {
+	cfg, err := Load()
+	if err != nil {
 		t.Fatal(err)
 	}
-	if Cfg.Mysql.Database != "leave_list_test" || Cfg.App.Port != 9000 {
-		t.Fatalf("wrong test configuration: database=%q port=%d", Cfg.Mysql.Database, Cfg.App.Port)
+	if cfg.Mysql.Database != "leave_list_test" || cfg.App.Port != 9000 {
+		t.Fatalf("wrong test configuration: database=%q port=%d", cfg.Mysql.Database, cfg.App.Port)
 	}
 }
 
 func TestInitFromReleaseDirectory(t *testing.T) {
 	for _, layout := range []string{"releases/v1", "backend/releases/v1"} {
 		t.Run(layout, func(t *testing.T) {
-			previous := Cfg
-			t.Cleanup(func() {
-				Cfg = previous
-				viper.Reset()
-			})
-			viper.Reset()
+
 			root := t.TempDir()
 			if err := os.Mkdir(filepath.Join(root, "config"), 0755); err != nil {
 				t.Fatal(err)
@@ -102,10 +91,11 @@ func TestInitFromReleaseDirectory(t *testing.T) {
 				t.Fatal(err)
 			}
 			t.Chdir(cwd)
-			if err := Init(); err != nil {
+			cfg, err := Load()
+			if err != nil {
 				t.Fatal(err)
 			}
-			if Cfg.Mysql.Database != "leave_list_test" || Cfg.Mysql.Password != "release-password" || Cfg.JWT.Secret != "release-secret" {
+			if cfg.Mysql.Database != "leave_list_test" || cfg.Mysql.Password != "release-password" || cfg.JWT.Secret != "release-secret" {
 				t.Fatal("release directory did not load root test YAML and .env")
 			}
 		})
@@ -113,11 +103,6 @@ func TestInitFromReleaseDirectory(t *testing.T) {
 }
 
 func TestInitValidatesStorage(t *testing.T) {
-	previous := Cfg
-	t.Cleanup(func() {
-		Cfg = previous
-		viper.Reset()
-	})
 	t.Setenv("MYSQL_PASSWORD", "test-password")
 	t.Setenv("JWT_SECRET", "test-secret")
 	tests := []struct {
@@ -134,7 +119,7 @@ func TestInitValidatesStorage(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			viper.Reset()
+
 			t.Chdir(t.TempDir())
 			if err := os.Mkdir("config", 0755); err != nil {
 				t.Fatal(err)
@@ -143,7 +128,7 @@ func TestInitValidatesStorage(t *testing.T) {
 			if err := os.WriteFile("config/config.local.yaml", []byte(content), 0600); err != nil {
 				t.Fatal(err)
 			}
-			err := Init()
+			_, err := Load()
 			if tt.wantError == "" {
 				if err != nil {
 					t.Fatal(err)
@@ -154,5 +139,42 @@ func TestInitValidatesStorage(t *testing.T) {
 				t.Fatalf("expected error for %s, got %v", tt.wantError, err)
 			}
 		})
+	}
+}
+
+func TestLoadKeepsIndependentConfiguration(t *testing.T) {
+	t.Chdir(t.TempDir())
+	t.Setenv("MYSQL_PASSWORD", "environment-password")
+	t.Setenv("JWT_SECRET", "environment-secret")
+	if err := os.Mkdir("config", 0755); err != nil {
+		t.Fatal(err)
+	}
+	path := "config/config.local.yaml"
+	firstYAML := "app:\n  port: 9001\n  package_dir: ./first-apks\nmysql:\n  password: yaml-password\njwt:\n  secret: yaml-secret\n  expiration_days: 1\nstorage:\n  root_dir: ./first\n  base_url: /first\n"
+	if err := os.WriteFile(path, []byte(firstYAML), 0600); err != nil {
+		t.Fatal(err)
+	}
+	first, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	secondYAML := "jwt:\n  expiration_days: 7\nstorage:\n  root_dir: ./second\n  base_url: /second\n"
+	if err := os.WriteFile(path, []byte(secondYAML), 0600); err != nil {
+		t.Fatal(err)
+	}
+	second, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.App.Port != 9001 || first.Storage.RootDir != "./first" || first.JWT.ExpirationDays != 1 {
+		t.Fatal("loading another configuration changed the first instance")
+	}
+	if second.App.Port != 10000 || second.App.PackageDir != "" || second.Storage.RootDir != "./second" || second.JWT.ExpirationDays != 7 {
+		t.Fatal("second load retained settings from the first load")
+	}
+	for _, cfg := range []Config{first, second} {
+		if cfg.Mysql.Password != "environment-password" || cfg.JWT.Secret != "environment-secret" {
+			t.Fatal("environment overrides were not preserved")
+		}
 	}
 }

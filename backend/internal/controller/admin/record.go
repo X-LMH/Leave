@@ -11,6 +11,16 @@ import (
 	"time"
 )
 
+type RecordHandler struct {
+	record *adminservice.RecordService
+}
+
+func NewRecordHandler(record *adminservice.RecordService) *RecordHandler {
+	return &RecordHandler{
+		record: record,
+	}
+}
+
 func parseAdminRecordQuery(c *gin.Context) (dto.AdminRecordQuery, bool) {
 	pagination, ok := request.ParsePagination(c)
 	if !ok {
@@ -66,13 +76,13 @@ func parseAdminRecordQuery(c *gin.Context) (dto.AdminRecordQuery, bool) {
 	return query, true
 }
 
-func GetRecordsHandler(c *gin.Context) {
+func (r *RecordHandler) GetRecordsHandler(c *gin.Context) {
 	query, ok := parseAdminRecordQuery(c)
 	if !ok {
 		response.Error(c, response.CodeInvalidParam)
 		return
 	}
-	data, err := adminservice.GetAdminRecords(query)
+	data, err := r.record.GetAdminRecords(query)
 	if err != nil {
 		managementError(c, err)
 		return
@@ -80,12 +90,12 @@ func GetRecordsHandler(c *gin.Context) {
 	response.Success(c, data)
 }
 
-func GetRecordHandler(c *gin.Context) {
+func (r *RecordHandler) GetRecordHandler(c *gin.Context) {
 	id, ok := managementID(c)
 	if !ok {
 		return
 	}
-	data, err := adminservice.GetAdminRecord(id)
+	data, err := r.record.GetAdminRecord(id)
 	if err != nil {
 		managementError(c, err)
 		return
@@ -93,7 +103,7 @@ func GetRecordHandler(c *gin.Context) {
 	response.Success(c, data)
 }
 
-func UpdateRecordHandler(c *gin.Context) {
+func (r *RecordHandler) UpdateRecordHandler(c *gin.Context) {
 	id, ok := managementID(c)
 	if !ok {
 		return
@@ -103,7 +113,7 @@ func UpdateRecordHandler(c *gin.Context) {
 		response.Error(c, response.CodeInvalidParam)
 		return
 	}
-	data, err := adminservice.UpdateAdminRecord(id, input)
+	data, err := r.record.UpdateAdminRecord(id, input)
 	if err != nil {
 		managementError(c, err)
 		return

@@ -12,10 +12,22 @@ import (
 	"gorm.io/gorm"
 )
 
-func Register(req *dto.RegisterRequest) (*dto.LoginResponse, error) {
+type UserService struct {
+	dao    *mysql.DAO
+	tokens *jwt.Manager
+}
+
+func NewUserService(dao *mysql.DAO, tokens *jwt.Manager) *UserService {
+	return &UserService{
+		dao:    dao,
+		tokens: tokens,
+	}
+}
+
+func (u *UserService) Register(req *dto.RegisterRequest) (*dto.LoginResponse, error) {
 	studentID := strings.TrimSpace(req.StudentID)
 	// 先准备会话，再一次性写入账号，避免签发失败时留下已创建的账号。
-	data, err := newLoginResponse(dto.User{StudentID: studentID}, models.RoleStudent, false)
+	data, err := u.newLoginResponse(dto.User{StudentID: studentID}, models.RoleStudent, false)
 	if err != nil {
 		return nil, err
 	}
@@ -33,16 +45,16 @@ func Register(req *dto.RegisterRequest) (*dto.LoginResponse, error) {
 		LastSeenDevice: strings.TrimSpace(req.DeviceName),
 		AppVersion:     strings.TrimSpace(req.AppVersion),
 	}
-	if err := mysql.CreateUser(student); err != nil {
+	if err := u.dao.CreateUser(student); err != nil {
 		return nil, err
 	}
 	return data, nil
 }
 
-func Login(req *dto.LoginRequest) (*dto.LoginResponse, error) {
+func (u *UserService) Login(req *dto.LoginRequest) (*dto.LoginResponse, error) {
 	studentID := strings.TrimSpace(req.StudentID)
 
-	user, err := mysql.FindUserByStudentID(studentID)
+	user, err := u.dao.FindUserByStudentID(studentID)
 	if err != nil {
 		return nil, err
 	}
@@ -58,7 +70,7 @@ func Login(req *dto.LoginRequest) (*dto.LoginResponse, error) {
 		return nil, mysql.ErrorInvalidPassword
 	}
 
-	if err := mysql.UpdateAppUsage(
+	if err := u.dao.UpdateAppUsage(
 		user.StudentID,
 		strings.TrimSpace(req.DeviceName),
 		strings.TrimSpace(req.AppVersion),
@@ -66,16 +78,16 @@ func Login(req *dto.LoginRequest) (*dto.LoginResponse, error) {
 		return nil, err
 	}
 
-	loginUser, profileCompleted, err := buildLoginUser(user.StudentID)
+	loginUser, profileCompleted, err := u.buildLoginUser(user.StudentID)
 	if err != nil {
 		return nil, err
 	}
 
-	return newLoginResponse(loginUser, user.Role, profileCompleted)
+	return u.newLoginResponse(loginUser, user.Role, profileCompleted)
 }
 
-func newLoginResponse(user dto.User, role string, profileCompleted bool) (*dto.LoginResponse, error) {
-	token, err := jwt.GenerateToken(user.StudentID, role)
+func (u *UserService) newLoginResponse(user dto.User, role string, profileCompleted bool) (*dto.LoginResponse, error) {
+	token, err := u.tokens.GenerateToken(user.StudentID, role)
 	if err != nil {
 		return nil, err
 	}
@@ -86,12 +98,12 @@ func newLoginResponse(user dto.User, role string, profileCompleted bool) (*dto.L
 	}, nil
 }
 
-func buildLoginUser(studentID string) (dto.User, bool, error) {
+func (u *UserService) buildLoginUser(studentID string) (dto.User, bool, error) {
 	loginUser := dto.User{
 		StudentID: studentID,
 	}
 
-	profile, err := mysql.GetProfileByStuID(studentID)
+	profile, err := u.dao.GetProfileByStuID(studentID)
 	if err != nil {
 		return dto.User{}, false, err
 	}
@@ -101,7 +113,7 @@ func buildLoginUser(studentID string) (dto.User, bool, error) {
 
 	loginUser.Name = profile.Name
 
-	class, err := mysql.GetClassByID(profile.ClassID)
+	class, err := u.dao.GetClassByID(profile.ClassID)
 	if err != nil {
 		return dto.User{}, false, err
 	}
@@ -112,9 +124,9 @@ func buildLoginUser(studentID string) (dto.User, bool, error) {
 	return loginUser, true, nil
 }
 
-func ChangePassword(p *dto.PasswordChangeRequest, studentID string) error {
-	return mysql.Transaction(func(tx *gorm.DB) error {
-		user, err := mysql.GetUserForUpdate(tx, studentID)
+func (u *UserService) ChangePassword(p *dto.PasswordChangeRequest, studentID string) error {
+	return u.dao.Transaction(func(tx *gorm.DB) error {
+		user, err := u.dao.GetUserForUpdate(tx, studentID)
 		if err != nil {
 			return err
 		}
@@ -129,10 +141,10 @@ func ChangePassword(p *dto.PasswordChangeRequest, studentID string) error {
 		if err != nil {
 			return err
 		}
-		return mysql.UpdateUserPassword(tx, user.ID, hash)
+		return u.dao.UpdateUserPassword(tx, user.ID, hash)
 	})
 }
 
-func UpdateAppInfo(p *dto.ClientInfoRequest, studentID string) error {
-	return mysql.UpdateAppUsage(studentID, strings.TrimSpace(p.DeviceName), strings.TrimSpace(p.AppVersion))
+func (u *UserService) UpdateAppInfo(p *dto.ClientInfoRequest, studentID string) error {
+	return u.dao.UpdateAppUsage(studentID, strings.TrimSpace(p.DeviceName), strings.TrimSpace(p.AppVersion))
 }

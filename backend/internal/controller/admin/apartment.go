@@ -9,7 +9,17 @@ import (
 	"strings"
 )
 
-func GetApartmentsHandler(c *gin.Context) {
+type ApartmentHandler struct {
+	apartment *adminservice.ApartmentService
+}
+
+func NewApartmentHandler(apartment *adminservice.ApartmentService) *ApartmentHandler {
+	return &ApartmentHandler{
+		apartment: apartment,
+	}
+}
+
+func (a *ApartmentHandler) GetApartmentsHandler(c *gin.Context) {
 	pagination, ok := request.ParsePagination(c)
 	if !ok {
 		response.Error(c, response.CodeInvalidParam)
@@ -19,7 +29,7 @@ func GetApartmentsHandler(c *gin.Context) {
 	if !ok {
 		return
 	}
-	data, err := adminservice.GetAdminApartments(dto.ApartmentListQuery{
+	data, err := a.apartment.GetAdminApartments(dto.ApartmentListQuery{
 		Page:      pagination.Page,
 		PageSize:  pagination.PageSize,
 		Name:      strings.TrimSpace(c.Query("name")),
@@ -33,13 +43,13 @@ func GetApartmentsHandler(c *gin.Context) {
 	response.Success(c, data)
 }
 
-func CreateApartmentHandler(c *gin.Context) {
+func (a *ApartmentHandler) CreateApartmentHandler(c *gin.Context) {
 	p := new(dto.ApartmentRequest)
 	if err := c.ShouldBindJSON(p); err != nil {
 		response.Error(c, response.CodeInvalidParam)
 		return
 	}
-	data, err := adminservice.CreateAdminApartment(p)
+	data, err := a.apartment.CreateAdminApartment(p)
 	if err != nil {
 		managementError(c, err)
 		return
@@ -47,7 +57,7 @@ func CreateApartmentHandler(c *gin.Context) {
 	response.Success(c, data)
 }
 
-func UpdateApartmentHandler(c *gin.Context) {
+func (a *ApartmentHandler) UpdateApartmentHandler(c *gin.Context) {
 	id, ok := managementID(c)
 	if !ok {
 		return
@@ -57,7 +67,7 @@ func UpdateApartmentHandler(c *gin.Context) {
 		response.Error(c, response.CodeInvalidParam)
 		return
 	}
-	data, err := adminservice.UpdateAdminApartment(id, p)
+	data, err := a.apartment.UpdateAdminApartment(id, p)
 	if err != nil {
 		managementError(c, err)
 		return
@@ -65,12 +75,12 @@ func UpdateApartmentHandler(c *gin.Context) {
 	response.Success(c, data)
 }
 
-func DeleteApartmentHandler(c *gin.Context) {
+func (a *ApartmentHandler) DeleteApartmentHandler(c *gin.Context) {
 	id, ok := managementID(c)
 	if !ok {
 		return
 	}
-	if err := adminservice.DeleteAdminApartment(id); err != nil {
+	if err := a.apartment.DeleteAdminApartment(id); err != nil {
 		managementError(c, err)
 		return
 	}

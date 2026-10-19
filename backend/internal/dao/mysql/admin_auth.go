@@ -9,7 +9,7 @@ import (
 	"gorm.io/gorm/logger"
 )
 
-func GetUserForUpdate(tx *gorm.DB, studentID string) (*models.User, error) {
+func (s *DAO) GetUserForUpdate(tx *gorm.DB, studentID string) (*models.User, error) {
 	var user models.User
 	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
 		Where("student_id = ?", studentID).
@@ -22,7 +22,7 @@ func GetUserForUpdate(tx *gorm.DB, studentID string) (*models.User, error) {
 	return &user, nil
 }
 
-func UpdateUserPassword(tx *gorm.DB, id uint, password string) error {
+func (s *DAO) UpdateUserPassword(tx *gorm.DB, id uint, password string) error {
 	// Failed SQL must not write the new password into database logs.
 	return tx.Session(&gorm.Session{Logger: tx.Logger.LogMode(logger.Silent)}).
 		Model(&models.User{}).Where("id = ?", id).Update("password", password).Error

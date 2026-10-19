@@ -10,13 +10,23 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func GetAppVersionsHandler(c *gin.Context) {
+type AppVersionHandler struct {
+	appVersion *adminservice.AppVersionService
+}
+
+func NewAppVersionHandler(appVersion *adminservice.AppVersionService) *AppVersionHandler {
+	return &AppVersionHandler{
+		appVersion: appVersion,
+	}
+}
+
+func (a *AppVersionHandler) GetAppVersionsHandler(c *gin.Context) {
 	pagination, ok := request.ParsePagination(c)
 	if !ok {
 		response.Error(c, response.CodeInvalidParam)
 		return
 	}
-	data, err := adminservice.GetAdminAppVersions(dto.AppVersionListQuery{
+	data, err := a.appVersion.GetAdminAppVersions(dto.AppVersionListQuery{
 		Keyword:  c.Query("keyword"),
 		Platform: c.Query("platform"),
 		Status:   c.Query("status"),
@@ -30,8 +40,8 @@ func GetAppVersionsHandler(c *gin.Context) {
 	response.Success(c, data)
 }
 
-func GetCurrentAppVersionHandler(c *gin.Context) {
-	data, err := adminservice.GetAdminCurrentAppVersion()
+func (a *AppVersionHandler) GetCurrentAppVersionHandler(c *gin.Context) {
+	data, err := a.appVersion.GetAdminCurrentAppVersion()
 	if err != nil {
 		managementError(c, err)
 		return
@@ -39,13 +49,13 @@ func GetCurrentAppVersionHandler(c *gin.Context) {
 	response.Success(c, data)
 }
 
-func GetAppVersionHandler(c *gin.Context) {
+func (a *AppVersionHandler) GetAppVersionHandler(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil || id == 0 {
 		response.Error(c, response.CodeInvalidParam)
 		return
 	}
-	data, err := adminservice.GetAdminAppVersion(id)
+	data, err := a.appVersion.GetAdminAppVersion(id)
 	if err != nil {
 		managementError(c, err)
 		return

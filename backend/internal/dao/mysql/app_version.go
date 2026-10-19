@@ -10,16 +10,16 @@ import (
 
 var ErrorAppVersionNotFound = errors.New("未找到已发布的应用版本")
 
-func GetAppVersionByID(id uint64) (*models.AppVersion, error) {
+func (s *DAO) GetAppVersionByID(id uint64) (*models.AppVersion, error) {
 	version := new(models.AppVersion)
-	if err := db.Where("id = ?", id).First(version).Error; err != nil {
+	if err := s.db.Where("id = ?", id).First(version).Error; err != nil {
 		return nil, err
 	}
 	return version, nil
 }
 
-func GetAppVersionList(query dto.AppVersionListQuery) ([]models.AppVersion, int64, error) {
-	dbQuery := db.Model(&models.AppVersion{})
+func (s *DAO) GetAppVersionList(query dto.AppVersionListQuery) ([]models.AppVersion, int64, error) {
+	dbQuery := s.db.Model(&models.AppVersion{})
 	if query.Platform != "" {
 		dbQuery = dbQuery.Where("platform = ?", query.Platform)
 	}
@@ -42,9 +42,9 @@ func GetAppVersionList(query dto.AppVersionListQuery) ([]models.AppVersion, int6
 }
 
 // GetCurrentAppVersion returns the highest published version for one platform.
-func GetCurrentAppVersion(platform string) (*models.AppVersion, error) {
+func (s *DAO) GetCurrentAppVersion(platform string) (*models.AppVersion, error) {
 	version := new(models.AppVersion)
-	err := db.Where("platform = ? AND status = ?", platform, models.AppVersionStatusPublished).
+	err := s.db.Where("platform = ? AND status = ?", platform, models.AppVersionStatusPublished).
 		Order("version_code DESC").
 		First(version).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -56,17 +56,17 @@ func GetCurrentAppVersion(platform string) (*models.AppVersion, error) {
 	return version, nil
 }
 
-func GetAppVersionUpdates(platform string, versionCode int) ([]models.AppVersion, error) {
+func (s *DAO) GetAppVersionUpdates(platform string, versionCode int) ([]models.AppVersion, error) {
 	var versions []models.AppVersion
-	err := db.Where("platform = ? AND version_code > ? AND status IN ?", platform, versionCode, []string{models.AppVersionStatusPublished, models.AppVersionStatusArchived}).
+	err := s.db.Where("platform = ? AND version_code > ? AND status IN ?", platform, versionCode, []string{models.AppVersionStatusPublished, models.AppVersionStatusArchived}).
 		Order("version_code ASC").Find(&versions).Error
 	return versions, err
 }
 
 // GetAppVersions returns complete version records, newest first.
 // Empty platform or statuses leaves that filter unrestricted for version management.
-func GetAppVersions(platform string, statuses []string) ([]models.AppVersion, error) {
-	query := db.Model(&models.AppVersion{})
+func (s *DAO) GetAppVersions(platform string, statuses []string) ([]models.AppVersion, error) {
+	query := s.db.Model(&models.AppVersion{})
 	if platform != "" {
 		query = query.Where("platform = ?", platform)
 	}

@@ -8,8 +8,18 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func GetClassOptionsHandler(c *gin.Context) {
-	data, err := common.GetClassOptions(false)
+type OptionsHandler struct {
+	options *common.OptionsService
+}
+
+func NewOptionsHandler(options *common.OptionsService) *OptionsHandler {
+	return &OptionsHandler{
+		options: options,
+	}
+}
+
+func (o *OptionsHandler) GetClassOptionsHandler(c *gin.Context) {
+	data, err := o.options.GetClassOptions(false)
 	if err != nil {
 		managementError(c, err)
 		return
@@ -17,8 +27,8 @@ func GetClassOptionsHandler(c *gin.Context) {
 	response.Success(c, data)
 }
 
-func GetApartmentOptionsHandler(c *gin.Context) {
-	data, err := common.GetApartmentOptions(c.Query("gender"), false)
+func (o *OptionsHandler) GetApartmentOptionsHandler(c *gin.Context) {
+	data, err := o.options.GetApartmentOptions(c.Query("gender"), false)
 	if err != nil {
 		if errors.Is(err, common.ErrorInvalidApartmentGender) {
 			response.Error(c, response.CodeInvalidParam)
@@ -30,8 +40,8 @@ func GetApartmentOptionsHandler(c *gin.Context) {
 	response.Success(c, data)
 }
 
-func GetLeaveTypeOptionsHandler(c *gin.Context) {
-	data, err := common.GetLeaveTypeOptions(false)
+func (o *OptionsHandler) GetLeaveTypeOptionsHandler(c *gin.Context) {
+	data, err := o.options.GetLeaveTypeOptions(false)
 	if err != nil {
 		managementError(c, err)
 		return

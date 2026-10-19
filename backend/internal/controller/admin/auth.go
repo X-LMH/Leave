@@ -12,14 +12,24 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func LoginHandler(c *gin.Context) {
+type AuthHandler struct {
+	auth *adminservice.AuthService
+}
+
+func NewAuthHandler(auth *adminservice.AuthService) *AuthHandler {
+	return &AuthHandler{
+		auth: auth,
+	}
+}
+
+func (a *AuthHandler) LoginHandler(c *gin.Context) {
 	p := new(dto.AdminLoginRequest)
 	if err := c.ShouldBindJSON(p); err != nil || strings.TrimSpace(p.UserName) == "" || p.Password == "" {
 		response.Error(c, response.CodeInvalidParam)
 		return
 	}
 
-	data, err := adminservice.AdminLogin(p)
+	data, err := a.auth.AdminLogin(p)
 	if err != nil {
 		switch {
 		case errors.Is(err, mysql.ErrorUserNotExist), errors.Is(err, mysql.ErrorInvalidPassword):
@@ -32,7 +42,7 @@ func LoginHandler(c *gin.Context) {
 	response.Success(c, data)
 }
 
-func ChangePasswordHandler(c *gin.Context) {
+func (a *AuthHandler) ChangePasswordHandler(c *gin.Context) {
 	input := new(dto.PasswordChangeRequest)
 	if err := c.ShouldBindJSON(input); err != nil {
 		response.Error(c, response.CodeInvalidParam)
@@ -43,7 +53,7 @@ func ChangePasswordHandler(c *gin.Context) {
 		response.Error(c, response.CodeNeedLogin)
 		return
 	}
-	if err := adminservice.ChangePassword(studentID, input); err != nil {
+	if err := a.auth.ChangePassword(studentID, input); err != nil {
 		switch {
 		case errors.Is(err, adminservice.ErrorInvalidAdminInput):
 			response.Error(c, response.CodeInvalidParam)

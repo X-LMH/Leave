@@ -1,10 +1,14 @@
 package admin
 
 import (
+	"backend/internal/config"
+	"backend/internal/dao/mysql"
 	"backend/internal/middleware"
 	"backend/internal/models"
 	"backend/internal/request"
 	"backend/internal/response"
+	adminservice "backend/internal/service/admin"
+	"backend/internal/utils/jwt"
 	"encoding/json"
 	"net/http/httptest"
 	"strings"
@@ -14,6 +18,8 @@ import (
 )
 
 func TestChangePasswordValidationAndRole(t *testing.T) {
+	settings := config.Config{}
+	dao := mysql.NewDAO(nil)
 	gin.SetMode(gin.TestMode)
 	for _, tc := range []struct {
 		name string
@@ -34,7 +40,7 @@ func TestChangePasswordValidationAndRole(t *testing.T) {
 				c.Set(request.CtxStuID, "test-admin")
 				c.Set(request.CtxRole, tc.role)
 			})
-			r.POST("/password", middleware.AdminAuthMiddleware(), ChangePasswordHandler)
+			r.POST("/password", middleware.AdminAuthMiddleware(), NewAuthHandler(adminservice.NewAuthService(dao, jwt.NewManager(settings.JWT.Secret, settings.JWT.ExpirationDays))).ChangePasswordHandler)
 			req := httptest.NewRequest("POST", "/password", strings.NewReader(tc.body))
 			req.Header.Set("Content-Type", "application/json")
 			w := httptest.NewRecorder()

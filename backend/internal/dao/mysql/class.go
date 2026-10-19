@@ -11,17 +11,17 @@ import (
 
 var ErrorClassInUse = errors.New("class is referenced by profiles")
 
-func GetClassByID(classID uint) (*models.Class, error) {
+func (s *DAO) GetClassByID(classID uint) (*models.Class, error) {
 	class := new(models.Class)
-	if err := db.Where("id = ?", classID).First(class).Error; err != nil {
+	if err := s.db.Where("id = ?", classID).First(class).Error; err != nil {
 		return nil, err
 	}
 	return class, nil
 }
 
-func GetClassOptions(enabledOnly bool) ([]*models.Class, error) {
+func (s *DAO) GetClassOptions(enabledOnly bool) ([]*models.Class, error) {
 	classes := make([]*models.Class, 0)
-	query := db.Select("id", "college", "major", "class_name", "is_enabled")
+	query := s.db.Select("id", "college", "major", "class_name", "is_enabled")
 	if enabledOnly {
 		query = query.Where("is_enabled = ?", true)
 	}
@@ -29,9 +29,9 @@ func GetClassOptions(enabledOnly bool) ([]*models.Class, error) {
 	return classes, err
 }
 
-func GetClassList(query dto.ClassListQuery) ([]*models.Class, int64, error) {
+func (s *DAO) GetClassList(query dto.ClassListQuery) ([]*models.Class, int64, error) {
 	classes := make([]*models.Class, 0)
-	dbQuery := db.Model(&models.Class{})
+	dbQuery := s.db.Model(&models.Class{})
 	if query.College != "" {
 		dbQuery = dbQuery.Where("college LIKE ?", "%"+query.College+"%")
 	}
@@ -55,10 +55,10 @@ func GetClassList(query dto.ClassListQuery) ([]*models.Class, int64, error) {
 	return classes, total, err
 }
 
-func CreateClass(row *models.Class) error { return db.Create(row).Error }
+func (s *DAO) CreateClass(row *models.Class) error { return s.db.Create(row).Error }
 
-func UpdateClass(row *models.Class) error {
-	return db.Transaction(func(tx *gorm.DB) error {
+func (s *DAO) UpdateClass(row *models.Class) error {
+	return s.db.Transaction(func(tx *gorm.DB) error {
 		var current models.Class
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&current, row.ID).Error; err != nil {
 			return err
@@ -70,8 +70,8 @@ func UpdateClass(row *models.Class) error {
 	})
 }
 
-func DeleteClass(id uint) error {
-	return db.Transaction(func(tx *gorm.DB) error {
+func (s *DAO) DeleteClass(id uint) error {
+	return s.db.Transaction(func(tx *gorm.DB) error {
 		var row models.Class
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&row, id).Error; err != nil {
 			return err

@@ -12,8 +12,18 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+type RecordHandler struct {
+	record *appservice.RecordService
+}
+
+func NewRecordHandler(record *appservice.RecordService) *RecordHandler {
+	return &RecordHandler{
+		record: record,
+	}
+}
+
 // CreateRecordHandler 创建请假记录。
-func CreateRecordHandler(c *gin.Context) {
+func (r *RecordHandler) CreateRecordHandler(c *gin.Context) {
 	req := new(dto.RecordCreateRequest)
 	if err := c.ShouldBindJSON(req); err != nil {
 		response.Error(c, response.CodeInvalidParam)
@@ -26,7 +36,7 @@ func CreateRecordHandler(c *gin.Context) {
 		return
 	}
 
-	record, err := appservice.CreateRecord(studentID, req)
+	record, err := r.record.CreateRecord(studentID, req)
 	if err != nil {
 		switch {
 		case errors.Is(err, appservice.ErrorInvalidRecord), errors.Is(err, appservice.ErrorLeaveTypeUnavailable):
@@ -41,7 +51,7 @@ func CreateRecordHandler(c *gin.Context) {
 	response.Success(c, record)
 }
 
-func GetRecordHandler(c *gin.Context) {
+func (r *RecordHandler) GetRecordHandler(c *gin.Context) {
 	recordID, ok := recordIDFromContext(c)
 	if !ok {
 		return
@@ -52,7 +62,7 @@ func GetRecordHandler(c *gin.Context) {
 		return
 	}
 
-	record, err := appservice.GetRecord(studentID, recordID)
+	record, err := r.record.GetRecord(studentID, recordID)
 	if err != nil {
 		if errors.Is(err, mysql.ErrorRecordNotExist) {
 			response.Error(c, response.CodeRecordNotExist)
@@ -64,7 +74,7 @@ func GetRecordHandler(c *gin.Context) {
 	response.Success(c, record)
 }
 
-func GetRecordsLIstHandler(c *gin.Context) {
+func (r *RecordHandler) GetRecordsLIstHandler(c *gin.Context) {
 	studentID, err := request.GetCurrentStuID(c)
 	if err != nil {
 		response.Error(c, response.CodeNeedLogin)
@@ -86,7 +96,7 @@ func GetRecordsLIstHandler(c *gin.Context) {
 		return
 	}
 	query.LeaveType = uint(leaveType)
-	records, err := appservice.GetRecordsList(studentID, query)
+	records, err := r.record.GetRecordsList(studentID, query)
 	if err != nil {
 		response.Error(c, response.CodeServerBusy)
 		return
@@ -106,7 +116,7 @@ func queryInt(c *gin.Context, key string, fallback int) int {
 	return parsed
 }
 
-func DeleteRecordHandler(c *gin.Context) {
+func (r *RecordHandler) DeleteRecordHandler(c *gin.Context) {
 	recordID, ok := recordIDFromContext(c)
 	if !ok {
 		return
@@ -117,7 +127,7 @@ func DeleteRecordHandler(c *gin.Context) {
 		return
 	}
 
-	if err := appservice.DeleteRecord(studentID, recordID); err != nil {
+	if err := r.record.DeleteRecord(studentID, recordID); err != nil {
 		if errors.Is(err, mysql.ErrorRecordNotExist) {
 			response.Error(c, response.CodeRecordNotExist)
 		} else {

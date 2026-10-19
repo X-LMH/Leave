@@ -16,13 +16,25 @@ import (
 	"unicode/utf8"
 )
 
+type FeedbackService struct {
+	dao     *mysql.DAO
+	storage config.StorageConfig
+}
+
+func NewFeedbackService(dao *mysql.DAO, storage config.StorageConfig) *FeedbackService {
+	return &FeedbackService{
+		dao:     dao,
+		storage: storage,
+	}
+}
+
 const maxFeedbackContentLength = 500
 const MaxFeedbackAttachments = 3
 const MaxFeedbackAttachmentSize = 5 << 20
 
 var ErrorInvalidFeedback = errors.New("invalid feedback")
 
-func CreateFeedback(studentID string, request *dto.FeedbackCreateRequest, uploads ...*multipart.FileHeader) (*dto.FeedbackResponse, error) {
+func (f *FeedbackService) CreateFeedback(studentID string, request *dto.FeedbackCreateRequest, uploads ...*multipart.FileHeader) (*dto.FeedbackResponse, error) {
 	if len(uploads) > MaxFeedbackAttachments || !validateAndNormalizeFeedbackRequest(request) {
 		return nil, ErrorInvalidFeedback
 	}
@@ -38,7 +50,7 @@ func CreateFeedback(studentID string, request *dto.FeedbackCreateRequest, upload
 	if !request.IsAnonymous {
 		feedback.StudentID = &studentID
 	}
-	if err := saveFeedbackWithAttachments(feedback, images, mysql.InsertFeedback); err != nil {
+	if err := f.saveFeedbackWithAttachments(feedback, images, f.dao.InsertFeedback); err != nil {
 		return nil, err
 	}
 	return toFeedbackResponse(feedback), nil
@@ -88,8 +100,8 @@ func readFeedbackImages(uploads []*multipart.FileHeader) ([]feedbackImage, error
 }
 
 // 文件与数据库无法组成原子事务；写库前的任何失败都清理本次文件。
-func saveFeedbackWithAttachments(feedback *models.Feedback, images []feedbackImage, insert func(*models.Feedback) error) (err error) {
-	root := config.Cfg.Storage.RootDir
+func (f *FeedbackService) saveFeedbackWithAttachments(feedback *models.Feedback, images []feedbackImage, insert func(*models.Feedback) error) (err error) {
+	root := f.storage.RootDir
 	files := make([]file.Input, 0, len(images))
 	for _, image := range images {
 		files = append(files, file.Input{

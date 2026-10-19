@@ -6,14 +6,26 @@ import (
 	commonservice "backend/internal/service/common"
 )
 
+type OptionsService struct {
+	dao     *mysql.DAO
+	options *commonservice.OptionsService
+}
+
+func NewOptionsService(dao *mysql.DAO, options *commonservice.OptionsService) *OptionsService {
+	return &OptionsService{
+		dao:     dao,
+		options: options,
+	}
+}
+
 // Include only this student's existing assignment when it has been disabled.
 // Other disabled options remain unavailable for new assignments.
-func GetProfileClassOptions(studentID string) ([]*dto.ClassOption, error) {
-	options, err := commonservice.GetClassOptions(true)
+func (o *OptionsService) GetProfileClassOptions(studentID string) ([]*dto.ClassOption, error) {
+	options, err := o.options.GetClassOptions(true)
 	if err != nil {
 		return nil, err
 	}
-	profile, err := mysql.GetProfileByStuID(studentID)
+	profile, err := o.dao.GetProfileByStuID(studentID)
 	if err != nil {
 		return nil, err
 	}
@@ -25,7 +37,7 @@ func GetProfileClassOptions(studentID string) ([]*dto.ClassOption, error) {
 			return options, nil
 		}
 	}
-	class, err := mysql.GetClassByID(profile.ClassID)
+	class, err := o.dao.GetClassByID(profile.ClassID)
 	if err != nil {
 		return nil, err
 	}
@@ -38,12 +50,12 @@ func GetProfileClassOptions(studentID string) ([]*dto.ClassOption, error) {
 	}), nil
 }
 
-func GetProfileApartmentOptions(studentID, gender string) ([]*dto.ApartmentOption, error) {
-	options, err := commonservice.GetApartmentOptions(gender, true)
+func (o *OptionsService) GetProfileApartmentOptions(studentID, gender string) ([]*dto.ApartmentOption, error) {
+	options, err := o.options.GetApartmentOptions(gender, true)
 	if err != nil {
 		return nil, err
 	}
-	profile, err := mysql.GetProfileByStuID(studentID)
+	profile, err := o.dao.GetProfileByStuID(studentID)
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +67,7 @@ func GetProfileApartmentOptions(studentID, gender string) ([]*dto.ApartmentOptio
 			return options, nil
 		}
 	}
-	apartment, err := mysql.GetApartmentByID(profile.ApartmentID)
+	apartment, err := o.dao.GetApartmentByID(profile.ApartmentID)
 	if err != nil {
 		return nil, err
 	}

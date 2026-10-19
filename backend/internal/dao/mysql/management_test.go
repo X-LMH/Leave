@@ -62,9 +62,8 @@ func TestAdminManagementIntegration(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer connection.Close()
-	original := db
-	db = testDB
-	defer func() { db = original }()
+	db := testDB
+	dao := NewDAO(db)
 	for _, name := range []string{"leave_types", "classes", "profiles", "users", "apartments", "app_versions"} {
 		sql, err := os.ReadFile(filepath.Join("..", "..", "..", "database", "tables", name+".sql"))
 		if err != nil {
@@ -75,7 +74,7 @@ func TestAdminManagementIntegration(t *testing.T) {
 		}
 	}
 	t.Run("app versions", func(t *testing.T) {
-		if _, err := GetCurrentAppVersion("android"); !errors.Is(err, ErrorAppVersionNotFound) {
+		if _, err := dao.GetCurrentAppVersion("android"); !errors.Is(err, ErrorAppVersionNotFound) {
 			t.Fatalf("empty current: %v", err)
 		}
 		for _, row := range []models.AppVersion{
@@ -104,7 +103,7 @@ func TestAdminManagementIntegration(t *testing.T) {
 			{"", "published", 1, 1, 12},
 			{"", "", 4, 3, 0},
 		} {
-			rows, total, err := GetAppVersionList(dto.AppVersionListQuery{
+			rows, total, err := dao.GetAppVersionList(dto.AppVersionListQuery{
 				Platform: "android",
 				Keyword:  tc.keyword,
 				Status:   tc.status,
@@ -122,112 +121,113 @@ func TestAdminManagementIntegration(t *testing.T) {
 				t.Fatalf("wrong page/order: %+v", rows)
 			}
 		}
-		current, err := GetCurrentAppVersion("android")
+		current, err := dao.GetCurrentAppVersion("android")
 		if err != nil || current.VersionCode != 12 {
 			t.Fatalf("current: %+v %v", current, err)
 		}
-		detail, err := GetAppVersionByID(current.ID)
+		detail, err := dao.GetAppVersionByID(current.ID)
 		if err != nil || detail.PackageFile != "latest.apk" {
 			t.Fatalf("detail: %+v %v", detail, err)
 		}
-		if _, err := GetAppVersionByID(18446744073709551615); !errors.Is(err, gorm.ErrRecordNotFound) {
+		if _, err := dao.GetAppVersionByID(18446744073709551615); !errors.Is(err, gorm.ErrRecordNotFound) {
 			t.Fatalf("missing detail: %v", err)
 		}
 	})
 	first := &models.LeaveType{Name: "病假", SortOrder: 2, IsEnabled: true}
 	second := &models.LeaveType{Name: "事假", SortOrder: 1, IsEnabled: false}
 	for _, row := range []*models.LeaveType{first, second} {
-		if err := CreateLeaveType(row); err != nil {
+		if err := dao.CreateLeaveType(row); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if err := CreateLeaveType(&models.LeaveType{Name: first.Name}); !IsDuplicateKeyError(err) {
+	if err := dao.CreateLeaveType(&models.LeaveType{Name: first.Name}); !IsDuplicateKeyError(err) {
 		t.Fatalf("duplicate error: %v", err)
 	}
-	items, total, err := GetLeaveTypeList(dto.LeaveTypeListQuery{Page: 1, PageSize: 1})
+	items, total, err := dao.GetLeaveTypeList(dto.LeaveTypeListQuery{Page: 1, PageSize: 1})
 	if err != nil || total != 2 || len(items) != 1 || items[0].ID != second.ID {
 		t.Fatalf("pagination/order: %v %d %+v", err, total, items)
 	}
 	first.SortOrder = 0
 	first.IsEnabled = false
-	if err := UpdateLeaveType(first); err != nil {
+	if err := dao.UpdateLeaveType(first); err != nil {
 		t.Fatal(err)
 	}
 	if first.SortOrder != 0 || first.IsEnabled || first.CreatedAt.IsZero() || first.UpdatedAt.IsZero() {
 		t.Fatal("zero values/timestamps lost")
 	}
-	enabled, err := GetLeaveTypeOptions(true)
+	enabled, err := dao.GetLeaveTypeOptions(true)
 	if err != nil || len(enabled) != 0 {
 		t.Fatalf("disabled options: %v %+v", err, enabled)
 	}
-	allOptions, err := GetLeaveTypeOptions(false)
+	allOptions, err := dao.GetLeaveTypeOptions(false)
 	if err != nil || len(allOptions) != 2 || allOptions[0].ID != first.ID || allOptions[0].IsEnabled || allOptions[1].IsEnabled {
 		t.Fatalf("admin options retain disabled types/order: %v %+v", err, allOptions)
 	}
-	if err := DeleteLeaveType(first.ID); err != nil {
+	if err := dao.DeleteLeaveType(first.ID); err != nil {
 		t.Fatal(err)
 	}
-	allOptions, err = GetLeaveTypeOptions(false)
+	allOptions, err = dao.GetLeaveTypeOptions(false)
 	if err != nil || len(allOptions) != 1 || allOptions[0].ID != second.ID {
 		t.Fatalf("deleted type excluded from options: %v %+v", err, allOptions)
 	}
-	if err := DeleteLeaveType(first.ID); !errors.Is(err, gorm.ErrRecordNotFound) {
+	if err := dao.DeleteLeaveType(first.ID); !errors.Is(err, gorm.ErrRecordNotFound) {
 		t.Fatalf("repeat delete: %v", err)
 	}
-	if err := CreateLeaveType(&models.LeaveType{Name: first.Name}); !IsDuplicateKeyError(err) {
+	if err := dao.CreateLeaveType(&models.LeaveType{Name: first.Name}); !IsDuplicateKeyError(err) {
 		t.Fatalf("deleted name uniqueness: %v", err)
 	}
 	first.Name = "other"
-	if err := UpdateLeaveType(first); !errors.Is(err, gorm.ErrRecordNotFound) {
+	if err := dao.UpdateLeaveType(first); !errors.Is(err, gorm.ErrRecordNotFound) {
 		t.Fatalf("update deleted: %v", err)
 	}
-	items, total, err = GetLeaveTypeList(dto.LeaveTypeListQuery{Page: 1, PageSize: 10, Name: "事"})
+	items, total, err = dao.GetLeaveTypeList(dto.LeaveTypeListQuery{Page: 1, PageSize: 10, Name: "事"})
 	if err != nil || total != 1 || len(items) != 1 {
 		t.Fatalf("name filter: %v %d", err, total)
 	}
 	class := &models.Class{College: "学院", Major: "专业", ClassName: "一班", IsEnabled: true}
-	if err := CreateClass(class); err != nil {
+	if err := dao.CreateClass(class); err != nil {
 		t.Fatal(err)
 	}
-	if err := CreateClass(&models.Class{College: class.College, Major: class.Major, ClassName: class.ClassName}); !IsDuplicateKeyError(err) {
+	if err := dao.CreateClass(&models.Class{College: class.College, Major: class.Major, ClassName: class.ClassName}); !IsDuplicateKeyError(err) {
 		t.Fatalf("class duplicate: %v", err)
 	}
 	class.IsEnabled = false
-	if err := UpdateClass(class); err != nil {
+	if err := dao.UpdateClass(class); err != nil {
 		t.Fatal(err)
 	}
-	options, err := GetClassOptions(true)
+	options, err := dao.GetClassOptions(true)
 	if err != nil || len(options) != 0 {
 		t.Fatalf("disabled classes: %v %+v", err, options)
 	}
 	disabled := false
-	classes, total, err := GetClassList(dto.ClassListQuery{Page: 1, PageSize: 10, ClassName: "一", IsEnabled: &disabled})
+	classes, total, err := dao.GetClassList(dto.ClassListQuery{Page: 1, PageSize: 10, ClassName: "一", IsEnabled: &disabled})
 	if err != nil || total != 1 || len(classes) != 1 {
 		t.Fatalf("class filters: %v %d", err, total)
 	}
 	profile := &models.Profile{StudentID: "test", ClassID: class.ID, Name: "学生", Gender: "male"}
-	if err := Transaction(func(tx *gorm.DB) error { return SaveAppProfile(tx, profile) }); err != nil {
+	if err := dao.Transaction(func(tx *gorm.DB) error { return dao.SaveAppProfile(tx, profile) }); err != nil {
 		t.Fatal(err)
 	}
-	if err := DeleteClass(class.ID); !errors.Is(err, ErrorClassInUse) {
+	if err := dao.DeleteClass(class.ID); !errors.Is(err, ErrorClassInUse) {
 		t.Fatalf("referenced class: %v", err)
 	}
 	if err := db.Delete(profile).Error; err != nil {
 		t.Fatal(err)
 	}
-	if err := DeleteClass(class.ID); !errors.Is(err, ErrorClassInUse) {
+	if err := dao.DeleteClass(class.ID); !errors.Is(err, ErrorClassInUse) {
 		t.Fatalf("soft deleted profile: %v", err)
 	}
 	if err := db.Unscoped().Delete(profile).Error; err != nil {
 		t.Fatal(err)
 	}
-	if err := DeleteClass(class.ID); err != nil {
+	if err := dao.DeleteClass(class.ID); err != nil {
 		t.Fatal(err)
 	}
-	if err := DeleteClass(class.ID); !errors.Is(err, gorm.ErrRecordNotFound) {
+	if err := dao.DeleteClass(class.ID); !errors.Is(err, gorm.ErrRecordNotFound) {
 		t.Fatalf("missing class: %v", err)
 	}
-	t.Run("students", testAdminStudents)
+	t.Run("students", func(t *testing.T) { testAdminStudents(t, dao) })
+	t.Run("DAO isolation", func(t *testing.T) { testDAOIsolation(t, dao, server, cfg) })
 	// All data and connections above are confined to the generated test schema.
 	if !strings.HasPrefix(schema, "leave_admin_test_") {
 		t.Fatal("unexpected test schema")

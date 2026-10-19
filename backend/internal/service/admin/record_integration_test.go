@@ -1,7 +1,6 @@
 package admin
 
 import (
-	"backend/internal/config"
 	"backend/internal/dao/mysql"
 	"backend/internal/dto"
 	"backend/internal/models"
@@ -10,7 +9,6 @@ import (
 	"net"
 	"os"
 	"path/filepath"
-	"strconv"
 	"testing"
 	"time"
 
@@ -21,6 +19,7 @@ import (
 
 // This suite creates its own loopback schema and never loads application config.
 func TestAdminRecordsIntegration(t *testing.T) {
+	dao := mysql.NewDAO(nil)
 	dsn := os.Getenv("ADMIN_TEST_MYSQL_DSN")
 	if dsn == "" {
 		t.Skip("set ADMIN_TEST_MYSQL_DSN for isolated loopback MySQL coverage")
@@ -29,7 +28,7 @@ func TestAdminRecordsIntegration(t *testing.T) {
 	if err != nil {
 		t.Fatal("invalid test MySQL DSN")
 	}
-	host, port, err := net.SplitHostPort(cfg.Addr)
+	host, _, err := net.SplitHostPort(cfg.Addr)
 	if err != nil || cfg.Net != "tcp" || (host != "localhost" && host != "127.0.0.1" && host != "::1") {
 		t.Fatal("integration tests require loopback TCP MySQL")
 	}
@@ -73,20 +72,8 @@ func TestAdminRecordsIntegration(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	previous := config.Cfg
-	defer func() { config.Cfg = previous }()
-	portNumber, err := strconv.Atoi(port)
-	if err != nil {
-		t.Fatal(err)
-	}
-	config.Cfg.Mysql.Host = host
-	config.Cfg.Mysql.Port = portNumber
-	config.Cfg.Mysql.Database = schema
-	config.Cfg.Mysql.User = cfg.User
-	config.Cfg.Mysql.Password = cfg.Passwd
-	if err := mysql.Init(); err != nil {
-		t.Fatal("cannot initialize isolated test database")
-	}
+
+	dao = mysql.NewDAO(testDB)
 
 	class := models.Class{
 		College:   "原学院",
@@ -199,7 +186,8 @@ func TestAdminRecordsIntegration(t *testing.T) {
 	if err := testDB.Delete(&class).Error; err != nil {
 		t.Fatal(err)
 	}
-	list, err := GetAdminRecords(query)
+	recordService := NewRecordService(dao)
+	list, err := recordService.GetAdminRecords(query)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -207,33 +195,33 @@ func TestAdminRecordsIntegration(t *testing.T) {
 		t.Fatalf("wrong count, range or stable ordering: %+v", list)
 	}
 	query.Page = 2
-	list, err = GetAdminRecords(query)
+	list, err = recordService.GetAdminRecords(query)
 	if err != nil || len(list.Items) != 1 || list.Items[0].ID != rows[0].ID {
 		t.Fatalf("wrong second page: %+v, %v", list, err)
 	}
 	leaving := true
 	query.IsLeaveSchool = &leaving
 	query.Page = 1
-	list, err = GetAdminRecords(query)
+	list, err = recordService.GetAdminRecords(query)
 	if err != nil || list.Total != 1 {
 		t.Fatalf("school filter: %+v, %v", list, err)
 	}
 	query.StudentID = "no-match"
-	list, err = GetAdminRecords(query)
+	list, err = recordService.GetAdminRecords(query)
 	if err != nil || list.Total != 0 || list.Items == nil || len(list.Items) != 0 {
 		t.Fatalf("empty list must be an array: %+v, %v", list, err)
 	}
-	if _, err := GetAdminRecord(rows[3].ID); !errors.Is(err, gorm.ErrRecordNotFound) {
+	if _, err := recordService.GetAdminRecord(rows[3].ID); !errors.Is(err, gorm.ErrRecordNotFound) {
 		t.Fatal("deleted detail visible")
 	}
-	if _, err := GetAdminRecord(999999); !errors.Is(err, gorm.ErrRecordNotFound) {
+	if _, err := recordService.GetAdminRecord(999999); !errors.Is(err, gorm.ErrRecordNotFound) {
 		t.Fatal("missing detail accepted")
 	}
 
 	input := validRecordInput()
 	input.LeaveTypeID = oldType.ID
 	*input.IsLeaveSchool = false
-	result, err := UpdateAdminRecord(rows[0].ID, &input)
+	result, err := recordService.UpdateAdminRecord(rows[0].ID, &input)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -243,28 +231,28 @@ func TestAdminRecordsIntegration(t *testing.T) {
 	if err := testDB.Delete(&oldType).Error; err != nil {
 		t.Fatal(err)
 	}
-	if _, err := UpdateAdminRecord(rows[0].ID, &input); err != nil {
+	if _, err := recordService.UpdateAdminRecord(rows[0].ID, &input); err != nil {
 		t.Fatalf("deleted original type must remain valid: %v", err)
 	}
 	input.LeaveTypeID = newType.ID
-	result, err = UpdateAdminRecord(rows[0].ID, &input)
+	result, err = recordService.UpdateAdminRecord(rows[0].ID, &input)
 	if err != nil || result.LeaveTypeName != newType.Name {
 		t.Fatalf("switch type: %+v, %v", result, err)
 	}
 	input.LeaveTypeID = disabledType.ID
-	if _, err := UpdateAdminRecord(rows[0].ID, &input); !errors.Is(err, ErrorInvalidAdminInput) {
+	if _, err := recordService.UpdateAdminRecord(rows[0].ID, &input); !errors.Is(err, ErrorInvalidAdminInput) {
 		t.Fatal("disabled new type accepted")
 	}
 	input.LeaveTypeID = oldType.ID
 	input.LeaveReason = "should not persist"
-	if _, err := UpdateAdminRecord(rows[0].ID, &input); !errors.Is(err, ErrorInvalidAdminInput) {
+	if _, err := recordService.UpdateAdminRecord(rows[0].ID, &input); !errors.Is(err, ErrorInvalidAdminInput) {
 		t.Fatal("deleted new type accepted")
 	}
-	result, err = GetAdminRecord(rows[0].ID)
+	result, err = recordService.GetAdminRecord(rows[0].ID)
 	if err != nil || result.LeaveReason == input.LeaveReason || result.LeaveTypeID != newType.ID {
 		t.Fatal("failed update was persisted")
 	}
-	if _, err := UpdateAdminRecord(999999, &input); !errors.Is(err, gorm.ErrRecordNotFound) {
+	if _, err := recordService.UpdateAdminRecord(999999, &input); !errors.Is(err, gorm.ErrRecordNotFound) {
 		t.Fatal("missing update accepted")
 	}
 	// Force a persistence failure after a permitted type switch and verify rollback.
@@ -279,10 +267,10 @@ func TestAdminRecordsIntegration(t *testing.T) {
 		t.Fatal(err)
 	}
 	input.LeaveTypeID = otherType.ID
-	if _, err := UpdateAdminRecord(rows[0].ID, &input); err == nil {
+	if _, err := recordService.UpdateAdminRecord(rows[0].ID, &input); err == nil {
 		t.Fatal("expected save failure")
 	}
-	result, err = GetAdminRecord(rows[0].ID)
+	result, err = recordService.GetAdminRecord(rows[0].ID)
 	if err != nil || result.LeaveTypeID != newType.ID {
 		t.Fatal("save failure did not roll back")
 	}

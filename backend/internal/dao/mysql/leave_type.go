@@ -7,9 +7,9 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-func GetLeaveTypeList(query dto.LeaveTypeListQuery) ([]*models.LeaveType, int64, error) {
+func (s *DAO) GetLeaveTypeList(query dto.LeaveTypeListQuery) ([]*models.LeaveType, int64, error) {
 	rows := make([]*models.LeaveType, 0)
-	q := db.Model(&models.LeaveType{})
+	q := s.db.Model(&models.LeaveType{})
 	if query.Name != "" {
 		q = q.Where("name LIKE ?", "%"+query.Name+"%")
 	}
@@ -26,9 +26,9 @@ func GetLeaveTypeList(query dto.LeaveTypeListQuery) ([]*models.LeaveType, int64,
 	return rows, total, err
 }
 
-func CreateLeaveType(row *models.LeaveType) error { return db.Create(row).Error }
-func UpdateLeaveType(row *models.LeaveType) error {
-	return db.Transaction(func(tx *gorm.DB) error {
+func (s *DAO) CreateLeaveType(row *models.LeaveType) error { return s.db.Create(row).Error }
+func (s *DAO) UpdateLeaveType(row *models.LeaveType) error {
+	return s.db.Transaction(func(tx *gorm.DB) error {
 		var current models.LeaveType
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&current, row.ID).Error; err != nil {
 			return err
@@ -40,8 +40,8 @@ func UpdateLeaveType(row *models.LeaveType) error {
 	})
 }
 
-func DeleteLeaveType(id uint) error {
-	result := db.Delete(&models.LeaveType{}, id)
+func (s *DAO) DeleteLeaveType(id uint) error {
+	result := s.db.Delete(&models.LeaveType{}, id)
 	if result.Error != nil {
 		return result.Error
 	}
@@ -51,9 +51,9 @@ func DeleteLeaveType(id uint) error {
 	return nil
 }
 
-func GetLeaveTypeOptions(enabledOnly bool) ([]*models.LeaveType, error) {
+func (s *DAO) GetLeaveTypeOptions(enabledOnly bool) ([]*models.LeaveType, error) {
 	rows := make([]*models.LeaveType, 0)
-	query := db.Select("id", "name", "is_enabled")
+	query := s.db.Select("id", "name", "is_enabled")
 	if enabledOnly {
 		query = query.Where("is_enabled = ?", true)
 	}

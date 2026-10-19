@@ -14,6 +14,18 @@ import (
 	"gorm.io/gorm"
 )
 
+type FeedbackService struct {
+	dao     *mysql.DAO
+	storage config.StorageConfig
+}
+
+func NewFeedbackService(dao *mysql.DAO, storage config.StorageConfig) *FeedbackService {
+	return &FeedbackService{
+		dao:     dao,
+		storage: storage,
+	}
+}
+
 func feedbackItem(row *models.Feedback) *dto.AdminFeedbackItem {
 	studentID := row.StudentID
 	// Also mask identities in historical or inconsistent anonymous rows.
@@ -31,8 +43,8 @@ func feedbackItem(row *models.Feedback) *dto.AdminFeedbackItem {
 	}
 }
 
-func GetAdminFeedbacks(query dto.FeedbackListQuery) (*dto.FeedbackListResponse, error) {
-	rows, total, err := mysql.GetFeedbackList(query)
+func (f *FeedbackService) GetAdminFeedbacks(query dto.FeedbackListQuery) (*dto.FeedbackListResponse, error) {
+	rows, total, err := f.dao.GetFeedbackList(query)
 	if err != nil {
 		return nil, err
 	}
@@ -48,15 +60,15 @@ func GetAdminFeedbacks(query dto.FeedbackListQuery) (*dto.FeedbackListResponse, 
 	}, nil
 }
 
-func GetAdminFeedback(id uint) (*dto.AdminFeedbackDetail, error) {
-	row, err := mysql.GetFeedback(id)
+func (f *FeedbackService) GetAdminFeedback(id uint) (*dto.AdminFeedbackDetail, error) {
+	row, err := f.dao.GetFeedback(id)
 	if err != nil {
 		return nil, err
 	}
 	return feedbackDetail(row)
 }
 
-func DeleteAdminFeedback(id uint) error { return mysql.DeleteFeedback(id) }
+func (f *FeedbackService) DeleteAdminFeedback(id uint) error { return f.dao.DeleteFeedback(id) }
 
 // 只允许服务端生成的反馈图片文件名，不能通过数据库路径读取其他业务或任意文件。
 var feedbackAttachmentKey = regexp.MustCompile(`^feedbacks/[0-9a-f]{32}\.(jpg|png)$`)
@@ -95,18 +107,18 @@ func feedbackDetail(row *models.Feedback) (*dto.AdminFeedbackDetail, error) {
 	}, nil
 }
 
-func UpdateAdminFeedbackHandling(id uint, request *dto.FeedbackHandlingRequest) (*dto.AdminFeedbackDetail, error) {
+func (f *FeedbackService) UpdateAdminFeedbackHandling(id uint, request *dto.FeedbackHandlingRequest) (*dto.AdminFeedbackDetail, error) {
 	if request.IsHandled == nil {
 		return nil, ErrorInvalidAdminInput
 	}
 	var detail *dto.AdminFeedbackDetail
-	err := mysql.Transaction(func(tx *gorm.DB) error {
-		row, err := mysql.GetFeedbackForUpdate(tx, id)
+	err := f.dao.Transaction(func(tx *gorm.DB) error {
+		row, err := f.dao.GetFeedbackForUpdate(tx, id)
 		if err != nil {
 			return err
 		}
 		if row.IsHandled != *request.IsHandled {
-			if err := mysql.UpdateFeedbackHandling(tx, row, *request.IsHandled); err != nil {
+			if err := f.dao.UpdateFeedbackHandling(tx, row, *request.IsHandled); err != nil {
 				return err
 			}
 		}
@@ -116,8 +128,8 @@ func UpdateAdminFeedbackHandling(id uint, request *dto.FeedbackHandlingRequest) 
 	return detail, err
 }
 
-func OpenAdminFeedbackAttachment(id uint, index int) (*os.File, error) {
-	row, err := mysql.GetFeedback(id)
+func (f *FeedbackService) OpenAdminFeedbackAttachment(id uint, index int) (*os.File, error) {
+	row, err := f.dao.GetFeedback(id)
 	if err != nil {
 		return nil, err
 	}
@@ -128,7 +140,7 @@ func OpenAdminFeedbackAttachment(id uint, index int) (*os.File, error) {
 	if index < 0 || index >= len(keys) {
 		return nil, gorm.ErrRecordNotFound
 	}
-	image, err := file.Open(config.Cfg.Storage.RootDir, keys[index])
+	image, err := file.Open(f.storage.RootDir, keys[index])
 	if os.IsNotExist(err) {
 		return nil, gorm.ErrRecordNotFound
 	}

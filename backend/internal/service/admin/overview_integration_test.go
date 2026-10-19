@@ -1,7 +1,6 @@
 package admin
 
 import (
-	"backend/internal/config"
 	"backend/internal/dao/mysql"
 	"backend/internal/dto"
 	"backend/internal/models"
@@ -9,7 +8,6 @@ import (
 	"net"
 	"os"
 	"path/filepath"
-	"strconv"
 	"testing"
 	"time"
 
@@ -20,6 +18,7 @@ import (
 
 // This suite creates its own schema; it never connects through business config.
 func TestAdminOverviewIntegration(t *testing.T) {
+	dao := mysql.NewDAO(nil)
 	dsn := os.Getenv("ADMIN_TEST_MYSQL_DSN")
 	if dsn == "" {
 		t.Skip("set ADMIN_TEST_MYSQL_DSN for isolated loopback MySQL coverage")
@@ -28,7 +27,7 @@ func TestAdminOverviewIntegration(t *testing.T) {
 	if err != nil {
 		t.Fatal("invalid test MySQL DSN")
 	}
-	host, port, err := net.SplitHostPort(cfg.Addr)
+	host, _, err := net.SplitHostPort(cfg.Addr)
 	if err != nil || cfg.Net != "tcp" || (host != "localhost" && host != "127.0.0.1" && host != "::1") {
 		t.Fatal("integration tests require loopback TCP MySQL")
 	}
@@ -72,22 +71,11 @@ func TestAdminOverviewIntegration(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	previous := config.Cfg
-	defer func() { config.Cfg = previous }()
-	portNumber, err := strconv.Atoi(port)
-	if err != nil {
-		t.Fatal(err)
-	}
-	config.Cfg.Mysql.Host = host
-	config.Cfg.Mysql.Port = portNumber
-	config.Cfg.Mysql.Database = schema
-	config.Cfg.Mysql.User = cfg.User
-	config.Cfg.Mysql.Password = cfg.Passwd
-	if err := mysql.Init(); err != nil {
-		t.Fatal("cannot initialize isolated test database")
-	}
+
+	dao = mysql.NewDAO(testDB)
 	now := time.Date(2026, 10, 11, 12, 0, 0, 0, overviewBeijing)
-	empty, err := getAdminOverviewAt(now)
+	overviewService := NewOverviewService(dao)
+	empty, err := overviewService.getAdminOverviewAt(now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -190,7 +178,7 @@ func TestAdminOverviewIntegration(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	result, err := getAdminOverviewAt(now)
+	result, err := overviewService.getAdminOverviewAt(now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -227,7 +215,7 @@ func TestAdminOverviewIntegration(t *testing.T) {
 	if err := testDB.Model(&models.AppVersion{}).Where("platform = ?", "android").Update("status", "archived").Error; err != nil {
 		t.Fatal(err)
 	}
-	result, err = getAdminOverviewAt(now)
+	result, err = overviewService.getAdminOverviewAt(now)
 	if err != nil || result.LatestAndroidVersion != nil || result.VersionUsage.LatestCount != 0 {
 		t.Fatalf("incorrect no-published-release state: %+v, %v", result, err)
 	}
@@ -235,7 +223,7 @@ func TestAdminOverviewIntegration(t *testing.T) {
 	if err := testDB.Exec("DROP TABLE feedbacks").Error; err != nil {
 		t.Fatal(err)
 	}
-	if partial, err := getAdminOverviewAt(now); err == nil || partial != nil {
+	if partial, err := overviewService.getAdminOverviewAt(now); err == nil || partial != nil {
 		t.Fatalf("query failure returned partial data: %+v, %v", partial, err)
 	}
 }

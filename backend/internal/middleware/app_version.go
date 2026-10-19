@@ -15,7 +15,7 @@ const (
 )
 
 // AppVersionMiddleware only permits clients at or above the current published version.
-func AppVersionMiddleware() gin.HandlerFunc {
+func AppVersionMiddleware(versions *appservice.AppVersionService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		platform := strings.TrimSpace(c.GetHeader(appPlatformHeader))
 		versionCode, err := strconv.Atoi(strings.TrimSpace(c.GetHeader(appVersionCodeHeader)))
@@ -25,7 +25,7 @@ func AppVersionMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		current, isCurrent, err := appservice.IsCurrentAppVersion(platform, versionCode)
+		current, isCurrent, err := versions.IsCurrentAppVersion(platform, versionCode)
 		if err != nil {
 			response.Error(c, response.CodeServerBusy)
 			c.Abort()

@@ -15,22 +15,34 @@ import (
 	"gorm.io/gorm"
 )
 
+type AvatarService struct {
+	dao     *mysql.DAO
+	storage config.StorageConfig
+}
+
+func NewAvatarService(dao *mysql.DAO, storage config.StorageConfig) *AvatarService {
+	return &AvatarService{
+		dao:     dao,
+		storage: storage,
+	}
+}
+
 var ErrorInvalidAvatar = errors.New("avatar must be a JPEG or PNG image within 4096 pixels per side")
 
-func UploadAvatar(studentID string, content io.Reader) (*dto.AvatarUploadResponse, error) {
+func (a *AvatarService) UploadAvatar(studentID string, content io.Reader) (*dto.AvatarUploadResponse, error) {
 	data, extension, err := readAvatar(content)
 	if err != nil {
 		return nil, err
 	}
-	profile, err := mysql.GetProfileByStuID(studentID)
+	profile, err := a.dao.GetProfileByStuID(studentID)
 	if err != nil {
 		return nil, err
 	}
 	if profile == nil {
 		return nil, ErrorProfileIncomplete
 	}
-	root := config.Cfg.Storage.RootDir
-	baseURL := config.Cfg.Storage.BaseURL
+	root := a.storage.RootDir
+	baseURL := a.storage.BaseURL
 	keys, err := file.Save(root, "avatars", file.Input{
 		Extension: extension,
 		Content:   bytes.NewReader(data),
@@ -44,7 +56,7 @@ func UploadAvatar(studentID string, content io.Reader) (*dto.AvatarUploadRespons
 		return nil, errors.Join(err, file.Delete(root, key))
 	}
 
-	if err := mysql.UpdateProfileAvatar(studentID, key); err != nil {
+	if err := a.dao.UpdateProfileAvatar(studentID, key); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			err = ErrorProfileIncomplete
 		}

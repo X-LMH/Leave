@@ -13,15 +13,25 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+type ProfileHandler struct {
+	profile *appservice.ProfileService
+}
+
+func NewProfileHandler(profile *appservice.ProfileService) *ProfileHandler {
+	return &ProfileHandler{
+		profile: profile,
+	}
+}
+
 // ProfileHandler 完善个人信息
-func ProfileHandler(c *gin.Context) {
+func (p *ProfileHandler) ProfileHandler(c *gin.Context) {
 	// 参数绑定
-	p := new(dto.ProfileRequest)
-	if err := c.ShouldBindJSON(p); err != nil {
+	input := new(dto.ProfileRequest)
+	if err := c.ShouldBindJSON(input); err != nil {
 		response.Error(c, response.CodeInvalidParam)
 		return
 	}
-	if !validateAndNormalizeProfile(p) {
+	if !validateAndNormalizeProfile(input) {
 		response.Error(c, response.CodeInvalidParam)
 		return
 	}
@@ -32,7 +42,7 @@ func ProfileHandler(c *gin.Context) {
 		response.Error(c, response.CodeNeedLogin)
 		return
 	}
-	if err := appservice.Profile(p, studentID); err != nil {
+	if err := p.profile.Profile(input, studentID); err != nil {
 		if errors.Is(err, appservice.ErrorInvalidProfileReference) {
 			response.Error(c, response.CodeInvalidParam)
 			return
@@ -44,13 +54,13 @@ func ProfileHandler(c *gin.Context) {
 	response.Success(c, nil)
 }
 
-func GetProfileHandler(c *gin.Context) {
+func (p *ProfileHandler) GetProfileHandler(c *gin.Context) {
 	studentID, err := request.GetCurrentStuID(c)
 	if err != nil {
 		response.Error(c, response.CodeNeedLogin)
 		return
 	}
-	data, err := appservice.GetProfile(studentID)
+	data, err := p.profile.GetProfile(studentID)
 	if err != nil {
 		if errors.Is(err, appservice.ErrorProfileIncomplete) {
 			response.Error(c, response.CodeProfileIncomplete)

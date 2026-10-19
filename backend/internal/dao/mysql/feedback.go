@@ -8,13 +8,13 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-func InsertFeedback(feedback *models.Feedback) error {
-	return db.Create(feedback).Error
+func (s *DAO) InsertFeedback(feedback *models.Feedback) error {
+	return s.db.Create(feedback).Error
 }
 
-func GetFeedbackList(query dto.FeedbackListQuery) ([]*models.Feedback, int64, error) {
+func (s *DAO) GetFeedbackList(query dto.FeedbackListQuery) ([]*models.Feedback, int64, error) {
 	rows := make([]*models.Feedback, 0)
-	q := db.Model(&models.Feedback{})
+	q := s.db.Model(&models.Feedback{})
 	if query.Keyword != "" {
 		q = q.Where("content LIKE ?", "%"+query.Keyword+"%")
 	}
@@ -37,16 +37,16 @@ func GetFeedbackList(query dto.FeedbackListQuery) ([]*models.Feedback, int64, er
 	return rows, total, err
 }
 
-func GetFeedback(id uint) (*models.Feedback, error) {
+func (s *DAO) GetFeedback(id uint) (*models.Feedback, error) {
 	var row models.Feedback
-	if err := db.First(&row, id).Error; err != nil {
+	if err := s.db.First(&row, id).Error; err != nil {
 		return nil, err
 	}
 	return &row, nil
 }
 
-func DeleteFeedback(id uint) error {
-	result := db.Delete(&models.Feedback{}, id)
+func (s *DAO) DeleteFeedback(id uint) error {
+	result := s.db.Delete(&models.Feedback{}, id)
 	if result.Error != nil {
 		return result.Error
 	}
@@ -56,7 +56,7 @@ func DeleteFeedback(id uint) error {
 	return nil
 }
 
-func GetFeedbackForUpdate(tx *gorm.DB, id uint) (*models.Feedback, error) {
+func (s *DAO) GetFeedbackForUpdate(tx *gorm.DB, id uint) (*models.Feedback, error) {
 	var row models.Feedback
 	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&row, id).Error; err != nil {
 		return nil, err
@@ -64,6 +64,6 @@ func GetFeedbackForUpdate(tx *gorm.DB, id uint) (*models.Feedback, error) {
 	return &row, nil
 }
 
-func UpdateFeedbackHandling(tx *gorm.DB, row *models.Feedback, handled bool) error {
+func (s *DAO) UpdateFeedbackHandling(tx *gorm.DB, row *models.Feedback, handled bool) error {
 	return tx.Model(row).Update("is_handled", handled).Error
 }

@@ -11,6 +11,16 @@ import (
 	"gorm.io/gorm"
 )
 
+type RecordService struct {
+	dao *mysql.DAO
+}
+
+func NewRecordService(dao *mysql.DAO) *RecordService {
+	return &RecordService{
+		dao: dao,
+	}
+}
+
 const (
 	maxRecordCourseLength      = 255
 	maxRecordTravelWayLength   = 32
@@ -71,8 +81,8 @@ func adminRecordResponse(row *models.Record) *dto.AdminRecord {
 	}
 }
 
-func GetAdminRecords(query dto.AdminRecordQuery) (*dto.AdminRecordListResponse, error) {
-	rows, total, err := mysql.GetAdminRecords(query)
+func (r *RecordService) GetAdminRecords(query dto.AdminRecordQuery) (*dto.AdminRecordListResponse, error) {
+	rows, total, err := r.dao.GetAdminRecords(query)
 	if err != nil {
 		return nil, err
 	}
@@ -84,27 +94,27 @@ func GetAdminRecords(query dto.AdminRecordQuery) (*dto.AdminRecordListResponse, 
 	}, nil
 }
 
-func GetAdminRecord(id uint) (*dto.AdminRecord, error) {
-	row, err := mysql.GetAdminRecord(id)
+func (r *RecordService) GetAdminRecord(id uint) (*dto.AdminRecord, error) {
+	row, err := r.dao.GetAdminRecord(id)
 	if err != nil {
 		return nil, err
 	}
 	return adminRecordResponse(row), nil
 }
 
-func UpdateAdminRecord(id uint, input *dto.AdminRecordUpdateRequest) (*dto.AdminRecord, error) {
+func (r *RecordService) UpdateAdminRecord(id uint, input *dto.AdminRecordUpdateRequest) (*dto.AdminRecord, error) {
 	if err := normalizeAdminRecord(input); err != nil {
 		return nil, err
 	}
 	var result *dto.AdminRecord
-	err := mysql.Transaction(func(tx *gorm.DB) error {
-		row, err := mysql.GetAdminRecordForUpdate(tx, id)
+	err := r.dao.Transaction(func(tx *gorm.DB) error {
+		row, err := r.dao.GetAdminRecordForUpdate(tx, id)
 		if err != nil {
 			return err
 		}
 		// Unchanged types retain the historical name even after renaming or deletion.
 		if input.LeaveTypeID != row.LeaveTypeID {
-			leaveType, err := mysql.GetRecordLeaveTypeForShare(tx, input.LeaveTypeID)
+			leaveType, err := r.dao.GetRecordLeaveTypeForShare(tx, input.LeaveTypeID)
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return ErrorInvalidAdminInput
 			}
@@ -126,7 +136,7 @@ func UpdateAdminRecord(id uint, input *dto.AdminRecordUpdateRequest) (*dto.Admin
 		row.Destination = input.Destination
 		row.AppliedAt = input.AppliedAt
 		row.ApprovedAt = &input.ApprovedAt
-		if err := mysql.UpdateAdminRecordContent(tx, row); err != nil {
+		if err := r.dao.UpdateAdminRecordContent(tx, row); err != nil {
 			return err
 		}
 		result = adminRecordResponse(row)

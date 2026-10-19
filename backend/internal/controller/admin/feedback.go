@@ -12,6 +12,16 @@ import (
 	"strings"
 )
 
+type FeedbackHandler struct {
+	feedback *adminservice.FeedbackService
+}
+
+func NewFeedbackHandler(feedback *adminservice.FeedbackService) *FeedbackHandler {
+	return &FeedbackHandler{
+		feedback: feedback,
+	}
+}
+
 func parseFeedbackQuery(c *gin.Context) (dto.FeedbackListQuery, bool) {
 	pagination, ok := request.ParsePagination(c)
 	if !ok {
@@ -40,13 +50,13 @@ func parseFeedbackQuery(c *gin.Context) (dto.FeedbackListQuery, bool) {
 	return query, true
 }
 
-func GetFeedbacksHandler(c *gin.Context) {
+func (f *FeedbackHandler) GetFeedbacksHandler(c *gin.Context) {
 	query, ok := parseFeedbackQuery(c)
 	if !ok {
 		response.Error(c, response.CodeInvalidParam)
 		return
 	}
-	data, err := adminservice.GetAdminFeedbacks(query)
+	data, err := f.feedback.GetAdminFeedbacks(query)
 	if err != nil {
 		managementError(c, err)
 		return
@@ -54,12 +64,12 @@ func GetFeedbacksHandler(c *gin.Context) {
 	response.Success(c, data)
 }
 
-func GetFeedbackHandler(c *gin.Context) {
+func (f *FeedbackHandler) GetFeedbackHandler(c *gin.Context) {
 	id, ok := managementID(c)
 	if !ok {
 		return
 	}
-	data, err := adminservice.GetAdminFeedback(id)
+	data, err := f.feedback.GetAdminFeedback(id)
 	if err != nil {
 		managementError(c, err)
 		return
@@ -67,19 +77,19 @@ func GetFeedbackHandler(c *gin.Context) {
 	response.Success(c, data)
 }
 
-func DeleteFeedbackHandler(c *gin.Context) {
+func (f *FeedbackHandler) DeleteFeedbackHandler(c *gin.Context) {
 	id, ok := managementID(c)
 	if !ok {
 		return
 	}
-	if err := adminservice.DeleteAdminFeedback(id); err != nil {
+	if err := f.feedback.DeleteAdminFeedback(id); err != nil {
 		managementError(c, err)
 		return
 	}
 	response.Success(c, nil)
 }
 
-func UpdateFeedbackHandlingHandler(c *gin.Context) {
+func (f *FeedbackHandler) UpdateFeedbackHandlingHandler(c *gin.Context) {
 	id, ok := managementID(c)
 	if !ok {
 		return
@@ -89,7 +99,7 @@ func UpdateFeedbackHandlingHandler(c *gin.Context) {
 		response.Error(c, response.CodeInvalidParam)
 		return
 	}
-	data, err := adminservice.UpdateAdminFeedbackHandling(id, req)
+	data, err := f.feedback.UpdateAdminFeedbackHandling(id, req)
 	if err != nil {
 		managementError(c, err)
 		return
@@ -97,7 +107,7 @@ func UpdateFeedbackHandlingHandler(c *gin.Context) {
 	response.Success(c, data)
 }
 
-func GetFeedbackAttachmentHandler(c *gin.Context) {
+func (f *FeedbackHandler) GetFeedbackAttachmentHandler(c *gin.Context) {
 	id, ok := managementID(c)
 	if !ok {
 		return
@@ -107,7 +117,7 @@ func GetFeedbackAttachmentHandler(c *gin.Context) {
 		response.Error(c, response.CodeInvalidParam)
 		return
 	}
-	image, err := adminservice.OpenAdminFeedbackAttachment(id, index)
+	image, err := f.feedback.OpenAdminFeedbackAttachment(id, index)
 	if err != nil {
 		managementError(c, err)
 		return

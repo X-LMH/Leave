@@ -1,14 +1,18 @@
 package router
 
 import (
+	"backend/internal/config"
+	"backend/internal/dao/mysql"
 	"github.com/gin-gonic/gin"
 	"net/http/httptest"
 	"testing"
 )
 
 func TestManagementRoutesRequireLogin(t *testing.T) {
+	settings := config.Config{}
+	dao := mysql.NewDAO(nil)
 	gin.SetMode(gin.TestMode)
-	r := SetupRouter()
+	r := SetupRouter(testDependencies(dao, settings))
 	for _, path := range []string{"/api/v1/admin/classes", "/api/v1/admin/leave-types", "/api/v1/admin/apartments"} {
 		for _, method := range []string{"GET", "POST", "PUT", "DELETE"} {
 			target := path
@@ -25,7 +29,9 @@ func TestManagementRoutesRequireLogin(t *testing.T) {
 }
 
 func TestStudentRoutesRequireLogin(t *testing.T) {
-	r := SetupRouter()
+	settings := config.Config{}
+	dao := mysql.NewDAO(nil)
+	r := SetupRouter(testDependencies(dao, settings))
 	for _, route := range []struct{ method, path string }{
 		{"GET", "/api/v1/admin/overview"},
 		{"POST", "/api/v1/admin/auth/password"},

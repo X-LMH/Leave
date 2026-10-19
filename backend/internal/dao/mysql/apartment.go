@@ -8,9 +8,9 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-func GetApartmentList(query dto.ApartmentListQuery) ([]*models.Apartment, int64, error) {
+func (s *DAO) GetApartmentList(query dto.ApartmentListQuery) ([]*models.Apartment, int64, error) {
 	rows := make([]*models.Apartment, 0)
-	q := db.Model(&models.Apartment{})
+	q := s.db.Model(&models.Apartment{})
 	if query.Name != "" {
 		q = q.Where("name LIKE ?", "%"+query.Name+"%")
 	}
@@ -30,9 +30,9 @@ func GetApartmentList(query dto.ApartmentListQuery) ([]*models.Apartment, int64,
 	return rows, total, err
 }
 
-func CreateApartment(row *models.Apartment) error { return db.Create(row).Error }
+func (s *DAO) CreateApartment(row *models.Apartment) error { return s.db.Create(row).Error }
 
-func GetApartmentForUpdate(tx *gorm.DB, id uint) (*models.Apartment, error) {
+func (s *DAO) GetApartmentForUpdate(tx *gorm.DB, id uint) (*models.Apartment, error) {
 	var row models.Apartment
 	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
 		First(&row, id).Error; err != nil {
@@ -41,7 +41,7 @@ func GetApartmentForUpdate(tx *gorm.DB, id uint) (*models.Apartment, error) {
 	return &row, nil
 }
 
-func ApartmentHasProfiles(tx *gorm.DB, id uint) (bool, error) {
+func (s *DAO) ApartmentHasProfiles(tx *gorm.DB, id uint) (bool, error) {
 	var count int64
 	// Include deleted profiles so restoring them cannot leave a dangling reference.
 	err := tx.Unscoped().
@@ -51,7 +51,7 @@ func ApartmentHasProfiles(tx *gorm.DB, id uint) (bool, error) {
 	return count > 0, err
 }
 
-func SaveApartment(tx *gorm.DB, row *models.Apartment) error {
+func (s *DAO) SaveApartment(tx *gorm.DB, row *models.Apartment) error {
 	if err := tx.Model(row).Updates(map[string]any{
 		"name":       row.Name,
 		"gender":     row.Gender,
@@ -63,4 +63,6 @@ func SaveApartment(tx *gorm.DB, row *models.Apartment) error {
 	return tx.First(row, row.ID).Error
 }
 
-func DeleteApartment(tx *gorm.DB, row *models.Apartment) error { return tx.Delete(row).Error }
+func (s *DAO) DeleteApartment(tx *gorm.DB, row *models.Apartment) error {
+	return tx.Delete(row).Error
+}

@@ -9,15 +9,25 @@ import (
 	"strings"
 )
 
+type AppVersionService struct {
+	dao *mysql.DAO
+}
+
+func NewAppVersionService(dao *mysql.DAO) *AppVersionService {
+	return &AppVersionService{
+		dao: dao,
+	}
+}
+
 var ErrAppVersionNotFound = errors.New("未找到已发布的应用版本")
 
 // GetCurrentAppVersion returns the currently usable version for a platform.
-func GetCurrentAppVersion(platform string, currentVersionCode int) (*dto.AppVersionResponse, error) {
-	version, err := GetCurrentAppPackage(platform)
+func (a *AppVersionService) GetCurrentAppVersion(platform string, currentVersionCode int) (*dto.AppVersionResponse, error) {
+	version, err := a.GetCurrentAppPackage(platform)
 	if err != nil {
 		return nil, err
 	}
-	updates, err := mysql.GetAppVersionUpdates(platform, currentVersionCode)
+	updates, err := a.dao.GetAppVersionUpdates(platform, currentVersionCode)
 	if err != nil {
 		return nil, err
 	}
@@ -41,9 +51,9 @@ func GetCurrentAppVersion(platform string, currentVersionCode int) (*dto.AppVers
 }
 
 // GetCurrentAppPackage returns the current version record used to serve its package.
-func GetCurrentAppPackage(platform string) (*models.AppVersion, error) {
+func (a *AppVersionService) GetCurrentAppPackage(platform string) (*models.AppVersion, error) {
 	platform = strings.ToLower(strings.TrimSpace(platform))
-	version, err := mysql.GetCurrentAppVersion(platform)
+	version, err := a.dao.GetCurrentAppVersion(platform)
 	if errors.Is(err, mysql.ErrorAppVersionNotFound) {
 		return nil, ErrAppVersionNotFound
 	}
@@ -51,8 +61,8 @@ func GetCurrentAppPackage(platform string) (*models.AppVersion, error) {
 }
 
 // IsCurrentAppVersion reports whether a client meets the minimum supported version.
-func IsCurrentAppVersion(platform string, versionCode int) (*dto.AppVersionResponse, bool, error) {
-	current, err := GetCurrentAppVersion(platform, versionCode)
+func (a *AppVersionService) IsCurrentAppVersion(platform string, versionCode int) (*dto.AppVersionResponse, bool, error) {
+	current, err := a.GetCurrentAppVersion(platform, versionCode)
 	if err != nil {
 		return nil, false, err
 	}

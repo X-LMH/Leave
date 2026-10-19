@@ -7,8 +7,18 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func GetOverviewHandler(c *gin.Context) {
-	data, err := adminservice.GetAdminOverview()
+type OverviewHandler struct {
+	overview *adminservice.OverviewService
+}
+
+func NewOverviewHandler(overview *adminservice.OverviewService) *OverviewHandler {
+	return &OverviewHandler{
+		overview: overview,
+	}
+}
+
+func (o *OverviewHandler) GetOverviewHandler(c *gin.Context) {
+	data, err := o.overview.GetAdminOverview()
 	if err != nil {
 		managementError(c, err)
 		return

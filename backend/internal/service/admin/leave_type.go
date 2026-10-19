@@ -8,6 +8,16 @@ import (
 	"strings"
 )
 
+type LeaveTypeService struct {
+	dao *mysql.DAO
+}
+
+func NewLeaveTypeService(dao *mysql.DAO) *LeaveTypeService {
+	return &LeaveTypeService{
+		dao: dao,
+	}
+}
+
 const maxLeaveTypeNameLength = 32
 
 func normalizeLeaveType(p *dto.LeaveTypeRequest) error {
@@ -32,8 +42,8 @@ func leaveTypeItem(row *models.LeaveType) *dto.LeaveTypeItem {
 	}
 }
 
-func GetAdminLeaveTypes(query dto.LeaveTypeListQuery) (*dto.LeaveTypeListResponse, error) {
-	rows, total, err := mysql.GetLeaveTypeList(query)
+func (l *LeaveTypeService) GetAdminLeaveTypes(query dto.LeaveTypeListQuery) (*dto.LeaveTypeListResponse, error) {
+	rows, total, err := l.dao.GetLeaveTypeList(query)
 	if err != nil {
 		return nil, err
 	}
@@ -49,7 +59,7 @@ func GetAdminLeaveTypes(query dto.LeaveTypeListQuery) (*dto.LeaveTypeListRespons
 	}, nil
 }
 
-func CreateAdminLeaveType(p *dto.LeaveTypeRequest) (*dto.LeaveTypeItem, error) {
+func (l *LeaveTypeService) CreateAdminLeaveType(p *dto.LeaveTypeRequest) (*dto.LeaveTypeItem, error) {
 	if err := normalizeLeaveType(p); err != nil {
 		return nil, err
 	}
@@ -58,13 +68,13 @@ func CreateAdminLeaveType(p *dto.LeaveTypeRequest) (*dto.LeaveTypeItem, error) {
 		SortOrder: uint(*p.SortOrder),
 		IsEnabled: *p.IsEnabled,
 	}
-	if err := mysql.CreateLeaveType(row); err != nil {
+	if err := l.dao.CreateLeaveType(row); err != nil {
 		return nil, err
 	}
 	return leaveTypeItem(row), nil
 }
 
-func UpdateAdminLeaveType(p *dto.LeaveTypeRequest, id uint) (*dto.LeaveTypeItem, error) {
+func (l *LeaveTypeService) UpdateAdminLeaveType(p *dto.LeaveTypeRequest, id uint) (*dto.LeaveTypeItem, error) {
 	if err := normalizeLeaveType(p); err != nil {
 		return nil, err
 	}
@@ -74,12 +84,12 @@ func UpdateAdminLeaveType(p *dto.LeaveTypeRequest, id uint) (*dto.LeaveTypeItem,
 		SortOrder: uint(*p.SortOrder),
 		IsEnabled: *p.IsEnabled,
 	}
-	if err := mysql.UpdateLeaveType(row); err != nil {
+	if err := l.dao.UpdateLeaveType(row); err != nil {
 		return nil, err
 	}
 	return leaveTypeItem(row), nil
 }
 
-func DeleteAdminLeaveType(id uint) error {
-	return mysql.DeleteLeaveType(id)
+func (l *LeaveTypeService) DeleteAdminLeaveType(id uint) error {
+	return l.dao.DeleteLeaveType(id)
 }

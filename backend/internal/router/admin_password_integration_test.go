@@ -30,6 +30,8 @@ import (
 )
 
 func TestAdminPasswordIntegration(t *testing.T) {
+	settings := config.Config{}
+	dao := mysql.NewDAO(nil)
 	dsn := os.Getenv("ADMIN_TEST_MYSQL_DSN")
 	if dsn == "" {
 		t.Skip("set ADMIN_TEST_MYSQL_DSN for isolated loopback MySQL coverage")
@@ -38,7 +40,7 @@ func TestAdminPasswordIntegration(t *testing.T) {
 	if err != nil {
 		t.Fatal("invalid test MySQL DSN")
 	}
-	host, port, err := net.SplitHostPort(cfg.Addr)
+	host, _, err := net.SplitHostPort(cfg.Addr)
 	if err != nil || cfg.Net != "tcp" || (host != "localhost" && host != "127.0.0.1" && host != "::1") {
 		t.Fatal("integration tests require loopback TCP MySQL")
 	}
@@ -80,22 +82,10 @@ func TestAdminPasswordIntegration(t *testing.T) {
 	if err := testDB.Exec(string(definition)).Error; err != nil {
 		t.Fatal(err)
 	}
-	previous := config.Cfg
-	defer func() { config.Cfg = previous }()
-	portNumber, err := strconv.Atoi(port)
-	if err != nil {
-		t.Fatal(err)
-	}
-	config.Cfg.Mysql.Host = host
-	config.Cfg.Mysql.Port = portNumber
-	config.Cfg.Mysql.Database = schema
-	config.Cfg.Mysql.User = cfg.User
-	config.Cfg.Mysql.Password = cfg.Passwd
-	config.Cfg.JWT.Secret = "isolated-password-test"
-	config.Cfg.JWT.ExpirationDays = 1
-	if err := mysql.Init(); err != nil {
-		t.Fatal("cannot initialize isolated test database")
-	}
+
+	settings.JWT.Secret = "isolated-password-test"
+	settings.JWT.ExpirationDays = 1
+	dao = mysql.NewDAO(testDB)
 	initialHash, err := passwordutil.Hash("old-pass")
 	if err != nil {
 		t.Fatal(err)
@@ -109,11 +99,11 @@ func TestAdminPasswordIntegration(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	token, err := jwt.GenerateToken("admin", models.RoleAdmin)
+	token, err := jwt.NewManager(settings.JWT.Secret, settings.JWT.ExpirationDays).GenerateToken("admin", models.RoleAdmin)
 	if err != nil {
 		t.Fatal(err)
 	}
-	router := SetupRouter()
+	router := SetupRouter(testDependencies(dao, settings))
 	call := func(auth, body string) response.Response {
 		t.Helper()
 		req := httptest.NewRequest("POST", "/api/v1/admin/auth/password", strings.NewReader(body))
@@ -142,7 +132,7 @@ func TestAdminPasswordIntegration(t *testing.T) {
 		{"disabled", models.RoleAdmin},
 		{"missing", models.RoleAdmin},
 	} {
-		auth, err := jwt.GenerateToken(account.id, account.role)
+		auth, err := jwt.NewManager(settings.JWT.Secret, settings.JWT.ExpirationDays).GenerateToken(account.id, account.role)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -164,7 +154,7 @@ func TestAdminPasswordIntegration(t *testing.T) {
 	if got := call(token, strings.Replace(validBody, "old-pass", "wrong-pass", 1)); got.Code != response.CodeNotRightPassword {
 		t.Fatal("incorrect original password accepted")
 	}
-	user, err := mysql.FindUserByStudentID("admin")
+	user, err := dao.FindUserByStudentID("admin")
 	if err != nil || user.Password != initialHash {
 		t.Fatal("failed request modified password")
 	}
@@ -172,10 +162,11 @@ func TestAdminPasswordIntegration(t *testing.T) {
 	if got := call(token, validBody); got.Code != response.CodeSuccess {
 		t.Fatalf("change failed: %d", got.Code)
 	}
-	if _, err := adminservice.AdminLogin(&dto.AdminLoginRequest{UserName: "admin", Password: "old-pass"}); !errors.Is(err, mysql.ErrorInvalidPassword) {
+	authService := adminservice.NewAuthService(dao, jwt.NewManager(settings.JWT.Secret, settings.JWT.ExpirationDays))
+	if _, err := authService.AdminLogin(&dto.AdminLoginRequest{UserName: "admin", Password: "old-pass"}); !errors.Is(err, mysql.ErrorInvalidPassword) {
 		t.Fatal("old password still accepted for login")
 	}
-	if _, err := adminservice.AdminLogin(&dto.AdminLoginRequest{UserName: "admin", Password: "new-pass"}); err != nil {
+	if _, err := authService.AdminLogin(&dto.AdminLoginRequest{UserName: "admin", Password: "new-pass"}); err != nil {
 		t.Fatal("new password cannot log in")
 	}
 	if got := call(token, `{"password":"new-pass","new_password":" pass ","re_password":" pass "}`); got.Code != response.CodeSuccess {
@@ -187,7 +178,7 @@ func TestAdminPasswordIntegration(t *testing.T) {
 	for _, password := range []string{"winner-one", "winner-two"} {
 		go func(next string) {
 			<-start
-			results <- adminservice.ChangePassword("admin", &dto.PasswordChangeRequest{
+			results <- authService.ChangePassword("admin", &dto.PasswordChangeRequest{
 				Password:    " pass ",
 				NewPassword: next,
 				RePassword:  next,
@@ -206,7 +197,7 @@ func TestAdminPasswordIntegration(t *testing.T) {
 	if successes != 1 {
 		t.Fatalf("concurrent successes: %d", successes)
 	}
-	user, err = mysql.FindUserByStudentID("admin")
+	user, err = dao.FindUserByStudentID("admin")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -215,6 +206,7 @@ func TestAdminPasswordIntegration(t *testing.T) {
 	if firstErr != nil || secondErr != nil || first == second || user.Role != models.RoleAdmin || user.Status != models.UserStatusActive {
 		t.Fatal("unexpected persisted account state")
 	}
+	userService := appservice.NewUserService(dao, jwt.NewManager(settings.JWT.Secret, settings.JWT.ExpirationDays))
 	t.Run("student password reset", func(t *testing.T) {
 		definition, err := os.ReadFile(filepath.Join("..", "..", "database", "tables", "profiles.sql"))
 		if err != nil {
@@ -255,7 +247,7 @@ func TestAdminPasswordIntegration(t *testing.T) {
 			{"disabled", models.RoleAdmin},
 			{"missing", models.RoleAdmin},
 		} {
-			auth, err := jwt.GenerateToken(account.id, account.role)
+			auth, err := jwt.NewManager(settings.JWT.Secret, settings.JWT.ExpirationDays).GenerateToken(account.id, account.role)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -337,10 +329,10 @@ func TestAdminPasswordIntegration(t *testing.T) {
 			}
 		}
 
-		if _, err := appservice.Login(&dto.LoginRequest{StudentID: "student", Password: "old-pass"}); !errors.Is(err, mysql.ErrorInvalidPassword) {
+		if _, err := userService.Login(&dto.LoginRequest{StudentID: "student", Password: "old-pass"}); !errors.Is(err, mysql.ErrorInvalidPassword) {
 			t.Fatal("old student password can still log in")
 		}
-		if _, err := appservice.Login(&dto.LoginRequest{StudentID: "student", Password: "12345678"}); err != nil {
+		if _, err := userService.Login(&dto.LoginRequest{StudentID: "student", Password: "12345678"}); err != nil {
 			t.Fatalf("default password cannot log in: %v", err)
 		}
 		var unchangedAdmin models.User

@@ -2,6 +2,7 @@ package admin
 
 import (
 	"backend/internal/config"
+	"backend/internal/dao/mysql"
 	"backend/internal/dto"
 	"backend/internal/models"
 	"encoding/json"
@@ -11,9 +12,11 @@ import (
 )
 
 func TestStudentResponse(t *testing.T) {
-	previous := config.Cfg.Storage.BaseURL
-	config.Cfg.Storage.BaseURL = "/uploads"
-	t.Cleanup(func() { config.Cfg.Storage.BaseURL = previous })
+	settings := config.Config{}
+	dao := mysql.NewDAO(nil)
+
+	settings.Storage.BaseURL = "/uploads"
+
 	createdAt := time.Date(2026, 10, 7, 0, 0, 0, 0, time.UTC)
 	user := &models.User{
 		ID:             7,
@@ -26,8 +29,9 @@ func TestStudentResponse(t *testing.T) {
 		LastSeenDevice: "Android",
 		AppVersion:     "1.0.0",
 	}
+	studentService := NewStudentService(dao, settings.Storage)
 	t.Run("without profile", func(t *testing.T) {
-		row, err := studentResponse(user, nil)
+		row, err := studentService.studentResponse(user, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -54,7 +58,7 @@ func TestStudentResponse(t *testing.T) {
 			AvatarURL:       "avatars/student.png",
 			CreatedAt:       createdAt.Add(-time.Hour),
 		}
-		row, err := studentResponse(user, profile)
+		row, err := studentService.studentResponse(user, profile)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -80,7 +84,7 @@ func TestStudentResponse(t *testing.T) {
 			t.Fatal("credentials exposed")
 		}
 		profile.AvatarURL = ""
-		row, err = studentResponse(user, profile)
+		row, err = studentService.studentResponse(user, profile)
 		if err != nil || row.AvatarURL != "/uploads/avatars/default.png" {
 			t.Fatalf("default avatar: %v %+v", err, row)
 		}

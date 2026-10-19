@@ -2,6 +2,7 @@ package app
 
 import (
 	"backend/internal/config"
+	"backend/internal/dao/mysql"
 	"backend/internal/models"
 	"bytes"
 	"encoding/json"
@@ -73,14 +74,15 @@ func TestReadFeedbackImages(t *testing.T) {
 }
 
 func TestSaveFeedbackImagesAndCleanup(t *testing.T) {
-	previous := config.Cfg
-	t.Cleanup(func() { config.Cfg = previous })
+	settings := config.Config{}
+	dao := mysql.NewDAO(nil)
+
 	root := t.TempDir()
-	config.Cfg.Storage.RootDir = root
+	settings.Storage.RootDir = root
 	valid := feedbackImage{data: []byte("validated image bytes"), extension: ".png"}
 	for _, count := range []int{0, 1, 3} {
 		row := &models.Feedback{}
-		err := saveFeedbackWithAttachments(row, makeImages(valid, count), func(row *models.Feedback) error {
+		err := NewFeedbackService(dao, settings.Storage).saveFeedbackWithAttachments(row, makeImages(valid, count), func(row *models.Feedback) error {
 			if count == 0 {
 				if row.Attachments != nil {
 					t.Fatal("no images should be SQL NULL")
@@ -102,21 +104,21 @@ func TestSaveFeedbackImagesAndCleanup(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	config.Cfg.Storage.RootDir = t.TempDir()
+	settings.Storage.RootDir = t.TempDir()
 	failure := errors.New("insert failed")
-	if err := saveFeedbackWithAttachments(&models.Feedback{}, []feedbackImage{valid, valid}, func(*models.Feedback) error { return failure }); !errors.Is(err, failure) {
+	if err := NewFeedbackService(dao, settings.Storage).saveFeedbackWithAttachments(&models.Feedback{}, []feedbackImage{valid, valid}, func(*models.Feedback) error { return failure }); !errors.Is(err, failure) {
 		t.Fatal(err)
 	}
-	entries, err := os.ReadDir(filepath.Join(config.Cfg.Storage.RootDir, "feedbacks"))
+	entries, err := os.ReadDir(filepath.Join(settings.Storage.RootDir, "feedbacks"))
 	if err != nil || len(entries) != 0 {
 		t.Fatalf("failed insert left files: %v %v", entries, err)
 	}
 	invalid := feedbackImage{data: []byte("x"), extension: ".invalid/extension"}
 	inserted := false
-	if err := saveFeedbackWithAttachments(&models.Feedback{}, []feedbackImage{valid, invalid}, func(*models.Feedback) error { inserted = true; return nil }); err == nil || inserted {
+	if err := NewFeedbackService(dao, settings.Storage).saveFeedbackWithAttachments(&models.Feedback{}, []feedbackImage{valid, invalid}, func(*models.Feedback) error { inserted = true; return nil }); err == nil || inserted {
 		t.Fatal("saved invalid image or inserted partial feedback")
 	}
-	entries, err = os.ReadDir(filepath.Join(config.Cfg.Storage.RootDir, "feedbacks"))
+	entries, err = os.ReadDir(filepath.Join(settings.Storage.RootDir, "feedbacks"))
 	if err != nil || len(entries) != 0 {
 		t.Fatalf("failed save left files: %v %v", entries, err)
 	}
@@ -127,4 +129,37 @@ func makeImages(image feedbackImage, count int) []feedbackImage {
 		images[index] = image
 	}
 	return images
+}
+
+func TestFeedbackServicesKeepIndependentStorage(t *testing.T) {
+	firstRoot := t.TempDir()
+	secondRoot := t.TempDir()
+	settings := config.StorageConfig{RootDir: firstRoot}
+	first := NewFeedbackService(nil, settings)
+	settings.RootDir = secondRoot
+	second := NewFeedbackService(nil, settings)
+	image := feedbackImage{data: []byte("validated bytes"), extension: ".png"}
+	for _, tc := range []struct {
+		service *FeedbackService
+		root    string
+		other   string
+	}{
+		{service: first, root: firstRoot, other: secondRoot},
+		{service: second, root: secondRoot, other: firstRoot},
+	} {
+		row := &models.Feedback{}
+		if err := tc.service.saveFeedbackWithAttachments(row, []feedbackImage{image}, func(*models.Feedback) error { return nil }); err != nil {
+			t.Fatal(err)
+		}
+		var keys []string
+		if err := json.Unmarshal([]byte(*row.Attachments), &keys); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := os.Stat(filepath.Join(tc.root, filepath.FromSlash(keys[0]))); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := os.Stat(filepath.Join(tc.other, filepath.FromSlash(keys[0]))); !os.IsNotExist(err) {
+			t.Fatalf("attachment leaked into another service's storage: %v", err)
+		}
+	}
 }

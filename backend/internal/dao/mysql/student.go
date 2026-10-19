@@ -16,8 +16,8 @@ func studentQuery(tx *gorm.DB) *gorm.DB {
 		Where("u.role = ? AND u.deleted_at IS NULL", models.RoleStudent)
 }
 
-func GetStudents(query dto.StudentQuery) ([]*dto.StudentListItem, int64, error) {
-	q := studentQuery(db)
+func (s *DAO) GetStudents(query dto.StudentQuery) ([]*dto.StudentListItem, int64, error) {
+	q := studentQuery(s.db)
 	if query.StudentID != "" {
 		q = q.Where("u.student_id LIKE ?", "%"+query.StudentID+"%")
 	}
@@ -54,20 +54,20 @@ func GetStudents(query dto.StudentQuery) ([]*dto.StudentListItem, int64, error) 
 	return rows, total, err
 }
 
-func GetStudent(id uint) (*models.User, error) {
+func (s *DAO) GetStudent(id uint) (*models.User, error) {
 	var user models.User
-	if err := db.Omit("password").Where("role = ?", models.RoleStudent).First(&user, id).Error; err != nil {
+	if err := s.db.Omit("password").Where("role = ?", models.RoleStudent).First(&user, id).Error; err != nil {
 		return nil, err
 	}
 	return &user, nil
 }
 
 // Transaction lets the service keep related reads, validation and writes atomic.
-func Transaction(fn func(*gorm.DB) error) error {
-	return db.Transaction(fn)
+func (s *DAO) Transaction(fn func(*gorm.DB) error) error {
+	return s.db.Transaction(fn)
 }
 
-func GetStudentForUpdate(tx *gorm.DB, id uint) (*models.User, error) {
+func (s *DAO) GetStudentForUpdate(tx *gorm.DB, id uint) (*models.User, error) {
 	var user models.User
 	if err := tx.Omit("password").Clauses(clause.Locking{Strength: "UPDATE"}).Where("role = ?", models.RoleStudent).First(&user, id).Error; err != nil {
 		return nil, err
@@ -75,7 +75,7 @@ func GetStudentForUpdate(tx *gorm.DB, id uint) (*models.User, error) {
 	return &user, nil
 }
 
-func GetStudentProfileForUpdate(tx *gorm.DB, studentID string) (*models.Profile, error) {
+func (s *DAO) GetStudentProfileForUpdate(tx *gorm.DB, studentID string) (*models.Profile, error) {
 	var profile models.Profile
 	err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("student_id = ?", studentID).First(&profile).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -87,7 +87,7 @@ func GetStudentProfileForUpdate(tx *gorm.DB, studentID string) (*models.Profile,
 	return &profile, nil
 }
 
-func GetStudentClassForShare(tx *gorm.DB, id uint) (*models.Class, error) {
+func (s *DAO) GetStudentClassForShare(tx *gorm.DB, id uint) (*models.Class, error) {
 	var class models.Class
 	if err := tx.Clauses(clause.Locking{Strength: "SHARE"}).First(&class, id).Error; err != nil {
 		return nil, err
@@ -95,7 +95,7 @@ func GetStudentClassForShare(tx *gorm.DB, id uint) (*models.Class, error) {
 	return &class, nil
 }
 
-func GetStudentApartmentForShare(tx *gorm.DB, id uint) (*models.Apartment, error) {
+func (s *DAO) GetStudentApartmentForShare(tx *gorm.DB, id uint) (*models.Apartment, error) {
 	var apartment models.Apartment
 	if err := tx.Clauses(clause.Locking{Strength: "SHARE"}).First(&apartment, id).Error; err != nil {
 		return nil, err
@@ -103,7 +103,7 @@ func GetStudentApartmentForShare(tx *gorm.DB, id uint) (*models.Apartment, error
 	return &apartment, nil
 }
 
-func SaveStudentProfile(tx *gorm.DB, profile *models.Profile) error {
+func (s *DAO) SaveStudentProfile(tx *gorm.DB, profile *models.Profile) error {
 	// Preserve avatar and restore soft-deleted profiles without violating student_id uniqueness.
 	return tx.Clauses(clause.OnConflict{
 		Columns: []clause.Column{{Name: "student_id"}},
@@ -114,8 +114,8 @@ func SaveStudentProfile(tx *gorm.DB, profile *models.Profile) error {
 	}).Create(profile).Error
 }
 
-func UpdateStudentStatus(id uint, status uint8) error {
-	return db.Transaction(func(tx *gorm.DB) error {
+func (s *DAO) UpdateStudentStatus(id uint, status uint8) error {
+	return s.db.Transaction(func(tx *gorm.DB) error {
 		var user models.User
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("role = ?", models.RoleStudent).First(&user, id).Error; err != nil {
 			return err

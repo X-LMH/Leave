@@ -37,7 +37,8 @@ func TestUpdateAdminRecordContentPreservesSnapshotsAndWritesFalse(t *testing.T) 
 		TravelWay:     "",
 		Destination:   "",
 	}
-	if err := UpdateAdminRecordContent(tx, row); err != nil {
+	dao := NewDAO(tx)
+	if err := dao.UpdateAdminRecordContent(tx, row); err != nil {
 		t.Fatal(err)
 	}
 	for _, field := range []string{"student_id", "name", "gender", "parent_name", "parent_phone", "teacher_name", "college", "major", "class_name", "created_at", "deleted_at"} {

@@ -1,10 +1,14 @@
 package common
 
-import "testing"
+import (
+	"backend/internal/dao/mysql"
+	"testing"
+)
 
 func TestApartmentOptionsRejectInvalidGender(t *testing.T) {
+	dao := mysql.NewDAO(nil)
 	for _, enabledOnly := range []bool{true, false} {
-		if _, err := GetApartmentOptions("unknown", enabledOnly); err != ErrorInvalidApartmentGender {
+		if _, err := NewOptionsService(dao).GetApartmentOptions("unknown", enabledOnly); err != ErrorInvalidApartmentGender {
 			t.Fatalf("enabledOnly=%v: %v", enabledOnly, err)
 		}
 	}

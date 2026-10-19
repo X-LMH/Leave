@@ -1,7 +1,6 @@
 package app
 
 import (
-	"backend/internal/config"
 	"backend/internal/response"
 	appservice "backend/internal/service/app"
 	"errors"
@@ -16,8 +15,20 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+type AppVersionHandler struct {
+	appVersion *appservice.AppVersionService
+	packageDir string
+}
+
+func NewAppVersionHandler(appVersion *appservice.AppVersionService, packageDir string) *AppVersionHandler {
+	return &AppVersionHandler{
+		appVersion: appVersion,
+		packageDir: packageDir,
+	}
+}
+
 // GetCurrentAppVersionHandler returns the current published version for a platform.
-func GetCurrentAppVersionHandler(c *gin.Context) {
+func (a *AppVersionHandler) GetCurrentAppVersionHandler(c *gin.Context) {
 	platform := strings.TrimSpace(c.Query("platform"))
 	if platform == "" {
 		response.Error(c, response.CodeInvalidParam)
@@ -25,7 +36,7 @@ func GetCurrentAppVersionHandler(c *gin.Context) {
 	}
 
 	versionCode, _ := strconv.Atoi(c.Query("version_code"))
-	version, err := appservice.GetCurrentAppVersion(platform, versionCode)
+	version, err := a.appVersion.GetCurrentAppVersion(platform, versionCode)
 	if err != nil {
 		response.Error(c, response.CodeServerBusy)
 		return
@@ -34,14 +45,14 @@ func GetCurrentAppVersionHandler(c *gin.Context) {
 }
 
 // DownloadCurrentAppHandler serves only the current published package for a platform.
-func DownloadCurrentAppHandler(c *gin.Context) {
+func (a *AppVersionHandler) DownloadCurrentAppHandler(c *gin.Context) {
 	platform := strings.TrimSpace(c.Query("platform"))
 	if platform == "" {
 		response.Error(c, response.CodeInvalidParam)
 		return
 	}
 
-	version, err := appservice.GetCurrentAppPackage(platform)
+	version, err := a.appVersion.GetCurrentAppPackage(platform)
 	if err != nil {
 		if errors.Is(err, appservice.ErrAppVersionNotFound) {
 			response.Error(c, response.CodeFileNotFound)
@@ -51,7 +62,7 @@ func DownloadCurrentAppHandler(c *gin.Context) {
 		return
 	}
 
-	file, info, err := openAPK(config.Cfg.App.PackageDir, version.PackageFile)
+	file, info, err := openAPK(a.packageDir, version.PackageFile)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			response.Error(c, response.CodeFileNotFound)

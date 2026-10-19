@@ -10,6 +10,16 @@ import (
 	"gorm.io/gorm"
 )
 
+type ApartmentService struct {
+	dao *mysql.DAO
+}
+
+func NewApartmentService(dao *mysql.DAO) *ApartmentService {
+	return &ApartmentService{
+		dao: dao,
+	}
+}
+
 const maxApartmentNameLength = 100
 
 var ErrorApartmentInUse = errors.New("apartment is referenced by profiles")
@@ -35,11 +45,11 @@ func apartmentItem(row *models.Apartment) *dto.ApartmentListItem {
 	}
 }
 
-func GetAdminApartments(query dto.ApartmentListQuery) (*dto.ApartmentListResponse, error) {
+func (a *ApartmentService) GetAdminApartments(query dto.ApartmentListQuery) (*dto.ApartmentListResponse, error) {
 	if query.Gender != "" && !models.IsValidGender(query.Gender) {
 		return nil, ErrorInvalidAdminInput
 	}
-	rows, total, err := mysql.GetApartmentList(query)
+	rows, total, err := a.dao.GetApartmentList(query)
 	if err != nil {
 		return nil, err
 	}
@@ -65,31 +75,31 @@ func applyApartmentRequest(row *models.Apartment, p *dto.ApartmentRequest) {
 	}
 }
 
-func CreateAdminApartment(p *dto.ApartmentRequest) (*dto.ApartmentListItem, error) {
+func (a *ApartmentService) CreateAdminApartment(p *dto.ApartmentRequest) (*dto.ApartmentListItem, error) {
 	if err := normalizeApartment(p); err != nil {
 		return nil, err
 	}
 	row := new(models.Apartment)
 	applyApartmentRequest(row, p)
-	if err := mysql.CreateApartment(row); err != nil {
+	if err := a.dao.CreateApartment(row); err != nil {
 		return nil, err
 	}
 	return apartmentItem(row), nil
 }
 
-func UpdateAdminApartment(id uint, p *dto.ApartmentRequest) (*dto.ApartmentListItem, error) {
+func (a *ApartmentService) UpdateAdminApartment(id uint, p *dto.ApartmentRequest) (*dto.ApartmentListItem, error) {
 	if err := normalizeApartment(p); err != nil {
 		return nil, err
 	}
 	var row *models.Apartment
-	err := mysql.Transaction(func(tx *gorm.DB) error {
+	err := a.dao.Transaction(func(tx *gorm.DB) error {
 		var err error
-		row, err = mysql.GetApartmentForUpdate(tx, id)
+		row, err = a.dao.GetApartmentForUpdate(tx, id)
 		if err != nil {
 			return err
 		}
 		if row.Gender != p.Gender {
-			used, err := mysql.ApartmentHasProfiles(tx, id)
+			used, err := a.dao.ApartmentHasProfiles(tx, id)
 			if err != nil {
 				return err
 			}
@@ -98,7 +108,7 @@ func UpdateAdminApartment(id uint, p *dto.ApartmentRequest) (*dto.ApartmentListI
 			}
 		}
 		applyApartmentRequest(row, p)
-		return mysql.SaveApartment(tx, row)
+		return a.dao.SaveApartment(tx, row)
 	})
 	if err != nil {
 		return nil, err
@@ -106,19 +116,19 @@ func UpdateAdminApartment(id uint, p *dto.ApartmentRequest) (*dto.ApartmentListI
 	return apartmentItem(row), nil
 }
 
-func DeleteAdminApartment(id uint) error {
-	return mysql.Transaction(func(tx *gorm.DB) error {
-		row, err := mysql.GetApartmentForUpdate(tx, id)
+func (a *ApartmentService) DeleteAdminApartment(id uint) error {
+	return a.dao.Transaction(func(tx *gorm.DB) error {
+		row, err := a.dao.GetApartmentForUpdate(tx, id)
 		if err != nil {
 			return err
 		}
-		used, err := mysql.ApartmentHasProfiles(tx, id)
+		used, err := a.dao.ApartmentHasProfiles(tx, id)
 		if err != nil {
 			return err
 		}
 		if used {
 			return ErrorApartmentInUse
 		}
-		return mysql.DeleteApartment(tx, row)
+		return a.dao.DeleteApartment(tx, row)
 	})
 }

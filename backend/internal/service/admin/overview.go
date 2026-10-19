@@ -11,6 +11,16 @@ import (
 	"gorm.io/gorm"
 )
 
+type OverviewService struct {
+	dao *mysql.DAO
+}
+
+func NewOverviewService(dao *mysql.DAO) *OverviewService {
+	return &OverviewService{
+		dao: dao,
+	}
+}
+
 const (
 	overviewDaysPerWeek   = 7
 	overviewHistoryWeeks  = 8
@@ -127,30 +137,30 @@ func overviewVersionUsage(reports []mysql.OverviewReportedVersion, versions []mo
 	}, latest
 }
 
-func GetAdminOverview() (*dto.AdminOverview, error) {
+func (o *OverviewService) GetAdminOverview() (*dto.AdminOverview, error) {
 	// 只取一次当前时间，让各模块共用同一统计截止时间。
-	return getAdminOverviewAt(time.Now())
+	return o.getAdminOverviewAt(time.Now())
 }
 
-func getAdminOverviewAt(now time.Time) (*dto.AdminOverview, error) {
+func (o *OverviewService) getAdminOverviewAt(now time.Time) (*dto.AdminOverview, error) {
 	result := &dto.AdminOverview{
 		GeneratedAt: now.In(overviewBeijing),
 	}
-	err := mysql.OverviewReadTransaction(func(tx *gorm.DB) error {
+	err := o.dao.OverviewReadTransaction(func(tx *gorm.DB) error {
 		var err error
-		result.Statistics, err = mysql.GetOverviewStatistics(tx, now)
+		result.Statistics, err = o.dao.GetOverviewStatistics(tx, now)
 		if err != nil {
 			return err
 		}
-		result.WeeklyApplications, err = getOverviewWeeklyApplications(tx, now)
+		result.WeeklyApplications, err = o.getOverviewWeeklyApplications(tx, now)
 		if err != nil {
 			return err
 		}
-		result.RecentRecords, err = mysql.GetOverviewRecentRecords(tx, now)
+		result.RecentRecords, err = o.dao.GetOverviewRecentRecords(tx, now)
 		if err != nil {
 			return err
 		}
-		result.VersionUsage, result.LatestAndroidVersion, err = getOverviewClientVersions(tx, now)
+		result.VersionUsage, result.LatestAndroidVersion, err = o.getOverviewClientVersions(tx, now)
 		if err != nil {
 			return err
 		}
@@ -163,12 +173,12 @@ func getAdminOverviewAt(now time.Time) (*dto.AdminOverview, error) {
 	return result, nil
 }
 
-func getOverviewWeeklyApplications(tx *gorm.DB, now time.Time) (dto.OverviewWeeklyApplications, error) {
+func (o *OverviewService) getOverviewWeeklyApplications(tx *gorm.DB, now time.Time) (dto.OverviewWeeklyApplications, error) {
 	result := dto.OverviewWeeklyApplications{
 		Weeks: overviewWeeks(now),
 	}
 	weeks := result.Weeks
-	counts, err := mysql.GetOverviewWeekCounts(tx, weeks[0].Start, weeks[len(weeks)-1].Start.AddDate(0, 0, overviewDaysPerWeek), now)
+	counts, err := o.dao.GetOverviewWeekCounts(tx, weeks[0].Start, weeks[len(weeks)-1].Start.AddDate(0, 0, overviewDaysPerWeek), now)
 	if err != nil {
 		return dto.OverviewWeeklyApplications{}, err
 	}
@@ -183,12 +193,12 @@ func getOverviewWeeklyApplications(tx *gorm.DB, now time.Time) (dto.OverviewWeek
 }
 
 // 版本使用情况与版本卡片共用发布历史，避免重复查询及“最新版本”口径不一致。
-func getOverviewClientVersions(tx *gorm.DB, now time.Time) (dto.OverviewVersionUsage, *dto.OverviewVersion, error) {
-	reports, err := mysql.GetOverviewReportedVersions(tx)
+func (o *OverviewService) getOverviewClientVersions(tx *gorm.DB, now time.Time) (dto.OverviewVersionUsage, *dto.OverviewVersion, error) {
+	reports, err := o.dao.GetOverviewReportedVersions(tx)
 	if err != nil {
 		return dto.OverviewVersionUsage{}, nil, err
 	}
-	versions, err := mysql.GetOverviewAndroidVersions(tx, now)
+	versions, err := o.dao.GetOverviewAndroidVersions(tx, now)
 	if err != nil {
 		return dto.OverviewVersionUsage{}, nil, err
 	}

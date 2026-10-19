@@ -7,14 +7,24 @@ import (
 	"strings"
 )
 
+type ClassService struct {
+	dao *mysql.DAO
+}
+
+func NewClassService(dao *mysql.DAO) *ClassService {
+	return &ClassService{
+		dao: dao,
+	}
+}
+
 const (
 	maxCollegeNameLength = 100
 	maxMajorNameLength   = 100
 	maxClassNameLength   = 64
 )
 
-func GetAdminClasses(query dto.ClassListQuery) (*dto.ClassListResponse, error) {
-	classes, total, err := mysql.GetClassList(query)
+func (c *ClassService) GetAdminClasses(query dto.ClassListQuery) (*dto.ClassListResponse, error) {
+	classes, total, err := c.dao.GetClassList(query)
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +74,7 @@ func classItem(row *models.Class) *dto.ClassListItem {
 	}
 }
 
-func CreateAdminClass(p *dto.ClassRequest) (*dto.ClassListItem, error) {
+func (c *ClassService) CreateAdminClass(p *dto.ClassRequest) (*dto.ClassListItem, error) {
 	if err := normalizeClass(p); err != nil {
 		return nil, err
 	}
@@ -74,13 +84,13 @@ func CreateAdminClass(p *dto.ClassRequest) (*dto.ClassListItem, error) {
 		ClassName: p.ClassName,
 		IsEnabled: *p.IsEnabled,
 	}
-	if err := mysql.CreateClass(row); err != nil {
+	if err := c.dao.CreateClass(row); err != nil {
 		return nil, err
 	}
 	return classItem(row), nil
 }
 
-func UpdateAdminClass(p *dto.ClassRequest, id uint) (*dto.ClassListItem, error) {
+func (c *ClassService) UpdateAdminClass(p *dto.ClassRequest, id uint) (*dto.ClassListItem, error) {
 	if err := normalizeClass(p); err != nil {
 		return nil, err
 	}
@@ -91,12 +101,12 @@ func UpdateAdminClass(p *dto.ClassRequest, id uint) (*dto.ClassListItem, error) 
 		ClassName: p.ClassName,
 		IsEnabled: *p.IsEnabled,
 	}
-	if err := mysql.UpdateClass(row); err != nil {
+	if err := c.dao.UpdateClass(row); err != nil {
 		return nil, err
 	}
 	return classItem(row), nil
 }
 
-func DeleteAdminClass(id uint) error {
-	return mysql.DeleteClass(id)
+func (c *ClassService) DeleteAdminClass(id uint) error {
+	return c.dao.DeleteClass(id)
 }

@@ -12,7 +12,6 @@ import (
 	"net"
 	"os"
 	"path/filepath"
-	"strconv"
 	"testing"
 	"time"
 
@@ -23,6 +22,8 @@ import (
 
 // This suite creates its own loopback schema and never loads application config.
 func TestFeedbackApartmentIntegration(t *testing.T) {
+	settings := config.Config{}
+	dao := mysql.NewDAO(nil)
 	dsn := os.Getenv("ADMIN_TEST_MYSQL_DSN")
 	if dsn == "" {
 		t.Skip("set ADMIN_TEST_MYSQL_DSN for isolated loopback MySQL coverage")
@@ -31,7 +32,7 @@ func TestFeedbackApartmentIntegration(t *testing.T) {
 	if err != nil {
 		t.Fatal("invalid test MySQL DSN")
 	}
-	host, port, err := net.SplitHostPort(cfg.Addr)
+	host, _, err := net.SplitHostPort(cfg.Addr)
 	if err != nil || cfg.Net != "tcp" || (host != "localhost" && host != "127.0.0.1" && host != "::1") {
 		t.Fatal("integration tests require loopback TCP MySQL")
 	}
@@ -75,20 +76,8 @@ func TestFeedbackApartmentIntegration(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	previous := config.Cfg
-	defer func() { config.Cfg = previous }()
-	portNumber, err := strconv.Atoi(port)
-	if err != nil {
-		t.Fatal(err)
-	}
-	config.Cfg.Mysql.Host = host
-	config.Cfg.Mysql.Port = portNumber
-	config.Cfg.Mysql.Database = schema
-	config.Cfg.Mysql.User = cfg.User
-	config.Cfg.Mysql.Password = cfg.Passwd
-	if err := mysql.Init(); err != nil {
-		t.Fatal("cannot initialize isolated test database")
-	}
+
+	dao = mysql.NewDAO(testDB)
 
 	t.Run("feedback migration", func(t *testing.T) { testFeedbackMigration(t, testDB) })
 	t.Run("feedback attachments and handling", func(t *testing.T) { testFeedbackAttachmentsIntegration(t, testDB) })
@@ -96,32 +85,33 @@ func TestFeedbackApartmentIntegration(t *testing.T) {
 	order := uint32(0)
 	enabled := true
 	input := dto.ApartmentRequest{Name: "测试楼", Gender: models.GenderMale, SortOrder: &order, IsEnabled: &enabled}
-	row, err := CreateAdminApartment(&input)
+	apartmentService := NewApartmentService(dao)
+	row, err := apartmentService.CreateAdminApartment(&input)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := CreateAdminApartment(&input); !mysql.IsDuplicateKeyError(err) {
+	if _, err := apartmentService.CreateAdminApartment(&input); !mysql.IsDuplicateKeyError(err) {
 		t.Fatalf("duplicate: %v", err)
 	}
 	input.Gender = models.GenderFemale
-	if _, err := CreateAdminApartment(&input); err != nil {
+	if _, err := apartmentService.CreateAdminApartment(&input); err != nil {
 		t.Fatal("different genders should allow same name", err)
 	}
 	input.Gender = models.GenderMale
 	enabled = false
-	updated, err := UpdateAdminApartment(row.ID, &input)
+	updated, err := apartmentService.UpdateAdminApartment(row.ID, &input)
 	if err != nil || updated.IsEnabled || updated.SortOrder != 0 {
 		t.Fatalf("zero and disabled: %+v %v", updated, err)
 	}
-	list, err := GetAdminApartments(dto.ApartmentListQuery{Page: 1, PageSize: 1, Name: "测试", Gender: models.GenderMale, IsEnabled: &enabled})
+	list, err := apartmentService.GetAdminApartments(dto.ApartmentListQuery{Page: 1, PageSize: 1, Name: "测试", Gender: models.GenderMale, IsEnabled: &enabled})
 	if err != nil || list.Total != 1 || len(list.Items) != 1 {
 		t.Fatalf("filter: %+v %v", list, err)
 	}
-	appOptions, err := commonservice.GetApartmentOptions(models.GenderMale, true)
+	appOptions, err := commonservice.NewOptionsService(dao).GetApartmentOptions(models.GenderMale, true)
 	if err != nil || len(appOptions) != 0 {
 		t.Fatalf("disabled App options: %+v %v", appOptions, err)
 	}
-	adminOptions, err := commonservice.GetApartmentOptions(models.GenderMale, false)
+	adminOptions, err := commonservice.NewOptionsService(dao).GetApartmentOptions(models.GenderMale, false)
 	if err != nil || len(adminOptions) != 1 || adminOptions[0].IsEnabled {
 		t.Fatalf("admin options: %+v %v", adminOptions, err)
 	}
@@ -130,88 +120,90 @@ func TestFeedbackApartmentIntegration(t *testing.T) {
 		t.Fatal(err)
 	}
 	profileInput := dto.ProfileRequest{ClassID: class.ID, ApartmentID: row.ID, Gender: models.GenderMale}
-	if err := appservice.Profile(&profileInput, "new-disabled"); !errors.Is(err, appservice.ErrorInvalidProfileReference) {
+	profileService := appservice.NewProfileService(dao, settings.Storage)
+	if err := profileService.Profile(&profileInput, "new-disabled"); !errors.Is(err, appservice.ErrorInvalidProfileReference) {
 		t.Fatalf("new disabled: %v", err)
 	}
 	enabled = true
-	if _, err := UpdateAdminApartment(row.ID, &input); err != nil {
+	if _, err := apartmentService.UpdateAdminApartment(row.ID, &input); err != nil {
 		t.Fatal(err)
 	}
-	if err := appservice.Profile(&profileInput, "resident"); err != nil {
+	if err := profileService.Profile(&profileInput, "resident"); err != nil {
 		t.Fatal(err)
 	}
 	enabled = false
-	if _, err := UpdateAdminApartment(row.ID, &input); err != nil {
+	if _, err := apartmentService.UpdateAdminApartment(row.ID, &input); err != nil {
 		t.Fatal(err)
 	}
-	if err := appservice.Profile(&profileInput, "resident"); err != nil {
+	if err := profileService.Profile(&profileInput, "resident"); err != nil {
 		t.Fatalf("retain disabled: %v", err)
 	}
-	residentApartments, err := appservice.GetProfileApartmentOptions("resident", models.GenderMale)
+	optionsService := appservice.NewOptionsService(dao, commonservice.NewOptionsService(dao))
+	residentApartments, err := optionsService.GetProfileApartmentOptions("resident", models.GenderMale)
 	if err != nil || len(residentApartments) != 1 || residentApartments[0].ID != row.ID || residentApartments[0].IsEnabled {
 		t.Fatalf("retain disabled apartment option: %+v %v", residentApartments, err)
 	}
-	newApartments, err := appservice.GetProfileApartmentOptions("new-student", models.GenderMale)
+	newApartments, err := optionsService.GetProfileApartmentOptions("new-student", models.GenderMale)
 	if err != nil || len(newApartments) != 0 {
 		t.Fatalf("disabled apartment exposed to new student: %+v %v", newApartments, err)
 	}
-	femaleApartments, err := appservice.GetProfileApartmentOptions("resident", models.GenderFemale)
+	femaleApartments, err := optionsService.GetProfileApartmentOptions("resident", models.GenderFemale)
 	if err != nil || len(femaleApartments) != 1 || femaleApartments[0].Gender != models.GenderFemale {
 		t.Fatalf("old apartment exposed after gender change: %+v %v", femaleApartments, err)
 	}
 	if err := testDB.Model(&class).Update("is_enabled", false).Error; err != nil {
 		t.Fatal(err)
 	}
-	residentClasses, err := appservice.GetProfileClassOptions("resident")
+	residentClasses, err := optionsService.GetProfileClassOptions("resident")
 	if err != nil || len(residentClasses) != 1 || residentClasses[0].ID != class.ID || residentClasses[0].IsEnabled {
 		t.Fatalf("retain disabled class option: %+v %v", residentClasses, err)
 	}
-	newClasses, err := appservice.GetProfileClassOptions("new-student")
+	newClasses, err := optionsService.GetProfileClassOptions("new-student")
 	if err != nil || len(newClasses) != 0 {
 		t.Fatalf("disabled class exposed to new student: %+v %v", newClasses, err)
 	}
-	if err := appservice.Profile(&profileInput, "resident"); err != nil {
+	if err := profileService.Profile(&profileInput, "resident"); err != nil {
 		t.Fatalf("retain disabled class and apartment: %v", err)
 	}
 	newProfile := profileInput
 	newProfile.ApartmentID = 0
-	if err := appservice.Profile(&newProfile, "new-student"); !errors.Is(err, appservice.ErrorInvalidProfileReference) {
+	if err := profileService.Profile(&newProfile, "new-student"); !errors.Is(err, appservice.ErrorInvalidProfileReference) {
 		t.Fatalf("new disabled class assignment: %v", err)
 	}
 	if err := testDB.Model(&class).Update("is_enabled", true).Error; err != nil {
 		t.Fatal(err)
 	}
-	if err := DeleteAdminApartment(row.ID); !errors.Is(err, ErrorApartmentInUse) {
+	if err := apartmentService.DeleteAdminApartment(row.ID); !errors.Is(err, ErrorApartmentInUse) {
 		t.Fatalf("reference: %v", err)
 	}
 	input.Gender = models.GenderFemale
-	if _, err := UpdateAdminApartment(row.ID, &input); !errors.Is(err, ErrorApartmentInUse) {
+	if _, err := apartmentService.UpdateAdminApartment(row.ID, &input); !errors.Is(err, ErrorApartmentInUse) {
 		t.Fatalf("gender reference: %v", err)
 	}
 	if err := testDB.Where("student_id = ?", "resident").Delete(&models.Profile{}).Error; err != nil {
 		t.Fatal(err)
 	}
-	if err := DeleteAdminApartment(row.ID); !errors.Is(err, ErrorApartmentInUse) {
+	if err := apartmentService.DeleteAdminApartment(row.ID); !errors.Is(err, ErrorApartmentInUse) {
 		t.Fatalf("deleted profile: %v", err)
 	}
-	if _, err := UpdateAdminApartment(row.ID, &input); !errors.Is(err, ErrorApartmentInUse) {
+	if _, err := apartmentService.UpdateAdminApartment(row.ID, &input); !errors.Is(err, ErrorApartmentInUse) {
 		t.Fatalf("deleted gender reference: %v", err)
 	}
 	if err := testDB.Unscoped().Where("student_id = ?", "resident").Delete(&models.Profile{}).Error; err != nil {
 		t.Fatal(err)
 	}
-	if err := DeleteAdminApartment(row.ID); err != nil {
+	if err := apartmentService.DeleteAdminApartment(row.ID); err != nil {
 		t.Fatal(err)
 	}
-	if err := DeleteAdminApartment(row.ID); !errors.Is(err, gorm.ErrRecordNotFound) {
+	if err := apartmentService.DeleteAdminApartment(row.ID); !errors.Is(err, gorm.ErrRecordNotFound) {
 		t.Fatalf("missing: %v", err)
 	}
-	if err := appservice.Profile(&profileInput, "deleted-apartment"); !errors.Is(err, appservice.ErrorInvalidProfileReference) {
+	if err := profileService.Profile(&profileInput, "deleted-apartment"); !errors.Is(err, appservice.ErrorInvalidProfileReference) {
 		t.Fatalf("deleted assignment: %v", err)
 	}
 	profileInput.ApartmentID = 0
 	profileInput.ClassID = 999999
-	if err := appservice.Profile(&profileInput, "deleted-class"); !errors.Is(err, appservice.ErrorInvalidProfileReference) {
+	if err := profileService.Profile(&profileInput, "deleted-class"); !errors.Is(err, appservice.ErrorInvalidProfileReference) {
 		t.Fatalf("deleted class: %v", err)
 	}
 
@@ -229,33 +221,34 @@ func TestFeedbackApartmentIntegration(t *testing.T) {
 		}
 	}
 	query := dto.FeedbackListQuery{Page: 1, PageSize: 1, Keyword: "建议"}
-	feedbackList, err := GetAdminFeedbacks(query)
+	feedbackService := NewFeedbackService(dao, settings.Storage)
+	feedbackList, err := feedbackService.GetAdminFeedbacks(query)
 	if err != nil || feedbackList.Total != 3 || len(feedbackList.Items) != 1 || feedbackList.Items[0].ID != feedbacks[2].ID || feedbackList.Items[0].StudentID != nil {
 		t.Fatalf("order/privacy: %+v %v", feedbackList, err)
 	}
 	anonymous := true
 	query.StudentID = student
 	query.IsAnonymous = &anonymous
-	feedbackList, err = GetAdminFeedbacks(query)
+	feedbackList, err = feedbackService.GetAdminFeedbacks(query)
 	if err != nil || feedbackList.Total != 0 {
 		t.Fatalf("anonymous search: %+v %v", feedbackList, err)
 	}
-	detail, err := GetAdminFeedback(feedbacks[0].ID)
+	detail, err := feedbackService.GetAdminFeedback(feedbacks[0].ID)
 	if err != nil || detail.Content != feedbacks[0].Content || detail.StudentID == nil {
 		t.Fatalf("detail: %+v %v", detail, err)
 	}
-	if err := DeleteAdminFeedback(feedbacks[0].ID); err != nil {
+	if err := feedbackService.DeleteAdminFeedback(feedbacks[0].ID); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := GetAdminFeedback(feedbacks[0].ID); !errors.Is(err, gorm.ErrRecordNotFound) {
+	if _, err := feedbackService.GetAdminFeedback(feedbacks[0].ID); !errors.Is(err, gorm.ErrRecordNotFound) {
 		t.Fatalf("deleted detail: %v", err)
 	}
-	if err := DeleteAdminFeedback(feedbacks[0].ID); !errors.Is(err, gorm.ErrRecordNotFound) {
+	if err := feedbackService.DeleteAdminFeedback(feedbacks[0].ID); !errors.Is(err, gorm.ErrRecordNotFound) {
 		t.Fatalf("repeat deletion: %v", err)
 	}
 	query.StudentID = ""
 	query.IsAnonymous = nil
-	feedbackList, err = GetAdminFeedbacks(query)
+	feedbackList, err = feedbackService.GetAdminFeedbacks(query)
 	if err != nil || feedbackList.Total != 2 {
 		t.Fatalf("soft deletion: %+v %v", feedbackList, err)
 	}
@@ -270,7 +263,7 @@ func TestFeedbackApartmentIntegration(t *testing.T) {
 			enabled := true
 			order := uint32(0)
 			p := dto.ApartmentRequest{Name: "并发楼" + operation, Gender: models.GenderMale, SortOrder: &order, IsEnabled: &enabled}
-			apartment, err := CreateAdminApartment(&p)
+			apartment, err := apartmentService.CreateAdminApartment(&p)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -279,7 +272,7 @@ func TestFeedbackApartmentIntegration(t *testing.T) {
 				t.Fatal(tx.Error)
 			}
 			defer tx.Rollback()
-			if _, err := mysql.GetStudentApartmentForShare(tx, apartment.ID); err != nil {
+			if _, err := dao.GetStudentApartmentForShare(tx, apartment.ID); err != nil {
 				t.Fatal(err)
 			}
 			started := make(chan struct{})
@@ -287,11 +280,11 @@ func TestFeedbackApartmentIntegration(t *testing.T) {
 			go func() {
 				close(started)
 				if operation == "delete" {
-					result <- DeleteAdminApartment(apartment.ID)
+					result <- apartmentService.DeleteAdminApartment(apartment.ID)
 					return
 				}
 				p.Gender = models.GenderFemale
-				_, err := UpdateAdminApartment(apartment.ID, &p)
+				_, err := apartmentService.UpdateAdminApartment(apartment.ID, &p)
 				result <- err
 			}()
 			<-started
@@ -300,7 +293,7 @@ func TestFeedbackApartmentIntegration(t *testing.T) {
 				t.Fatalf("management bypassed shared lock: %v", err)
 			case <-time.After(100 * time.Millisecond):
 			}
-			if err := mysql.SaveStudentProfile(tx, &models.Profile{StudentID: "concurrent-" + operation, ClassID: class.ID, ApartmentID: apartment.ID, Gender: models.GenderMale}); err != nil {
+			if err := dao.SaveStudentProfile(tx, &models.Profile{StudentID: "concurrent-" + operation, ClassID: class.ID, ApartmentID: apartment.ID, Gender: models.GenderMale}); err != nil {
 				t.Fatal(err)
 			}
 			if err := tx.Commit().Error; err != nil {

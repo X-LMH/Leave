@@ -1,10 +1,13 @@
 package admin
 
 import (
+	"backend/internal/config"
+	"backend/internal/dao/mysql"
 	"backend/internal/middleware"
 	"backend/internal/models"
 	"backend/internal/request"
 	"backend/internal/response"
+	adminservice "backend/internal/service/admin"
 	"github.com/gin-gonic/gin"
 	"net/http/httptest"
 	"strings"
@@ -37,9 +40,10 @@ func TestFeedbackQueryValidation(t *testing.T) {
 	}
 }
 func TestApartmentRequestRejectsInvalidWireValues(t *testing.T) {
+	dao := mysql.NewDAO(nil)
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
-	r.POST("/", CreateApartmentHandler)
+	r.POST("/", NewApartmentHandler(adminservice.NewApartmentService(dao)).CreateApartmentHandler)
 	for _, body := range []string{
 		`{"name":"楼","gender":"male","sort_order":-1,"is_enabled":true}`,
 		`{"name":"楼","gender":"male","sort_order":4294967296,"is_enabled":true}`,
@@ -58,20 +62,24 @@ func TestApartmentRequestRejectsInvalidWireValues(t *testing.T) {
 }
 
 func TestFeedbackApartmentRoutesRejectStudentRole(t *testing.T) {
+	settings := config.Config{}
+	dao := mysql.NewDAO(nil)
 	gin.SetMode(gin.TestMode)
+	feedbackHandler := NewFeedbackHandler(adminservice.NewFeedbackService(dao, settings.Storage))
+	apartmentHandler := NewApartmentHandler(adminservice.NewApartmentService(dao))
 	for _, route := range []struct {
 		method, path string
 		handler      gin.HandlerFunc
 	}{
-		{"GET", "/feedbacks", GetFeedbacksHandler},
-		{"GET", "/feedbacks/:id", GetFeedbackHandler},
-		{"PATCH", "/feedbacks/:id/handling", UpdateFeedbackHandlingHandler},
-		{"GET", "/feedbacks/:id/attachments/:index", GetFeedbackAttachmentHandler},
-		{"DELETE", "/feedbacks/:id", DeleteFeedbackHandler},
-		{"GET", "/apartments", GetApartmentsHandler},
-		{"POST", "/apartments", CreateApartmentHandler},
-		{"PUT", "/apartments/:id", UpdateApartmentHandler},
-		{"DELETE", "/apartments/:id", DeleteApartmentHandler},
+		{"GET", "/feedbacks", feedbackHandler.GetFeedbacksHandler},
+		{"GET", "/feedbacks/:id", feedbackHandler.GetFeedbackHandler},
+		{"PATCH", "/feedbacks/:id/handling", feedbackHandler.UpdateFeedbackHandlingHandler},
+		{"GET", "/feedbacks/:id/attachments/:index", feedbackHandler.GetFeedbackAttachmentHandler},
+		{"DELETE", "/feedbacks/:id", feedbackHandler.DeleteFeedbackHandler},
+		{"GET", "/apartments", apartmentHandler.GetApartmentsHandler},
+		{"POST", "/apartments", apartmentHandler.CreateApartmentHandler},
+		{"PUT", "/apartments/:id", apartmentHandler.UpdateApartmentHandler},
+		{"DELETE", "/apartments/:id", apartmentHandler.DeleteApartmentHandler},
 	} {
 		r := gin.New()
 		r.Use(func(c *gin.Context) { c.Set(request.CtxRole, models.RoleStudent) }, middleware.AdminAuthMiddleware())

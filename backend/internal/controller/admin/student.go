@@ -11,7 +11,17 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func GetStudentsHandler(c *gin.Context) {
+type StudentHandler struct {
+	student *adminservice.StudentService
+}
+
+func NewStudentHandler(student *adminservice.StudentService) *StudentHandler {
+	return &StudentHandler{
+		student: student,
+	}
+}
+
+func (s *StudentHandler) GetStudentsHandler(c *gin.Context) {
 	pagination, ok := request.ParsePagination(c)
 	if !ok {
 		response.Error(c, response.CodeInvalidParam)
@@ -40,7 +50,7 @@ func GetStudentsHandler(c *gin.Context) {
 		v := uint8(status)
 		query.Status = &v
 	}
-	data, err := adminservice.GetAdminStudents(query)
+	data, err := s.student.GetAdminStudents(query)
 	if err != nil {
 		managementError(c, err)
 		return
@@ -48,12 +58,12 @@ func GetStudentsHandler(c *gin.Context) {
 	response.Success(c, data)
 }
 
-func GetStudentHandler(c *gin.Context) {
+func (s *StudentHandler) GetStudentHandler(c *gin.Context) {
 	id, ok := managementID(c)
 	if !ok {
 		return
 	}
-	data, err := adminservice.GetAdminStudent(id)
+	data, err := s.student.GetAdminStudent(id)
 	if err != nil {
 		managementError(c, err)
 		return
@@ -61,7 +71,7 @@ func GetStudentHandler(c *gin.Context) {
 	response.Success(c, data)
 }
 
-func UpdateStudentHandler(c *gin.Context) {
+func (s *StudentHandler) UpdateStudentHandler(c *gin.Context) {
 	id, ok := managementID(c)
 	if !ok {
 		return
@@ -71,7 +81,7 @@ func UpdateStudentHandler(c *gin.Context) {
 		response.Error(c, response.CodeInvalidParam)
 		return
 	}
-	data, err := adminservice.UpdateAdminStudent(id, input)
+	data, err := s.student.UpdateAdminStudent(id, input)
 	if err != nil {
 		managementError(c, err)
 		return
@@ -79,7 +89,7 @@ func UpdateStudentHandler(c *gin.Context) {
 	response.Success(c, data)
 }
 
-func UpdateStudentStatusHandler(c *gin.Context) {
+func (s *StudentHandler) UpdateStudentStatusHandler(c *gin.Context) {
 	id, ok := managementID(c)
 	if !ok {
 		return
@@ -89,7 +99,7 @@ func UpdateStudentStatusHandler(c *gin.Context) {
 		response.Error(c, response.CodeInvalidParam)
 		return
 	}
-	data, err := adminservice.UpdateAdminStudentStatus(id, input)
+	data, err := s.student.UpdateAdminStudentStatus(id, input)
 	if err != nil {
 		managementError(c, err)
 		return
@@ -97,12 +107,12 @@ func UpdateStudentStatusHandler(c *gin.Context) {
 	response.Success(c, data)
 }
 
-func ResetStudentPasswordHandler(c *gin.Context) {
+func (s *StudentHandler) ResetStudentPasswordHandler(c *gin.Context) {
 	id, ok := managementID(c)
 	if !ok {
 		return
 	}
-	if err := adminservice.ResetAdminStudentPassword(id); err != nil {
+	if err := s.student.ResetAdminStudentPassword(id); err != nil {
 		managementError(c, err)
 		return
 	}

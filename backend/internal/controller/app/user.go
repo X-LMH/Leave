@@ -13,8 +13,18 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+type UserHandler struct {
+	user *appservice.UserService
+}
+
+func NewUserHandler(user *appservice.UserService) *UserHandler {
+	return &UserHandler{
+		user: user,
+	}
+}
+
 // RegisterHandler 用户注册
-func RegisterHandler(c *gin.Context) {
+func (u *UserHandler) RegisterHandler(c *gin.Context) {
 	// 参数绑定
 	//response.Error(c, response.CodeServiceFix)
 	//return
@@ -34,7 +44,7 @@ func RegisterHandler(c *gin.Context) {
 	}
 
 	// 业务逻辑
-	data, err := appservice.Register(p)
+	data, err := u.user.Register(p)
 	if err != nil {
 		switch {
 		case errors.Is(err, mysql.ErrorUserExist):
@@ -50,7 +60,7 @@ func RegisterHandler(c *gin.Context) {
 }
 
 // LoginHandler 用户登录
-func LoginHandler(c *gin.Context) {
+func (u *UserHandler) LoginHandler(c *gin.Context) {
 	// 参数绑定
 	p := new(dto.LoginRequest)
 	if err := c.ShouldBindJSON(p); err != nil {
@@ -68,7 +78,7 @@ func LoginHandler(c *gin.Context) {
 	}
 
 	// 业务逻辑
-	data, err := appservice.Login(p)
+	data, err := u.user.Login(p)
 	if err != nil {
 		switch {
 		case errors.Is(err, mysql.ErrorUserNotExist), errors.Is(err, mysql.ErrorInvalidPassword):
@@ -86,11 +96,11 @@ func LoginHandler(c *gin.Context) {
 
 // LogoutHandler 退出登录。
 // 当前使用无状态 JWT，客户端在收到成功响应后清除本地 Token。
-func LogoutHandler(c *gin.Context) {
+func (u *UserHandler) LogoutHandler(c *gin.Context) {
 	response.Success(c, nil)
 }
 
-func UpdateAppInfoHandler(c *gin.Context) {
+func (u *UserHandler) UpdateAppInfoHandler(c *gin.Context) {
 	p := new(dto.ClientInfoRequest)
 	if err := c.ShouldBindJSON(p); err != nil || strings.TrimSpace(p.AppVersion) == "" || utf8.RuneCountInString(strings.TrimSpace(p.DeviceName)) > 255 {
 		response.Error(c, response.CodeInvalidParam)
@@ -101,7 +111,7 @@ func UpdateAppInfoHandler(c *gin.Context) {
 		response.Error(c, response.CodeNeedLogin)
 		return
 	}
-	if err := appservice.UpdateAppInfo(p, studentID); err != nil {
+	if err := u.user.UpdateAppInfo(p, studentID); err != nil {
 		response.Error(c, response.CodeServerBusy)
 		return
 	}
@@ -109,7 +119,7 @@ func UpdateAppInfoHandler(c *gin.Context) {
 }
 
 // ChangePasswordHandler 修改密码
-func ChangePasswordHandler(c *gin.Context) {
+func (u *UserHandler) ChangePasswordHandler(c *gin.Context) {
 	// 参数校验
 	p := new(dto.PasswordChangeRequest)
 	if err := c.ShouldBindJSON(p); err != nil {
@@ -127,7 +137,7 @@ func ChangePasswordHandler(c *gin.Context) {
 		response.Error(c, response.CodeNeedLogin)
 		return
 	}
-	if err := appservice.ChangePassword(p, studentID); err != nil {
+	if err := u.user.ChangePassword(p, studentID); err != nil {
 		switch {
 		case errors.Is(err, mysql.ErrorNotRightPassword):
 			response.Error(c, response.CodeNotRightPassword)

@@ -11,9 +11,21 @@ import (
 	"gorm.io/gorm"
 )
 
-func AdminLogin(req *dto.AdminLoginRequest) (*dto.AdminLoginResponse, error) {
+type AuthService struct {
+	dao    *mysql.DAO
+	tokens *jwt.Manager
+}
+
+func NewAuthService(dao *mysql.DAO, tokens *jwt.Manager) *AuthService {
+	return &AuthService{
+		dao:    dao,
+		tokens: tokens,
+	}
+}
+
+func (a *AuthService) AdminLogin(req *dto.AdminLoginRequest) (*dto.AdminLoginResponse, error) {
 	userName := strings.TrimSpace(req.UserName)
-	user, err := mysql.FindUserByStudentID(userName)
+	user, err := a.dao.FindUserByStudentID(userName)
 	if err != nil {
 		return nil, err
 	}
@@ -28,7 +40,7 @@ func AdminLogin(req *dto.AdminLoginRequest) (*dto.AdminLoginResponse, error) {
 		return nil, mysql.ErrorInvalidPassword
 	}
 
-	token, err := jwt.GenerateToken(user.StudentID, user.Role)
+	token, err := a.tokens.GenerateToken(user.StudentID, user.Role)
 	if err != nil {
 		return nil, err
 	}
@@ -44,13 +56,13 @@ func validatePasswordChange(input *dto.PasswordChangeRequest) error {
 	return nil
 }
 
-func ChangePassword(studentID string, input *dto.PasswordChangeRequest) error {
+func (a *AuthService) ChangePassword(studentID string, input *dto.PasswordChangeRequest) error {
 	if err := validatePasswordChange(input); err != nil {
 		return err
 	}
-	return mysql.Transaction(func(tx *gorm.DB) error {
+	return a.dao.Transaction(func(tx *gorm.DB) error {
 		// Lock through verification and update so an old password can only succeed once.
-		user, err := mysql.GetUserForUpdate(tx, studentID)
+		user, err := a.dao.GetUserForUpdate(tx, studentID)
 		if err != nil {
 			return err
 		}
@@ -71,6 +83,6 @@ func ChangePassword(studentID string, input *dto.PasswordChangeRequest) error {
 		if err != nil {
 			return err
 		}
-		return mysql.UpdateUserPassword(tx, user.ID, hash)
+		return a.dao.UpdateUserPassword(tx, user.ID, hash)
 	})
 }

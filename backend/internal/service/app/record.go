@@ -9,18 +9,30 @@ import (
 	"time"
 )
 
+type RecordService struct {
+	dao     *mysql.DAO
+	profile *ProfileService
+}
+
+func NewRecordService(dao *mysql.DAO, profile *ProfileService) *RecordService {
+	return &RecordService{
+		dao:     dao,
+		profile: profile,
+	}
+}
+
 var (
 	ErrorInvalidRecord        = errors.New("invalid leave record")
 	ErrorLeaveTypeUnavailable = errors.New("leave type unavailable")
 	ErrorProfileIncomplete    = errors.New("profile incomplete")
 )
 
-func CreateRecord(studentID string, request *dto.RecordCreateRequest) (*dto.RecordResponse, error) {
+func (r *RecordService) CreateRecord(studentID string, request *dto.RecordCreateRequest) (*dto.RecordResponse, error) {
 	if !validateAndNormalizeRecordRequest(request) {
 		return nil, ErrorInvalidRecord
 	}
 
-	profile, class, err := getProfileAndClass(studentID)
+	profile, class, err := r.profile.getProfileAndClass(studentID)
 	if err != nil {
 		return nil, err
 	}
@@ -28,7 +40,7 @@ func CreateRecord(studentID string, request *dto.RecordCreateRequest) (*dto.Reco
 		return nil, ErrorProfileIncomplete
 	}
 
-	leaveType, err := mysql.GetLeaveTypeByID(request.LeaveTypeID)
+	leaveType, err := r.dao.GetLeaveTypeByID(request.LeaveTypeID)
 	if err != nil {
 		if errors.Is(err, mysql.ErrorLeaveTypeNotExist) {
 			return nil, ErrorLeaveTypeUnavailable
@@ -60,22 +72,22 @@ func CreateRecord(studentID string, request *dto.RecordCreateRequest) (*dto.Reco
 		AppliedAt:      request.AppliedAt,
 		ApprovedAt:     &request.ApprovedAt,
 	}
-	if err := mysql.InsertRecord(record); err != nil {
+	if err := r.dao.InsertRecord(record); err != nil {
 		return nil, err
 	}
 	return toRecordResponse(record), nil
 }
 
-func GetRecord(studentID string, recordID int) (*dto.RecordResponse, error) {
-	record, err := mysql.GetRecordByID(studentID, recordID)
+func (r *RecordService) GetRecord(studentID string, recordID int) (*dto.RecordResponse, error) {
+	record, err := r.dao.GetRecordByID(studentID, recordID)
 	if err != nil {
 		return nil, err
 	}
 	return toRecordResponse(record), nil
 }
 
-func GetRecordsList(studentID string, query dto.RecordListQuery) ([]*dto.RecordListItem, error) {
-	records, err := mysql.GetRecordsByStuID(studentID, query.Page, query.PageSize, query.LeaveType)
+func (r *RecordService) GetRecordsList(studentID string, query dto.RecordListQuery) ([]*dto.RecordListItem, error) {
+	records, err := r.dao.GetRecordsByStuID(studentID, query.Page, query.PageSize, query.LeaveType)
 	if err != nil {
 		return nil, err
 	}
@@ -95,8 +107,8 @@ func GetRecordsList(studentID string, query dto.RecordListQuery) ([]*dto.RecordL
 	return items, nil
 }
 
-func DeleteRecord(studentID string, recordID int) error {
-	return mysql.DeleteRecordByID(studentID, recordID)
+func (r *RecordService) DeleteRecord(studentID string, recordID int) error {
+	return r.dao.DeleteRecordByID(studentID, recordID)
 }
 
 func validateAndNormalizeRecordRequest(request *dto.RecordCreateRequest) bool {

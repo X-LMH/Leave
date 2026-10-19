@@ -7,12 +7,22 @@ import (
 	"errors"
 )
 
+type OptionsService struct {
+	dao *mysql.DAO
+}
+
+func NewOptionsService(dao *mysql.DAO) *OptionsService {
+	return &OptionsService{
+		dao: dao,
+	}
+}
+
 var ErrorInvalidApartmentGender = errors.New("invalid apartment gender")
 
 // App callers request enabled options; admin callers also need disabled values
 // to display existing assignments and prevent selecting them for new assignments.
-func GetClassOptions(enabledOnly bool) ([]*dto.ClassOption, error) {
-	classes, err := mysql.GetClassOptions(enabledOnly)
+func (o *OptionsService) GetClassOptions(enabledOnly bool) ([]*dto.ClassOption, error) {
+	classes, err := o.dao.GetClassOptions(enabledOnly)
 	if err != nil {
 		return nil, err
 	}
@@ -29,11 +39,11 @@ func GetClassOptions(enabledOnly bool) ([]*dto.ClassOption, error) {
 	return options, nil
 }
 
-func GetApartmentOptions(gender string, enabledOnly bool) ([]*dto.ApartmentOption, error) {
+func (o *OptionsService) GetApartmentOptions(gender string, enabledOnly bool) ([]*dto.ApartmentOption, error) {
 	if gender != "" && !models.IsValidGender(gender) {
 		return nil, ErrorInvalidApartmentGender
 	}
-	apartments, err := mysql.GetApartmentOptions(gender, enabledOnly)
+	apartments, err := o.dao.GetApartmentOptions(gender, enabledOnly)
 	if err != nil {
 		return nil, err
 	}
@@ -49,8 +59,8 @@ func GetApartmentOptions(gender string, enabledOnly bool) ([]*dto.ApartmentOptio
 	return options, nil
 }
 
-func GetLeaveTypeOptions(enabledOnly bool) ([]*dto.LeaveTypeOption, error) {
-	leaveTypes, err := mysql.GetLeaveTypeOptions(enabledOnly)
+func (o *OptionsService) GetLeaveTypeOptions(enabledOnly bool) ([]*dto.LeaveTypeOption, error) {
+	leaveTypes, err := o.dao.GetLeaveTypeOptions(enabledOnly)
 	if err != nil {
 		return nil, err
 	}

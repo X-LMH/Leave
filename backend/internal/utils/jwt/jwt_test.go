@@ -1,7 +1,6 @@
 package jwt
 
 import (
-	"backend/internal/config"
 	"encoding/base64"
 	"strings"
 	"testing"
@@ -11,17 +10,14 @@ import (
 )
 
 func TestGenerateAndParseToken(t *testing.T) {
-	previous := config.Cfg
-	config.Cfg.JWT.Secret = "test-secret"
-	config.Cfg.JWT.ExpirationDays = 1
-	t.Cleanup(func() { config.Cfg = previous })
+	tokens := NewManager("test-secret", 1)
 
-	token, err := GenerateToken("202600010001", "student")
+	token, err := tokens.GenerateToken("202600010001", "student")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	claims, err := ParseToken(token)
+	claims, err := tokens.ParseToken(token)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -34,12 +30,9 @@ func TestGenerateAndParseToken(t *testing.T) {
 }
 
 func TestParseTokenRejectsTamperedAndWrongAlgorithmTokens(t *testing.T) {
-	previous := config.Cfg
-	config.Cfg.JWT.Secret = "test-secret"
-	config.Cfg.JWT.ExpirationDays = 1
-	t.Cleanup(func() { config.Cfg = previous })
+	tokens := NewManager("test-secret", 1)
 
-	token, err := GenerateToken("202600010001", "student")
+	token, err := tokens.GenerateToken("202600010001", "student")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -51,7 +44,7 @@ func TestParseTokenRejectsTamperedAndWrongAlgorithmTokens(t *testing.T) {
 	// 修改实际签名字节，避免只改变 Base64URL 末尾未使用的位。
 	signature[0] ^= 1
 	parts[2] = base64.RawURLEncoding.EncodeToString(signature)
-	if _, err := ParseToken(strings.Join(parts, ".")); err == nil {
+	if _, err := tokens.ParseToken(strings.Join(parts, ".")); err == nil {
 		t.Fatal("expected tampered token to be rejected")
 	}
 
@@ -59,11 +52,40 @@ func TestParseTokenRejectsTamperedAndWrongAlgorithmTokens(t *testing.T) {
 		StudentID: "202600010001",
 		Role:      "student",
 	})
-	wrongMethodTokenString, err := wrongMethodToken.SignedString(config.JWTSecret())
+	wrongMethodTokenString, err := wrongMethodToken.SignedString([]byte("test-secret"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := ParseToken(wrongMethodTokenString); err == nil {
+	if _, err := tokens.ParseToken(wrongMethodTokenString); err == nil {
 		t.Fatal("expected token with wrong signing method to be rejected")
+	}
+}
+
+func TestManagersKeepIndependentSigningAndExpiration(t *testing.T) {
+	short := NewManager("short-session-secret", 1)
+	long := NewManager("long-session-secret", 7)
+	for _, tc := range []struct {
+		issuer *Manager
+		other  *Manager
+		days   int
+	}{
+		{issuer: short, other: long, days: 1},
+		{issuer: long, other: short, days: 7},
+	} {
+		token, err := tc.issuer.GenerateToken("student", "student")
+		if err != nil {
+			t.Fatal(err)
+		}
+		claims, err := tc.issuer.ParseToken(token)
+		if err != nil {
+			t.Fatal(err)
+		}
+		want := time.Now().AddDate(0, 0, tc.days)
+		if delta := claims.ExpiresAt.Sub(want); delta < -5*time.Second || delta > 5*time.Second {
+			t.Fatalf("unexpected expiration for %d-day manager: %v", tc.days, claims.ExpiresAt)
+		}
+		if _, err := tc.other.ParseToken(token); err == nil {
+			t.Fatal("another manager accepted a token signed with a different key")
+		}
 	}
 }

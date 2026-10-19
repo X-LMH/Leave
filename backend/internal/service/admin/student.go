@@ -16,6 +16,18 @@ import (
 	"gorm.io/gorm"
 )
 
+type StudentService struct {
+	storage config.StorageConfig
+	dao     *mysql.DAO
+}
+
+func NewStudentService(dao *mysql.DAO, storage config.StorageConfig) *StudentService {
+	return &StudentService{
+		storage: storage,
+		dao:     dao,
+	}
+}
+
 func normalizeAdminStudent(p *dto.ProfileRequest) error {
 	p.Name = strings.TrimSpace(p.Name)
 	p.Phone = strings.TrimSpace(p.Phone)
@@ -33,7 +45,7 @@ func normalizeAdminStudent(p *dto.ProfileRequest) error {
 	return nil
 }
 
-func studentResponse(user *models.User, profile *models.Profile) (*dto.Student, error) {
+func (s *StudentService) studentResponse(user *models.User, profile *models.Profile) (*dto.Student, error) {
 	row := &dto.Student{
 		ID:             user.ID,
 		StudentID:      user.StudentID,
@@ -61,7 +73,7 @@ func studentResponse(user *models.User, profile *models.Profile) (*dto.Student, 
 			avatarPath = profile.AvatarURL
 		}
 	}
-	url, err := file.AccessURL(config.Cfg.Storage.BaseURL, avatarPath)
+	url, err := file.AccessURL(s.storage.BaseURL, avatarPath)
 	if err != nil {
 		return nil, err
 	}
@@ -69,12 +81,12 @@ func studentResponse(user *models.User, profile *models.Profile) (*dto.Student, 
 	return row, nil
 }
 
-func GetAdminStudents(query dto.StudentQuery) (*dto.StudentListResponse, error) {
-	items, total, err := mysql.GetStudents(query)
+func (s *StudentService) GetAdminStudents(query dto.StudentQuery) (*dto.StudentListResponse, error) {
+	items, total, err := s.dao.GetStudents(query)
 	if err != nil {
 		return nil, err
 	}
-	versions, err := mysql.GetAppVersions("android", nil)
+	versions, err := s.dao.GetAppVersions("android", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -89,20 +101,20 @@ func GetAdminStudents(query dto.StudentQuery) (*dto.StudentListResponse, error) 
 	}, nil
 }
 
-func GetAdminStudent(id uint) (*dto.Student, error) {
-	user, err := mysql.GetStudent(id)
+func (s *StudentService) GetAdminStudent(id uint) (*dto.Student, error) {
+	user, err := s.dao.GetStudent(id)
 	if err != nil {
 		return nil, err
 	}
-	profile, err := mysql.GetProfileByStuID(user.StudentID)
+	profile, err := s.dao.GetProfileByStuID(user.StudentID)
 	if err != nil {
 		return nil, err
 	}
-	row, err := studentResponse(user, profile)
+	row, err := s.studentResponse(user, profile)
 	if err != nil {
 		return nil, err
 	}
-	versions, err := mysql.GetAppVersions("android", nil)
+	versions, err := s.dao.GetAppVersions("android", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -110,22 +122,22 @@ func GetAdminStudent(id uint) (*dto.Student, error) {
 	return row, nil
 }
 
-func UpdateAdminStudent(id uint, input *dto.ProfileRequest) (*dto.Student, error) {
+func (s *StudentService) UpdateAdminStudent(id uint, input *dto.ProfileRequest) (*dto.Student, error) {
 	if err := normalizeAdminStudent(input); err != nil {
 		return nil, err
 	}
 	// Validate locked reference data inside the transaction so concurrent changes
 	// cannot invalidate the rules between validation and saving.
-	if err := mysql.Transaction(func(tx *gorm.DB) error {
-		user, err := mysql.GetStudentForUpdate(tx, id)
+	if err := s.dao.Transaction(func(tx *gorm.DB) error {
+		user, err := s.dao.GetStudentForUpdate(tx, id)
 		if err != nil {
 			return err
 		}
-		current, err := mysql.GetStudentProfileForUpdate(tx, user.StudentID)
+		current, err := s.dao.GetStudentProfileForUpdate(tx, user.StudentID)
 		if err != nil {
 			return err
 		}
-		class, err := mysql.GetStudentClassForShare(tx, input.ClassID)
+		class, err := s.dao.GetStudentClassForShare(tx, input.ClassID)
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return ErrorInvalidAdminInput
 		}
@@ -134,7 +146,7 @@ func UpdateAdminStudent(id uint, input *dto.ProfileRequest) (*dto.Student, error
 		}
 		var apartment *models.Apartment
 		if input.ApartmentID != 0 {
-			apartment, err = mysql.GetStudentApartmentForShare(tx, input.ApartmentID)
+			apartment, err = s.dao.GetStudentApartmentForShare(tx, input.ApartmentID)
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return ErrorInvalidAdminInput
 			}
@@ -146,21 +158,21 @@ func UpdateAdminStudent(id uint, input *dto.ProfileRequest) (*dto.Student, error
 			return err
 		}
 		profile := studentProfile(user.StudentID, input)
-		return mysql.SaveStudentProfile(tx, profile)
+		return s.dao.SaveStudentProfile(tx, profile)
 	}); err != nil {
 		return nil, err
 	}
-	return GetAdminStudent(id)
+	return s.GetAdminStudent(id)
 }
 
-func UpdateAdminStudentStatus(id uint, input *dto.StudentStatusRequest) (*dto.Student, error) {
+func (s *StudentService) UpdateAdminStudentStatus(id uint, input *dto.StudentStatusRequest) (*dto.Student, error) {
 	if input.Status == nil || *input.Status > models.UserStatusActive {
 		return nil, ErrorInvalidAdminInput
 	}
-	if err := mysql.UpdateStudentStatus(id, *input.Status); err != nil {
+	if err := s.dao.UpdateStudentStatus(id, *input.Status); err != nil {
 		return nil, err
 	}
-	return GetAdminStudent(id)
+	return s.GetAdminStudent(id)
 }
 
 func validateStudentReferences(input *dto.ProfileRequest, current *models.Profile, class *models.Class, apartment *models.Apartment) error {
@@ -197,16 +209,16 @@ func studentProfile(studentID string, input *dto.ProfileRequest) *models.Profile
 const defaultStudentPassword = "12345678"
 
 // ResetAdminStudentPassword only changes the explicitly selected student account.
-func ResetAdminStudentPassword(id uint) error {
+func (s *StudentService) ResetAdminStudentPassword(id uint) error {
 	hash, err := passwordutil.Hash(defaultStudentPassword)
 	if err != nil {
 		return err
 	}
-	return mysql.Transaction(func(tx *gorm.DB) error {
-		user, err := mysql.GetStudentForUpdate(tx, id)
+	return s.dao.Transaction(func(tx *gorm.DB) error {
+		user, err := s.dao.GetStudentForUpdate(tx, id)
 		if err != nil {
 			return err
 		}
-		return mysql.UpdateUserPassword(tx, user.ID, hash)
+		return s.dao.UpdateUserPassword(tx, user.ID, hash)
 	})
 }

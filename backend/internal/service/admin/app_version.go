@@ -9,6 +9,16 @@ import (
 	"strings"
 )
 
+type AppVersionService struct {
+	dao *mysql.DAO
+}
+
+func NewAppVersionService(dao *mysql.DAO) *AppVersionService {
+	return &AppVersionService{
+		dao: dao,
+	}
+}
+
 func normalizeAppVersionQuery(query *dto.AppVersionListQuery) error {
 	query.Keyword = strings.TrimSpace(query.Keyword)
 	query.Platform = strings.ToLower(strings.TrimSpace(query.Platform))
@@ -46,11 +56,11 @@ func adminAppVersion(row *models.AppVersion) (*dto.AdminAppVersion, error) {
 	}, nil
 }
 
-func GetAdminAppVersions(query dto.AppVersionListQuery) (*dto.AppVersionListResponse, error) {
+func (a *AppVersionService) GetAdminAppVersions(query dto.AppVersionListQuery) (*dto.AppVersionListResponse, error) {
 	if err := normalizeAppVersionQuery(&query); err != nil {
 		return nil, err
 	}
-	rows, total, err := mysql.GetAppVersionList(query)
+	rows, total, err := a.dao.GetAppVersionList(query)
 	if err != nil {
 		return nil, err
 	}
@@ -70,8 +80,8 @@ func GetAdminAppVersions(query dto.AppVersionListQuery) (*dto.AppVersionListResp
 	}, nil
 }
 
-func GetAdminCurrentAppVersion() (*dto.AdminAppVersion, error) {
-	row, err := mysql.GetCurrentAppVersion(models.AppVersionPlatformAndroid)
+func (a *AppVersionService) GetAdminCurrentAppVersion() (*dto.AdminAppVersion, error) {
+	row, err := a.dao.GetCurrentAppVersion(models.AppVersionPlatformAndroid)
 	if errors.Is(err, mysql.ErrorAppVersionNotFound) {
 		return nil, nil
 	}
@@ -81,8 +91,8 @@ func GetAdminCurrentAppVersion() (*dto.AdminAppVersion, error) {
 	return adminAppVersion(row)
 }
 
-func GetAdminAppVersion(id uint64) (*dto.AdminAppVersion, error) {
-	row, err := mysql.GetAppVersionByID(id)
+func (a *AppVersionService) GetAdminAppVersion(id uint64) (*dto.AdminAppVersion, error) {
+	row, err := a.dao.GetAppVersionByID(id)
 	if err != nil {
 		return nil, err
 	}

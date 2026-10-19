@@ -12,7 +12,7 @@ import (
 )
 
 // JWTAuthMiddleware jwt认证中间件
-func JWTAuthMiddleware() gin.HandlerFunc {
+func JWTAuthMiddleware(tokens *jwt.Manager, dao *mysql.DAO) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// 获取请求头中的Authorization
 		authHeader := c.GetHeader("Authorization")
@@ -34,20 +34,20 @@ func JWTAuthMiddleware() gin.HandlerFunc {
 		}
 
 		// 解析JWT令牌
-		claims, err := jwt.ParseToken(parts[1]) // parts[1]是提取出的令牌字符串
+		claims, err := tokens.ParseToken(parts[1]) // parts[1]是提取出的令牌字符串
 		if err != nil {
 			response.Error(c, response.CodeInvalidToken)
 			c.Abort()
 			return
 		}
-		if err := mysql.EnsureUserActive(claims.StudentID); err != nil {
+		if err := dao.EnsureUserActive(claims.StudentID); err != nil {
 			response.Error(c, response.CodeNeedLogin)
 			c.Abort()
 			return
 		}
 		if claims.Role == models.RoleAdmin {
 			// 角色可能在令牌签发后变更，管理员声明须与数据库当前角色一致。
-			user, err := mysql.FindUserByStudentID(claims.StudentID)
+			user, err := dao.FindUserByStudentID(claims.StudentID)
 			if err != nil || user.Role != models.RoleAdmin || user.Status != models.UserStatusActive {
 				response.Error(c, response.CodeNeedLogin)
 				c.Abort()

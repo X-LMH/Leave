@@ -1,6 +1,8 @@
 package app
 
 import (
+	"backend/internal/config"
+	"backend/internal/dao/mysql"
 	"backend/internal/request"
 	appservice "backend/internal/service/app"
 	"bytes"
@@ -67,11 +69,13 @@ func TestParseFeedbackSubmission(t *testing.T) {
 }
 
 func TestFeedbackRequestBodyLimit(t *testing.T) {
+	settings := config.Config{}
+	dao := mysql.NewDAO(nil)
 	c, _ := gin.CreateTestContext(httptest.NewRecorder())
 	c.Set(request.CtxStuID, "student")
 	c.Request = httptest.NewRequest("POST", "/feedback", strings.NewReader(`{"content":"`+strings.Repeat("x", appservice.MaxFeedbackAttachments*appservice.MaxFeedbackAttachmentSize+(128<<10))+`"}`))
 	c.Request.Header.Set("Content-Type", "application/json")
-	CreateFeedbackHandler(c)
+	NewFeedbackHandler(appservice.NewFeedbackService(dao, settings.Storage)).CreateFeedbackHandler(c)
 	// Handler must reject before reaching the database.
 	recorder := c.Writer
 	if recorder.Status() != 400 {

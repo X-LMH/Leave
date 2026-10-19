@@ -9,7 +9,17 @@ import (
 	"strings"
 )
 
-func GetLeaveTypesHandler(c *gin.Context) {
+type LeaveTypeHandler struct {
+	leaveType *adminservice.LeaveTypeService
+}
+
+func NewLeaveTypeHandler(leaveType *adminservice.LeaveTypeService) *LeaveTypeHandler {
+	return &LeaveTypeHandler{
+		leaveType: leaveType,
+	}
+}
+
+func (l *LeaveTypeHandler) GetLeaveTypesHandler(c *gin.Context) {
 	pagination, ok := request.ParsePagination(c)
 	if !ok {
 		response.Error(c, response.CodeInvalidParam)
@@ -25,7 +35,7 @@ func GetLeaveTypesHandler(c *gin.Context) {
 		Name:      strings.TrimSpace(c.Query("name")),
 		IsEnabled: enabled,
 	}
-	data, err := adminservice.GetAdminLeaveTypes(query)
+	data, err := l.leaveType.GetAdminLeaveTypes(query)
 	if err != nil {
 		managementError(c, err)
 		return
@@ -33,13 +43,13 @@ func GetLeaveTypesHandler(c *gin.Context) {
 	response.Success(c, data)
 }
 
-func CreateLeaveTypeHandler(c *gin.Context) {
+func (l *LeaveTypeHandler) CreateLeaveTypeHandler(c *gin.Context) {
 	p := new(dto.LeaveTypeRequest)
 	if err := c.ShouldBindJSON(p); err != nil {
 		response.Error(c, response.CodeInvalidParam)
 		return
 	}
-	data, err := adminservice.CreateAdminLeaveType(p)
+	data, err := l.leaveType.CreateAdminLeaveType(p)
 	if err != nil {
 		managementError(c, err)
 		return
@@ -47,7 +57,7 @@ func CreateLeaveTypeHandler(c *gin.Context) {
 	response.Success(c, data)
 }
 
-func UpdateLeaveTypeHandler(c *gin.Context) {
+func (l *LeaveTypeHandler) UpdateLeaveTypeHandler(c *gin.Context) {
 	id, ok := managementID(c)
 	if !ok {
 		return
@@ -57,7 +67,7 @@ func UpdateLeaveTypeHandler(c *gin.Context) {
 		response.Error(c, response.CodeInvalidParam)
 		return
 	}
-	data, err := adminservice.UpdateAdminLeaveType(p, id)
+	data, err := l.leaveType.UpdateAdminLeaveType(p, id)
 	if err != nil {
 		managementError(c, err)
 		return
@@ -65,12 +75,12 @@ func UpdateLeaveTypeHandler(c *gin.Context) {
 	response.Success(c, data)
 }
 
-func DeleteLeaveTypeHandler(c *gin.Context) {
+func (l *LeaveTypeHandler) DeleteLeaveTypeHandler(c *gin.Context) {
 	id, ok := managementID(c)
 	if !ok {
 		return
 	}
-	if err := adminservice.DeleteAdminLeaveType(id); err != nil {
+	if err := l.leaveType.DeleteAdminLeaveType(id); err != nil {
 		managementError(c, err)
 		return
 	}

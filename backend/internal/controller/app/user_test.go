@@ -1,8 +1,12 @@
 package app
 
 import (
+	"backend/internal/config"
+	"backend/internal/dao/mysql"
 	"backend/internal/dto"
 	"backend/internal/response"
+	appservice "backend/internal/service/app"
+	"backend/internal/utils/jwt"
 	"bytes"
 	"encoding/json"
 	"net/http"
@@ -14,6 +18,8 @@ import (
 )
 
 func TestRegisterRejectsInvalidRequests(t *testing.T) {
+	settings := config.Config{}
+	dao := mysql.NewDAO(nil)
 	gin.SetMode(gin.TestMode)
 	for _, tc := range []struct {
 		name string
@@ -39,7 +45,7 @@ func TestRegisterRejectsInvalidRequests(t *testing.T) {
 			c, _ := gin.CreateTestContext(w)
 			c.Request = httptest.NewRequest(http.MethodPost, "/api/v1/auth/register", bytes.NewReader(body))
 			c.Request.Header.Set("Content-Type", "application/json")
-			RegisterHandler(c)
+			NewUserHandler(appservice.NewUserService(dao, jwt.NewManager(settings.JWT.Secret, settings.JWT.ExpirationDays))).RegisterHandler(c)
 			var result response.Response
 			if err := json.Unmarshal(w.Body.Bytes(), &result); err != nil {
 				t.Fatal(err)

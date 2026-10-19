@@ -15,8 +15,18 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+type FeedbackHandler struct {
+	feedback *appservice.FeedbackService
+}
+
+func NewFeedbackHandler(feedback *appservice.FeedbackService) *FeedbackHandler {
+	return &FeedbackHandler{
+		feedback: feedback,
+	}
+}
+
 // CreateFeedbackHandler 接收文字反馈及可选图片，兼容旧版 JSON 请求。
-func CreateFeedbackHandler(c *gin.Context) {
+func (f *FeedbackHandler) CreateFeedbackHandler(c *gin.Context) {
 	// 解析前限制请求总大小，三张图片之外预留 multipart 表单开销。
 	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body,
 		appservice.MaxFeedbackAttachments*appservice.MaxFeedbackAttachmentSize+(64<<10))
@@ -39,7 +49,7 @@ func CreateFeedbackHandler(c *gin.Context) {
 		return
 	}
 
-	feedback, err := appservice.CreateFeedback(studentID, req, uploads...)
+	feedback, err := f.feedback.CreateFeedback(studentID, req, uploads...)
 	if err != nil {
 		if errors.Is(err, appservice.ErrorInvalidFeedback) {
 			response.Error(c, response.CodeInvalidParam)

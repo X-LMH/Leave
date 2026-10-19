@@ -8,26 +8,26 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-func SaveAppProfile(tx *gorm.DB, s *models.Profile) error {
+func (s *DAO) SaveAppProfile(tx *gorm.DB, profile *models.Profile) error {
 	return tx.Clauses(clause.OnConflict{
 		Columns: []clause.Column{{Name: "student_id"}},
 		DoUpdates: clause.Assignments(map[string]any{
-			"class_id":         s.ClassID,
-			"name":             s.Name,
-			"phone":            s.Phone,
-			"gender":           s.Gender,
-			"parent_name":      s.ParentName,
-			"parent_phone":     s.ParentPhone,
-			"apartment_id":     s.ApartmentID,
-			"dormitory_number": s.DormitoryNumber,
-			"teacher_name":     s.TeacherName,
+			"class_id":         profile.ClassID,
+			"name":             profile.Name,
+			"phone":            profile.Phone,
+			"gender":           profile.Gender,
+			"parent_name":      profile.ParentName,
+			"parent_phone":     profile.ParentPhone,
+			"apartment_id":     profile.ApartmentID,
+			"dormitory_number": profile.DormitoryNumber,
+			"teacher_name":     profile.TeacherName,
 		}),
-	}).Create(s).Error
+	}).Create(profile).Error
 }
 
-func GetProfileByStuID(studentID string) (data *models.Profile, err error) {
+func (s *DAO) GetProfileByStuID(studentID string) (data *models.Profile, err error) {
 	data = new(models.Profile)
-	if err = db.
+	if err = s.db.
 		Where("student_id = ?", studentID).
 		First(data).
 		Error; err != nil {
@@ -39,8 +39,8 @@ func GetProfileByStuID(studentID string) (data *models.Profile, err error) {
 	return
 }
 
-func UpdateProfileAvatar(studentID, key string) error {
-	result := db.Model(&models.Profile{}).
+func (s *DAO) UpdateProfileAvatar(studentID, key string) error {
+	result := s.db.Model(&models.Profile{}).
 		Where("student_id = ?", studentID).
 		Update("avatar_url", key)
 	if result.Error != nil {
@@ -53,17 +53,17 @@ func UpdateProfileAvatar(studentID, key string) error {
 	return nil
 }
 
-func GetApartmentByID(apartmentID uint) (*models.Apartment, error) {
+func (s *DAO) GetApartmentByID(apartmentID uint) (*models.Apartment, error) {
 	apartment := new(models.Apartment)
-	if err := db.Where("id = ?", apartmentID).First(apartment).Error; err != nil {
+	if err := s.db.Where("id = ?", apartmentID).First(apartment).Error; err != nil {
 		return nil, err
 	}
 	return apartment, nil
 }
 
-func GetApartmentOptions(gender string, enabledOnly bool) ([]*models.Apartment, error) {
+func (s *DAO) GetApartmentOptions(gender string, enabledOnly bool) ([]*models.Apartment, error) {
 	apartments := make([]*models.Apartment, 0)
-	query := db.Select("id", "name", "gender", "is_enabled")
+	query := s.db.Select("id", "name", "gender", "is_enabled")
 	if enabledOnly {
 		query = query.Where("is_enabled = ?", 1)
 	}

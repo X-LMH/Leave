@@ -12,28 +12,40 @@ import (
 	"gorm.io/gorm"
 )
 
+type ProfileService struct {
+	dao     *mysql.DAO
+	storage config.StorageConfig
+}
+
+func NewProfileService(dao *mysql.DAO, storage config.StorageConfig) *ProfileService {
+	return &ProfileService{
+		dao:     dao,
+		storage: storage,
+	}
+}
+
 var ErrorInvalidProfileReference = errors.New("invalid profile reference")
 
-func Profile(p *dto.ProfileRequest, studentID string) (err error) {
+func (p *ProfileService) Profile(input *dto.ProfileRequest, studentID string) (err error) {
 	student := &models.Profile{
 		StudentID:       studentID,
-		ClassID:         p.ClassID,
-		Name:            p.Name,
-		Phone:           p.Phone,
-		Gender:          p.Gender,
-		ParentName:      p.ParentName,
-		ParentPhone:     p.ParentPhone,
-		ApartmentID:     p.ApartmentID,
-		DormitoryNumber: p.DormitoryNumber,
-		TeacherName:     p.TeacherName,
+		ClassID:         input.ClassID,
+		Name:            input.Name,
+		Phone:           input.Phone,
+		Gender:          input.Gender,
+		ParentName:      input.ParentName,
+		ParentPhone:     input.ParentPhone,
+		ApartmentID:     input.ApartmentID,
+		DormitoryNumber: input.DormitoryNumber,
+		TeacherName:     input.TeacherName,
 	}
 	// Validate class and apartment assignments under the same locks as management edits.
-	return mysql.Transaction(func(tx *gorm.DB) error {
-		current, err := mysql.GetStudentProfileForUpdate(tx, studentID)
+	return p.dao.Transaction(func(tx *gorm.DB) error {
+		current, err := p.dao.GetStudentProfileForUpdate(tx, studentID)
 		if err != nil {
 			return err
 		}
-		class, err := mysql.GetStudentClassForShare(tx, p.ClassID)
+		class, err := p.dao.GetStudentClassForShare(tx, input.ClassID)
 		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return ErrorInvalidProfileReference
@@ -43,24 +55,24 @@ func Profile(p *dto.ProfileRequest, studentID string) (err error) {
 		if err := validateProfileClass(current, class); err != nil {
 			return err
 		}
-		if p.ApartmentID != 0 {
-			apartment, err := mysql.GetStudentApartmentForShare(tx, p.ApartmentID)
+		if input.ApartmentID != 0 {
+			apartment, err := p.dao.GetStudentApartmentForShare(tx, input.ApartmentID)
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return ErrorInvalidProfileReference
 			}
 			if err != nil {
 				return err
 			}
-			if err := validateProfileApartment(p, current, apartment); err != nil {
+			if err := validateProfileApartment(input, current, apartment); err != nil {
 				return err
 			}
 		}
-		return mysql.SaveAppProfile(tx, student)
+		return p.dao.SaveAppProfile(tx, student)
 	})
 }
 
-func GetProfile(studentID string) (*dto.ProfileResponse, error) {
-	profile, class, err := getProfileAndClass(studentID)
+func (p *ProfileService) GetProfile(studentID string) (*dto.ProfileResponse, error) {
+	profile, class, err := p.getProfileAndClass(studentID)
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +82,7 @@ func GetProfile(studentID string) (*dto.ProfileResponse, error) {
 
 	var apartment *models.Apartment
 	if profile.ApartmentID != 0 {
-		apartment, err = mysql.GetApartmentByID(profile.ApartmentID)
+		apartment, err = p.dao.GetApartmentByID(profile.ApartmentID)
 		if err != nil {
 			return nil, err
 		}
@@ -81,19 +93,19 @@ func GetProfile(studentID string) (*dto.ProfileResponse, error) {
 	if avatarPath == "" {
 		avatarPath = service.DefaultAvatarPath
 	}
-	data.AvatarURL, err = file.AccessURL(config.Cfg.Storage.BaseURL, avatarPath)
+	data.AvatarURL, err = file.AccessURL(p.storage.BaseURL, avatarPath)
 	if err != nil {
 		return nil, err
 	}
 	return data, nil
 }
 
-func getProfileAndClass(studentID string) (*models.Profile, *models.Class, error) {
-	profile, err := mysql.GetProfileByStuID(studentID)
+func (p *ProfileService) getProfileAndClass(studentID string) (*models.Profile, *models.Class, error) {
+	profile, err := p.dao.GetProfileByStuID(studentID)
 	if err != nil || profile == nil {
 		return profile, nil, err
 	}
-	class, err := mysql.GetClassByID(profile.ClassID)
+	class, err := p.dao.GetClassByID(profile.ClassID)
 	if err != nil {
 		return nil, nil, err
 	}

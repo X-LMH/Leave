@@ -1,12 +1,23 @@
 package jwt
 
 import (
-	"backend/internal/config"
 	"errors"
+	jwt "github.com/golang-jwt/jwt/v5"
 	"time"
-
-	"github.com/golang-jwt/jwt/v5"
 )
+
+// Manager 保存当前应用实例的签名配置，供登录和鉴权共同使用。
+type Manager struct {
+	secret         []byte
+	expirationDays int
+}
+
+func NewManager(secret string, expirationDays int) *Manager {
+	return &Manager{
+		secret:         []byte(secret),
+		expirationDays: expirationDays,
+	}
+}
 
 type Claims struct {
 	StudentID string `json:"student_id"`
@@ -15,9 +26,9 @@ type Claims struct {
 }
 
 // GenerateToken 生成JWT令牌
-func GenerateToken(studentID string, role string) (string, error) {
+func (m *Manager) GenerateToken(studentID string, role string) (string, error) {
 	// 过期时间
-	expirationTime := time.Now().AddDate(0, 0, config.Cfg.JWT.ExpirationDays)
+	expirationTime := time.Now().AddDate(0, 0, m.expirationDays)
 
 	// 构建自定义负载
 	claims := &Claims{
@@ -33,10 +44,10 @@ func GenerateToken(studentID string, role string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
 	// 使用jwtSecret对令牌进行签名，确保令牌不被篡改
-	return token.SignedString(config.JWTSecret())
+	return token.SignedString(m.secret)
 }
 
-func ParseToken(tokenString string) (*Claims, error) {
+func (m *Manager) ParseToken(tokenString string) (*Claims, error) {
 	var claims = new(Claims)
 	// 解析令牌
 	token, err := jwt.ParseWithClaims(
@@ -46,7 +57,7 @@ func ParseToken(tokenString string) (*Claims, error) {
 			if token.Method.Alg() != jwt.SigningMethodHS256.Alg() {
 				return nil, errors.New("unexpected signing method")
 			}
-			return config.JWTSecret(), nil
+			return m.secret, nil
 		},
 	)
 
