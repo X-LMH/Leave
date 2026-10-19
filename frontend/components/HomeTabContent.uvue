@@ -31,21 +31,15 @@
 						</view>
 					</view>
 				</view>
-				<view class="flow-card">
-					<view class="flow-step">
-						<image class="flow-icon" src="/static/home/index/icons/fill-application.png" mode="widthFix"></image>
-						<text class="flow-label">填写申请</text>
+				<view class="records-card" @click="openRecords">
+					<view class="records-icon-wrap">
+						<image class="records-icon" src="/static/my/index/icons/form-edit.png" mode="aspectFit"></image>
 					</view>
-					<text class="flow-arrow">··›</text>
-					<view class="flow-step">
-						<image class="flow-icon" src="/static/home/index/icons/submit-application.png" mode="widthFix"></image>
-						<text class="flow-label">提交申请</text>
+					<view class="records-copy">
+						<text class="records-title">请假记录</text>
+						<text class="records-description">查看申请进度与历史记录</text>
 					</view>
-					<text class="flow-arrow">··›</text>
-					<view class="flow-step">
-						<image class="flow-icon" src="/static/home/index/icons/approved.png" mode="widthFix"></image>
-						<text class="flow-label">审批通过</text>
-					</view>
+					<image class="records-arrow" src="/static/my/index/icons/arrow-right.png" mode="aspectFit"></image>
 				</view>
 			</view>
 		</scroll-view>
@@ -91,6 +85,11 @@ function handleCreateLeave() {
 	isLeavePressed.value = false
 	uni.navigateTo({ url: '/pages/leave/apply' })
 }
+
+function openRecords() {
+	uni.navigateTo({ url: '/pages/leave/records' })
+}
+
 function refresh() {
 	userName.value = getCurrentUser().name
 	timeGreeting.value = getTimeGreeting(new Date())
@@ -131,7 +130,7 @@ defineExpose({ refresh })
 	position:relative;
 	z-index:1;
 	box-sizing:border-box;
-	padding:150rpx 60rpx 96px
+	padding:120rpx 48rpx 112px
 }
 .welcome-row {
 	flex-direction:row;
@@ -139,6 +138,7 @@ defineExpose({ refresh })
 	align-items:center
 }
 .welcome-copy {
+	flex:1;
 	flex-direction:column
 }
 .greeting-row {
@@ -146,47 +146,52 @@ defineExpose({ refresh })
 	align-items:center
 }
 .greeting {
+	flex-shrink:0;
 	color:#173766;
-	font-size:42rpx;
+	font-size:38rpx;
 	font-weight:700
 }
 .greeting-name {
+	flex-shrink:1;
 	color:#254989;
-	font-size:72rpx;
+	font-size:48rpx;
 	font-weight:700;
-	letter-spacing:3rpx
+	line-height:64rpx
 }
 .greeting-wave {
+	flex-shrink:0;
 	color:#173766;
 	font-size:42rpx;
 	font-weight:700
 }
 .greeting-subtitle {
-	margin-top:16rpx;
+	margin-top:12rpx;
 	color:#7d90b3;
-	font-size:28rpx
+	font-size:28rpx;
+	line-height:42rpx
 }
 .hero {
 	align-items:center;
-	margin-top:150rpx
+	margin-top:128rpx
 }
 .hero-title {
 	color:#173766;
-	font-size:58rpx;
+	font-size:48rpx;
 	font-weight:700;
-	letter-spacing:4rpx
+	letter-spacing:2rpx
 }
 .hero-subtitle {
-	margin-top:18rpx;
+	margin-top:12rpx;
 	color:#7d90b3;
-	font-size:30rpx
+	font-size:28rpx;
+	line-height:42rpx
 }
 .leave-wrap {
 	position:relative;
 	z-index:2;
-	width:550rpx;
+	width:100%;
 	height:520rpx;
-	margin-top:68rpx;
+	margin-top:48rpx;
 	align-items:center;
 	justify-content:center
 }
@@ -264,35 +269,47 @@ defineExpose({ refresh })
 	line-height:48rpx;
 	letter-spacing:2rpx
 }
-.flow-card {
-	position:relative;
-	z-index:1;
-	height:184rpx;
-	margin-top:48rpx;
-	padding:0 20rpx;
-	border-radius:36rpx;
-	background:rgba(255,255,255,.72);
+.records-card {
 	flex-direction:row;
 	align-items:center;
-	justify-content:space-around;
-	box-shadow:0 16rpx 40rpx rgba(79,106,180,.08)
+	margin-top:64rpx;
+	padding:32rpx 28rpx;
+	border-radius:32rpx;
+	background:rgba(255,255,255,.78);
+	border:2rpx solid rgba(255,255,255,.9);
+	box-shadow:0 12rpx 32rpx rgba(79,106,180,.06)
 }
-.flow-step {
-	align-items:center
+.records-icon-wrap {
+	width:88rpx;
+	height:88rpx;
+	border-radius:24rpx;
+	background:#edf2ff;
+	align-items:center;
+	justify-content:center
 }
-.flow-icon {
-	width:84rpx;
-	height:84rpx
+.records-icon {
+	width:52rpx;
+	height:52rpx
 }
-.flow-label {
-	margin-top:12rpx;
+.records-copy {
+	flex:1;
+	margin-left:24rpx
+}
+.records-title {
+	color:#173766;
+	font-size:32rpx;
+	font-weight:700;
+	line-height:44rpx
+}
+.records-description {
+	margin-top:8rpx;
 	color:#7285a9;
-	font-size:26rpx
+	font-size:24rpx;
+	line-height:36rpx
 }
-.flow-arrow {
-	position:relative;
-	top:-20rpx;
-	color:#bdcef9;
-	font-size:32rpx
+.records-arrow {
+	width:28rpx;
+	height:28rpx;
+	margin-left:16rpx
 }
 </style>

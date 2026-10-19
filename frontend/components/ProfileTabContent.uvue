@@ -68,8 +68,8 @@
 						</view>
 						<image class="service-arrow" src="/static/my/index/icons/arrow-right.png" mode="aspectFit"></image>
 					</view>
-					<view class="service-divider"></view>
-					<view class="service-item" @click.stop="openAppearance">
+					<view v-if="false" class="service-divider"></view>
+					<view v-if="false" class="service-item" @click.stop="openAppearance">
 						<image class="service-icon" src="/static/common/tabbar/appearance.svg" mode="aspectFit"></image>
 						<view class="service-copy">
 							<text class="service-title">显示与触感</text>
