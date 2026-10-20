@@ -1,0 +1,19 @@
+import { themeState } from '@/utils/app-theme.uts'
+
+export function pickerMaskTop(): string {
+	return themeState.isDark
+		? 'background-image:linear-gradient(to bottom, #1c1d23, rgba(28,29,35,0));'
+		: 'background-image:linear-gradient(to bottom, #ffffff, rgba(255,255,255,0));'
+}
+export function pickerMaskBottom(): string {
+	return themeState.isDark
+		? 'background-image:linear-gradient(to top, #1c1d23, rgba(28,29,35,0));'
+		: 'background-image:linear-gradient(to top, #ffffff, rgba(255,255,255,0));'
+}
+export function pickerIndicator(): string {
+	const color = themeState.isDark ? (themeState.highContrast ? '#737580' : '#383a44') : '#e8e8ed'
+	return 'height:44px;border-top:1px solid ' + color + ';border-bottom:1px solid ' + color + ';background-color:rgba(128,128,128,0.08);'
+}
+export function pickerBottomInset(): number {
+	return uni.getWindowInfo().safeAreaInsets.bottom
+}

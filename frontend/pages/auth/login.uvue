@@ -1,17 +1,83 @@
 <template>
-	<AuthPageShell enter-direction="forward" :title="isRegister ? '注册' : '登录'" :subtitle="isRegister ? '创建账号后即可使用请假申请系统' : '欢迎使用请假申请系统'" :button-text="submitText" :busy="submitting" :switch-prefix="isRegister ? '已有账号?' : '还没有账号?'" :switch-text="isRegister ? '立即登录' : '立即注册'" :card-class="isRegister ? 'auth-register-card' : 'auth-login-card'" @submit="submit" @switch-page="switchMode">
-		<AuthInputField :disabled="formLocked" v-model="studentID" label="学号" placeholder="请输入学号" icon="/static/auth/icons/denglu.svg" :password="false" :required="true" :maxlength="12" field-class="" />
-		<AuthInputField :key="isRegister ? 'register-password' : 'login-password'" :disabled="formLocked" v-model="password" @confirm="confirmPassword" label="密码" placeholder="请输入密码" icon="/static/auth/icons/mima.svg" :password="true" :required="true" :maxlength="30" field-class="auth-field-spaced" />
-		<AuthInputField v-if="isRegister" :disabled="formLocked" v-model="rePassword" @confirm="submit" label="确认密码" placeholder="请再次输入密码" icon="/static/auth/icons/mima.svg" :password="true" :required="true" :maxlength="30" field-class="auth-field-spaced" />
+	<AuthPageShell
+		:registering="isRegister"
+		:button-text="submitText"
+		:busy="submitting"
+		:error-message="formError"
+		:scroll-target="scrollTarget"
+		@submit="submit"
+		@switch-page="switchMode"
+	>
+		<AuthInputField
+			field-id="studentID"
+			:disabled="formLocked"
+			v-model="studentID"
+			label="学号"
+			:placeholder="'请输入学号'"
+			:password="false"
+			:maxlength="12"
+			field-class=""
+			:invalid="errorField == 'studentID'"
+			:focused="focusedField == 'studentID'"
+			@edit="clearError"
+			@confirm="submit"
+		/>
+		<AuthInputField
+			field-id="password"
+			:disabled="formLocked"
+			v-model="password"
+			label="密码"
+			:placeholder="isRegister ? '6–30 位密码' : '输入密码'"
+			:password="true"
+			:maxlength="30"
+			field-class="auth-field-spaced"
+			:invalid="errorField == 'password'"
+			:focused="focusedField == 'password'"
+			@edit="clearError"
+			@confirm="confirmPassword"
+		/>
+		<AuthInputField
+			v-if="isRegister"
+			field-id="rePassword"
+			:disabled="formLocked"
+			v-model="rePassword"
+			label="确认"
+			:placeholder="'再次输入密码'"
+			:password="true"
+			:maxlength="30"
+			field-class="auth-field-spaced"
+			:invalid="errorField == 'rePassword'"
+			:focused="focusedField == 'rePassword'"
+			@edit="clearError"
+			@confirm="submit"
+		/>
 	</AuthPageShell>
 </template>
-
 <script setup lang="uts">
 import AuthPageShell from '@/components/AuthPageShell.uvue'
 import AuthInputField from '@/components/AuthInputField.uvue'
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import { ApiError, login as loginRequest, register, saveSession } from '@/utils/api.uts'
 import { getAppVersion, getDeviceName } from '@/utils/device.uts'
+
+const formError = ref('')
+const errorField = ref('')
+const focusedField = ref('')
+const scrollTarget = ref('')
+function showFieldError(field: string, message: string) {
+	formError.value = message
+	errorField.value = field
+	focusedField.value = ''
+	scrollTarget.value = ''
+	nextTick(() => {
+		focusedField.value = field
+		scrollTarget.value = 'auth-' + field
+	})
+}
+function clearError() {
+	formError.value = ''
+	errorField.value = ''
+}
 
 const studentID = ref('')
 const password = ref('')
@@ -36,11 +102,14 @@ onLoad((options) => {
 	}
 })
 
-onUnload(() => { pageActive = false })
+onUnload(() => {
+	pageActive = false
+})
 
 function switchMode() {
 	if (formLocked.value) return
 	uni.hideKeyboard()
+	clearError()
 	password.value = ''
 	rePassword.value = ''
 	isRegister.value = !isRegister.value
@@ -70,28 +139,29 @@ async function submit() {
 		return
 	}
 	if (!/^\d{12}$/.test(studentID.value.trim())) {
-		uni.showToast({ title: '请输入 12 位学号', icon: 'none' })
+		showFieldError('studentID', '请输入 12 位学号')
 		return
 	}
 	if (password.value.trim().length == 0) {
-		uni.showToast({ title: '请输入密码', icon: 'none' })
+		showFieldError('password', '请输入密码')
 		return
 	}
 	if (isRegister.value) {
 		if (rePassword.value.trim().length == 0) {
-			uni.showToast({ title: '请再次输入密码', icon: 'none' })
+			showFieldError('rePassword', '请再次输入密码')
 			return
 		}
 		if (password.value.length < 6 || password.value.length > 30) {
-			uni.showToast({ title: '密码长度应为 6 至 30 位', icon: 'none' })
+			showFieldError('password', '密码长度应为 6 至 30 位')
 			return
 		}
 		if (password.value != rePassword.value) {
-			uni.showToast({ title: '两次输入的密码不一致', icon: 'none' })
+			showFieldError('rePassword', '两次输入的密码不一致')
 			return
 		}
 	}
 
+	clearError()
 	const submittedStudentID = studentID.value.trim()
 	const submittedPassword = password.value
 	const submittedRePassword = rePassword.value
@@ -102,7 +172,13 @@ async function submit() {
 		const deviceName = getDeviceName()
 		const appVersion = getAppVersion()
 		const data = registering
-			? await register(submittedStudentID, submittedPassword, submittedRePassword, deviceName, appVersion)
+			? await register(
+					submittedStudentID,
+					submittedPassword,
+					submittedRePassword,
+					deviceName,
+					appVersion
+				)
 			: await loginRequest(submittedStudentID, submittedPassword, deviceName, appVersion)
 		if (!pageActive) return
 		saveSession(submittedStudentID, data, deviceName)
@@ -118,10 +194,16 @@ async function submit() {
 		if (!registering && error instanceof ApiError) {
 			if (error.code == 1003) {
 				password.value = ''
+				showFieldError('password', '学号或密码错误，请重新输入密码')
 			}
 		}
 		const message = (error as Error).message
-		uni.showToast({ title: message == null || message == '' ? (registering ? '注册失败' : '登录失败') : message, icon: 'none' })
+		formError.value =
+			message == null || message == '' ? (registering ? '注册失败' : '登录失败') : message
+		uni.showToast({
+			title: message == null || message == '' ? (registering ? '注册失败' : '登录失败') : message,
+			icon: 'none'
+		})
 	}
 }
 

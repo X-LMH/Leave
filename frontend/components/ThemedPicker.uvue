@@ -1,0 +1,92 @@
+<template>
+	<view @click="open">
+		<slot></slot>
+		<page-container :show="visible" position="bottom" @clickoverlay="cancel" @afterleave="afterLeave">
+			<view :class="themeClass('selection-panel')" :style="{ paddingBottom: bottomInset + 'px' }">
+				<view :class="themeClass('selection-actions')">
+					<text :class="themeClass('selection-cancel')" @click.stop="cancel">取消</text>
+					<text :class="themeClass('selection-title')">{{ title }}</text>
+					<text :class="themeClass('selection-confirm')" @click.stop="confirm">确定</text>
+				</view>
+				<picker-view class="selection-wheel" :value="pending" :indicator-style="pickerIndicator()"
+					:mask-top-style="pickerMaskTop()" :mask-bottom-style="pickerMaskBottom()"
+					@change="change" @pickstart="rolling = true" @pickend="rolling = false">
+					<picker-view-column>
+						<view v-for="(item, index) in range" :key="index" class="selection-item">
+							<text :class="themeClass('selection-text')">{{ item }}</text>
+						</view>
+					</picker-view-column>
+				</picker-view>
+			</view>
+		</page-container>
+	</view>
+</template>
+<script setup lang="uts">
+import { ref } from 'vue'
+import { themeClass as resolveThemeClass } from '@/utils/app-theme.uts'
+import { pickerIndicator as resolvePickerIndicator, pickerMaskTop as resolvePickerMaskTop, pickerMaskBottom as resolvePickerMaskBottom, pickerBottomInset } from '@/utils/picker-theme.uts'
+const props = defineProps<{ range: string[], value?: number, disabled?: boolean, title?: string }>()
+const emit = defineEmits(['change', 'cancel'])
+const visible = ref(false)
+const rolling = ref(false)
+const pending = ref<number[]>([0])
+const bottomInset = pickerBottomInset()
+function themeClass(classes: string): string {
+	return resolveThemeClass(classes)
+}
+let closing = false
+function open() {
+	if (visible.value || closing || props.disabled == true || props.range.length == 0) return
+	pending.value = [Math.max(0, Math.min(props.range.length - 1, props.value ?? 0))]
+	rolling.value = false
+	visible.value = true
+}
+function cancel() {
+	if (!visible.value) return
+	closing = true
+	visible.value = false
+	emit('cancel')
+}
+function afterLeave() {
+	if (visible.value) {
+		visible.value = false
+		emit('cancel')
+	}
+	closing = false
+}
+function change(event: UniPickerViewChangeEvent) {
+	pending.value = event.detail.value
+}
+function confirm() {
+	if (rolling.value || props.disabled == true || pending.value[0] >= props.range.length) return
+	closing = true
+	visible.value = false
+	emit('change', pending.value[0])
+}
+function pickerIndicator(): string {
+	return resolvePickerIndicator()
+}
+function pickerMaskTop(): string {
+	return resolvePickerMaskTop()
+}
+function pickerMaskBottom(): string {
+	return resolvePickerMaskBottom()
+}
+</script>
+<style lang="scss">
+.selection-panel { background-color: #ffffff; }
+.selection-actions { height: 52px; padding: 0 20px; flex-direction: row; align-items: center; justify-content: space-between; }
+.selection-cancel { font-size: 16px; color: #676b73; padding: 10px 0; }
+.selection-title { font-size: 16px; font-weight: 600; color: #17181b; }
+.selection-confirm { font-size: 16px; color: #0066dc; padding: 10px 0; }
+.selection-wheel { height: 220px; width: 100%; }
+.selection-item { height: 44px; align-items: center; justify-content: center; }
+.selection-text { font-size: 17px; color: #17181b; }
+.dark-selection-panel { background-color: #1c1d23; }
+.dark-selection-cancel { color: #aeaeb8; }
+.dark-selection-title { color: #f2f2f7; }
+.dark-selection-confirm { color: #6aa9ff; }
+.dark-selection-text { color: #f2f2f7; }
+.contrast-selection-text { color: #ffffff; }
+.contrast-selection-title { color: #ffffff; }
+</style>

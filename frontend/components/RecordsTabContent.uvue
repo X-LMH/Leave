@@ -1,0 +1,668 @@
+<template>
+	<view :class="themeClass('records-page')">
+		<scroll-view
+			:class="themeClass('records-scroll')"
+			scroll-y="true"
+			:scroll-top="scrollTop"
+			:show-scrollbar="false"
+			@scroll="rememberScroll"
+			@scrolltolower="loadMoreRecords"
+		>
+			<view :class="themeClass('safe-top')"></view>
+			<view :class="themeClass('records-content')">
+				<view :class="themeClass('title-row')">
+					<text :class="themeClass('page-title')">记录</text>
+					<view
+						:class="themeClass('add-button')"
+						role="button"
+						aria-label="申请请假"
+						@click="createLeave"
+					>
+						<view :class="themeClass('add-symbol')"
+							><view :class="themeClass('add-line-horizontal')"></view><view :class="themeClass('add-line-vertical')"></view
+						></view>
+					</view>
+				</view>
+				<text :class="themeClass('list-caption')">
+					{{ hasMore ? '已加载 ' : '共 ' }}{{ records.length }} 张假条 · 右滑可删除
+				</text>
+				<view
+					v-if="isLoading && records.length == 0"
+					:class="themeClass('list-state')"
+				>
+					<text :class="themeClass('state-text')">正在加载请假记录…</text>
+				</view>
+				<view
+					v-else-if="loadError != ''"
+					:class="themeClass('list-state')"
+					@click="loadRecords"
+				>
+					<text :class="themeClass('state-text')">{{ loadError }}，点击重试</text>
+				</view>
+				<view
+					v-else-if="records.length == 0"
+					:class="themeClass('list-state')"
+				>
+					<text :class="themeClass('empty-title')">还没有假条</text>
+					<text :class="themeClass('state-text')">需要请假时，轻点下方的加号。</text>
+				</view>
+				<view :class="themeClass('records-list')">
+					<view
+						v-for="item in records"
+						:key="item.id"
+						:class="themeClass(removingRecordID == item.id ? 'record-item record-item-removing' : 'record-item')"
+					>
+						<view
+							:class="themeClass(isCardDragging(item.id) ? 'record-card record-card-dragging' : 'record-card')"
+							:style="{
+								transform: 'translateX(' + cardSwipeOffset(item.id) + 'px)',
+								opacity: cardSwipeOpacity(item.id)
+							}"
+							@touchstart="recordTouchStart(item.id, $event)"
+							@touchmove="recordTouchMove(item.id, $event)"
+							@touchend="recordTouchEnd(item.id, $event)"
+							@touchcancel="recordTouchCancel"
+							@click="openDetail(item.id)"
+						>
+							<view :class="themeClass(item.kind == '病假' ? 'kind-icon kind-icon-sick' : 'kind-icon')">
+								<image
+									:class="themeClass('kind-symbol')"
+									:src="themeImage(item.kind == '病假'
+											? '/static/ios/capsule-orange.svg'
+											: '/static/ios/calendar-purple.svg')"
+									mode="aspectFit"
+								></image>
+							</view>
+							<view :class="themeClass('record-copy')">
+								<view :class="themeClass('record-heading')">
+									<text :class="themeClass('record-title')">{{ item.kind }}</text>
+									<text :class="themeClass('record-duration')">{{ item.durationText }}</text>
+								</view>
+								<text :class="themeClass('record-date')">{{ item.summary }}</text>
+							</view>
+							<text :class="themeClass('record-status')">✓ 已同意</text>
+							<image
+								:class="themeClass('record-arrow')"
+								:src="themeImage('/static/ios/arrow-secondary.svg')"
+								mode="aspectFit"
+							></image>
+						</view>
+					</view>
+				</view>
+				<view
+					v-if="isLoadingMore"
+					:class="themeClass('list-end')"
+				>
+					<text :class="themeClass('state-text')">正在加载更多…</text>
+				</view>
+				<view
+					v-else-if="loadMoreError != ''"
+					:class="themeClass('list-end')"
+					@click="loadMoreRecords"
+				>
+					<text :class="themeClass('state-text')">{{ loadMoreError }}，点击重试</text>
+				</view>
+				<view
+					v-else-if="!isLoading && loadError == '' && records.length > 0 && !hasMore"
+					:class="themeClass('list-end')"
+				>
+					<text :class="themeClass('state-text')">已显示全部记录</text>
+				</view>
+			</view>
+		</scroll-view>
+	</view>
+</template>
+<script setup lang="uts">
+import { themeClass as resolveThemeClass, themeImage as resolveThemeImage } from '@/utils/app-theme.uts'
+import { onUnmounted, ref } from 'vue'
+import { deleteRecord, getCurrentUser, getRecords, RecordListItem } from '@/utils/api.uts'
+
+type RecordCard = {
+	id: number
+	kind: string
+	reason: string
+	start: string
+	end: string
+	durationText: string
+	summary: string
+}
+
+const records = ref<RecordCard[]>([])
+const isLoading = ref(false)
+const isLoadingMore = ref(false)
+const loadError = ref('')
+const loadMoreError = ref('')
+const hasMore = ref(true)
+const currentPage = ref(0)
+const isDeletePending = ref(false)
+const swipeOffset = ref(0)
+const pendingDeleteID = ref(0)
+const removingRecordID = ref(0)
+let touchStartX = 0
+let touchStartY = 0
+const touchRecordID = ref(0)
+let suppressDetailID = 0
+
+let requestSequence = 0
+let pageActive = true
+const recordPageSize = 20
+
+const swipeDeleteThreshold = (uni.getSystemInfoSync().windowWidth * 80) / 750
+const maxSwipeDistance = (uni.getSystemInfoSync().windowWidth * 260) / 750
+
+function createLeave() {
+	uni.navigateTo({ url: '/pages/leave/apply' })
+}
+
+function displayLeaveType(value: string): string {
+	return value.replace('-本科生', '')
+}
+
+function formatTime(value: string): string {
+	const date = new Date(value)
+	if (isNaN(date.getTime())) return value
+	const twoDigits = (number: number): string => (number < 10 ? '0' + number : '' + number)
+	return `${date.getFullYear()}-${twoDigits(date.getMonth() + 1)}-${twoDigits(date.getDate())} ${twoDigits(date.getHours())}:${twoDigits(date.getMinutes())}`
+}
+
+function formatDuration(days: number, hours: number): string {
+	return (
+		(days > 0 ? days.toFixed(0) + '天' : '') +
+		(hours > 0 || days == 0 ? hours.toFixed(0) + '小时' : '')
+	)
+}
+
+function formatSummary(start: string, end: string): string {
+	const a = new Date(start),
+		b = new Date(end)
+	if (isNaN(a.getTime()) || isNaN(b.getTime())) return start + ' — ' + end
+	const day = (date: Date): string => date.getMonth() + 1 + '月' + date.getDate() + '日'
+	return (
+		day(a) +
+		(day(a) == day(b) && a.getFullYear() == b.getFullYear() ? '' : ' — ' + day(b)) +
+		' · ' +
+		formatTime(start).slice(11, 16) +
+		'–' +
+		formatTime(end).slice(11, 16)
+	)
+}
+function toRecordCard(item: RecordListItem): RecordCard {
+	return {
+		id: item.id,
+		kind: displayLeaveType(item.leave_type),
+		reason: item.leave_reason,
+		start: formatTime(item.start_time),
+		end: formatTime(item.end_time),
+		durationText: formatDuration(item.duration_days, item.duration_hours),
+		summary: formatSummary(item.start_time, item.end_time)
+	}
+}
+
+async function loadRecords() {
+	if (isLoading.value) return
+	const sequence = ++requestSequence
+	const studentID = getCurrentUser().student_id
+	isLoading.value = true
+	loadError.value = ''
+	loadMoreError.value = ''
+	isLoadingMore.value = false
+	try {
+		// 返回详情后刷新已加载的页数，避免把长列表和滚动位置重置为第一页。
+		const pagesToLoad = Math.max(1, currentPage.value)
+		let refreshed: RecordListItem[] = []
+		let loadedPages = 0
+		let more = false
+		for (let page = 1; page <= pagesToLoad; page++) {
+			const data = await getRecords(page, recordPageSize)
+			if (!pageActive || sequence != requestSequence || studentID != getCurrentUser().student_id)
+				return
+			refreshed = refreshed.concat(data)
+			loadedPages = page
+			more = data.length == recordPageSize
+			if (!more) break
+		}
+		records.value = refreshed.map((item): RecordCard => toRecordCard(item))
+		currentPage.value = loadedPages
+		hasMore.value = more
+	} catch (error) {
+		if (!pageActive || sequence != requestSequence || studentID != getCurrentUser().student_id)
+			return
+		const message = (error as Error).message
+		loadError.value = message == null || message == '' ? '请假记录加载失败' : message
+	} finally {
+		if (sequence == requestSequence) isLoading.value = false
+	}
+}
+
+async function loadMoreRecords() {
+	if (isLoading.value || isLoadingMore.value || !hasMore.value) return
+
+	const sequence = requestSequence
+	const studentID = getCurrentUser().student_id
+	isLoadingMore.value = true
+	loadMoreError.value = ''
+	const nextPage = currentPage.value + 1
+	try {
+		const data = await getRecords(nextPage, recordPageSize)
+		if (!pageActive || sequence != requestSequence || studentID != getCurrentUser().student_id)
+			return
+		records.value = records.value.concat(data.map((item): RecordCard => toRecordCard(item)))
+		currentPage.value = nextPage
+		hasMore.value = data.length == recordPageSize
+	} catch (error) {
+		if (!pageActive || sequence != requestSequence || studentID != getCurrentUser().student_id)
+			return
+		const message = (error as Error).message
+		loadMoreError.value = message == null || message == '' ? '请假记录加载失败' : message
+	} finally {
+		if (sequence == requestSequence) isLoadingMore.value = false
+	}
+}
+
+function openDetail(id: number) {
+	if (suppressDetailID == id) {
+		suppressDetailID = 0
+		return
+	}
+	uni.navigateTo({ url: `/pages/leave/detail?id=${id}&source=records` })
+}
+
+function cardSwipeOffset(id: number): number {
+	return touchRecordID.value == id ? swipeOffset.value : 0
+}
+
+function isCardDragging(id: number): boolean {
+	return touchRecordID.value == id && pendingDeleteID.value != id
+}
+
+function cardSwipeOpacity(id: number): number {
+	if (pendingDeleteID.value == id) return 0
+	const progress = cardSwipeOffset(id) / maxSwipeDistance
+	return Math.max(0, 1 - progress)
+}
+
+function resetSwipe() {
+	touchRecordID.value = 0
+	swipeOffset.value = 0
+}
+
+function restorePendingCard() {
+	pendingDeleteID.value = 0
+	resetSwipe()
+}
+
+async function deleteSelectedRecord(id: number) {
+	try {
+		await deleteRecord(id)
+		removingRecordID.value = id
+		setTimeout(() => {
+			records.value = records.value.filter((item): boolean => item.id != id)
+			removingRecordID.value = 0
+			restorePendingCard()
+			isDeletePending.value = false
+			uni.showToast({ title: '删除成功', icon: 'success' })
+		}, 320)
+	} catch (error) {
+		const message = (error as Error).message
+		uni.showToast({ title: message == null || message == '' ? '删除失败' : message, icon: 'none' })
+		restorePendingCard()
+		isDeletePending.value = false
+	}
+}
+
+function confirmDelete(id: number) {
+	if (isDeletePending.value) return
+	isDeletePending.value = true
+	uni.showModal({
+		title: '删除请假记录',
+		content: '删除后无法恢复，确定要删除吗？',
+		cancelText: '取消',
+		confirmText: '删除',
+		success: (result) => {
+			if (!result.confirm) {
+				restorePendingCard()
+				isDeletePending.value = false
+				return
+			}
+			deleteSelectedRecord(id)
+		},
+		fail: () => {
+			restorePendingCard()
+			isDeletePending.value = false
+		}
+	})
+}
+
+function recordTouchStart(id: number, event: any) {
+	if (isDeletePending.value) return
+	const touchEvent = event as UniTouchEvent
+	const touch = touchEvent.touches[0]
+	if (touch == null) return
+	touchStartX = touch.pageX
+	touchStartY = touch.pageY
+	touchRecordID.value = id
+	swipeOffset.value = 0
+}
+
+function recordTouchMove(id: number, event: any) {
+	if (isDeletePending.value || touchRecordID.value != id) return
+	const touchEvent = event as UniTouchEvent
+	const touch = touchEvent.touches[0]
+	if (touch == null) return
+
+	const horizontalDistance = touch.pageX - touchStartX
+	const verticalDistance = Math.abs(touch.pageY - touchStartY)
+	if (horizontalDistance <= 0 || horizontalDistance <= verticalDistance) {
+		swipeOffset.value = 0
+		return
+	}
+	touchEvent.preventDefault()
+	swipeOffset.value = Math.min(horizontalDistance, maxSwipeDistance)
+}
+
+function recordTouchEnd(id: number, event: any) {
+	if (isDeletePending.value || touchRecordID.value != id) {
+		resetSwipe()
+		return
+	}
+	const touchEvent = event as UniTouchEvent
+	const touch = touchEvent.changedTouches[0]
+	if (touch == null) {
+		resetSwipe()
+		return
+	}
+	const horizontalDistance = touch.pageX - touchStartX
+	const verticalDistance = Math.abs(touch.pageY - touchStartY)
+	const shouldDelete =
+		horizontalDistance >= swipeDeleteThreshold && horizontalDistance > verticalDistance
+	if (!shouldDelete) {
+		resetSwipe()
+		return
+	}
+
+	suppressDetailID = id
+	setTimeout(() => {
+		if (suppressDetailID == id) suppressDetailID = 0
+	}, 250)
+	pendingDeleteID.value = id
+	swipeOffset.value = maxSwipeDistance
+	confirmDelete(id)
+}
+
+function recordTouchCancel() {
+	resetSwipe()
+}
+
+const scrollTop = ref(0)
+function rememberScroll(event: UniScrollEvent) {
+	scrollTop.value = event.detail.scrollTop
+}
+function refresh() {
+	if (!isDeletePending.value) loadRecords()
+}
+onUnmounted(() => {
+	pageActive = false
+	requestSequence++
+})
+defineExpose({ refresh })
+
+// 原生模板通过本地方法调用主题函数，避免导入函数被编译为 unref 后调用。
+function themeClass(classes: string): string {
+	return resolveThemeClass(classes)
+}
+
+function themeImage(source: string): string {
+	return resolveThemeImage(source)
+}
+</script>
+
+<style lang="scss">
+@import '@/styles/ios-theme.scss';
+.safe-top {
+	height: var(--status-bar-height);
+}
+.records-page {
+	flex: 1;
+	background-color: $ios-page;
+}
+.records-scroll {
+	flex: 1;
+}
+.records-content {
+	box-sizing: border-box;
+	padding: 16px 21px 100px;
+}
+.title-row {
+	flex-direction: row;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 24px;
+	height: 44px;
+}
+.page-title {
+	font-size: 34px;
+	font-weight: 700;
+	color: $ios-ink;
+	line-height: 44px;
+}
+.add-button {
+	box-sizing: border-box;
+	width: 44px;
+	height: 44px;
+	border-radius: 22px;
+	background-color: #e8e8ed;
+	align-items: center;
+	justify-content: center;
+}
+.add-symbol {
+	position: relative;
+	width: 18px;
+	height: 18px;
+}
+.list-caption {
+	font-size: 12px;
+	color: $ios-secondary;
+	margin: 0 8px 14px;
+}
+.records-list {
+	box-sizing: border-box;
+	border-radius: $ios-radius;
+	background-color: $ios-surface;
+}
+.record-item {
+	height: 80px;
+	overflow: hidden;
+	transition-property: height, opacity;
+	transition-duration: 320ms;
+}
+.record-item-removing {
+	height: 0;
+	opacity: 0;
+}
+.record-card {
+	box-sizing: border-box;
+	height: 80px;
+	padding: 12px 14px;
+	flex-direction: row;
+	align-items: center;
+	background-color: $ios-surface;
+	border-bottom: 0.5px solid $ios-separator;
+	transition-property: transform, opacity;
+	transition-duration: 220ms;
+}
+.record-card-dragging {
+	transition-duration: 0ms;
+}
+.kind-icon {
+	box-sizing: border-box;
+	width: 34px;
+	height: 34px;
+	border-radius: 12px;
+	background-color: #f0eafb;
+	align-items: center;
+	justify-content: center;
+	margin-right: 10px;
+}
+.kind-icon-sick {
+	background-color: #fff1e5;
+}
+.kind-symbol {
+	width: 20px;
+	height: 20px;
+}
+.record-copy {
+	flex: 1;
+	min-width: 0;
+}
+.record-heading {
+	flex-direction: row;
+	flex-wrap: wrap;
+	align-items: center;
+}
+.record-title {
+	font-size: 16px;
+	font-weight: 600;
+	color: $ios-ink;
+	margin-right: 6px;
+}
+.record-duration {
+	font-size: 11px;
+	color: $ios-secondary;
+}
+.record-date {
+	font-size: 12px;
+	line-height: 18px;
+	color: $ios-secondary;
+	margin-top: 5px;
+}
+.record-status {
+	font-size: 10px;
+	color: $ios-green;
+	margin-left: 6px;
+}
+.record-arrow {
+	width: 12px;
+	height: 12px;
+	margin-left: 6px;
+}
+.list-state {
+	box-sizing: border-box;
+	padding: 40px 20px;
+	border-radius: $ios-radius;
+	background-color: $ios-surface;
+	align-items: center;
+}
+.empty-title {
+	font-size: 20px;
+	font-weight: 600;
+	color: $ios-ink;
+	margin-bottom: 10px;
+}
+.state-text {
+	font-size: 13px;
+	line-height: 20px;
+	color: $ios-secondary;
+	text-align: center;
+}
+.list-end {
+	box-sizing: border-box;
+	padding: 24px;
+	align-items: center;
+}
+.add-line-horizontal {
+	position: absolute;
+	left: 0px;
+	top: 8px;
+	width: 18px;
+	height: 2px;
+	border-radius: 1px;
+	background-color: $ios-ink;
+}
+.add-line-vertical {
+	position: absolute;
+	left: 8px;
+	top: 0px;
+	width: 2px;
+	height: 18px;
+	border-radius: 1px;
+	background-color: $ios-ink;
+}
+
+// Dark appearance. Geometry stays shared with the light appearance.
+.dark-records-page {
+	background-color: $ios-dark-page;
+}
+.dark-page-title {
+	color: $ios-dark-ink;
+}
+.dark-add-button {
+	background-color: $ios-dark-panel;
+}
+.dark-list-caption {
+	color: $ios-dark-secondary;
+}
+.dark-records-list {
+	background-color: $ios-dark-surface;
+}
+.dark-record-card {
+	background-color: $ios-dark-surface;
+	border-bottom: 0.5px solid $ios-dark-separator;
+}
+.dark-kind-icon {
+	background-color: #332943;
+}
+.dark-kind-icon-sick {
+	background-color: #3a2c22;
+}
+.dark-record-title {
+	color: $ios-dark-ink;
+}
+.dark-record-duration {
+	color: $ios-dark-secondary;
+}
+.dark-record-date {
+	color: $ios-dark-secondary;
+}
+.dark-record-status {
+	color: $ios-dark-green;
+}
+.dark-list-state {
+	background-color: $ios-dark-surface;
+}
+.dark-empty-title {
+	color: $ios-dark-ink;
+}
+.dark-state-text {
+	color: $ios-dark-secondary;
+}
+.dark-add-line-horizontal {
+	background-color: $ios-dark-ink;
+}
+.dark-add-line-vertical {
+	background-color: $ios-dark-ink;
+}
+.contrast-page-title {
+	color: #ffffff;
+}
+.contrast-list-caption {
+	color: #d2d3dc;
+}
+.contrast-record-card {
+	border-bottom: 0.5px solid #737580;
+}
+.contrast-record-title {
+	color: #ffffff;
+}
+.contrast-record-duration {
+	color: #d2d3dc;
+}
+.contrast-record-date {
+	color: #d2d3dc;
+}
+.contrast-empty-title {
+	color: #ffffff;
+}
+.contrast-state-text {
+	color: #d2d3dc;
+}
+</style>

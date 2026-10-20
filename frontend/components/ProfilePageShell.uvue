@@ -1,47 +1,99 @@
 <template>
-	<PageTransition ref="pageTransition" enter-direction="forward">
-		<view class="shell-page">
-			<image class="shell-background" src="/static/my/common/background/default.png" mode="aspectFill"></image>
-			<view class="shell-safe-top"></view>
-			<view class="shell-back-row">
-				<view class="shell-back-button" @click="goBack">
-					<image class="shell-back-icon" src="/static/my/password/back.png" mode="aspectFit"></image>
+	<PageTransition enter-direction="forward">
+		<view :class="themeClass('shell-page')">
+			<view :class="themeClass('shell-safe-top')"></view>
+			<view :class="themeClass('shell-toolbar')">
+				<view
+					:class="themeClass('shell-back-button')"
+					role="button"
+					aria-label="返回"
+					@click="goBack"
+				>
+					<image
+						:class="themeClass('shell-chevron')"
+						:src="themeImage('/static/ios/back-ink.svg')"
+						mode="aspectFit"
+					></image>
+				</view>
+				<text :class="themeClass('shell-title')">{{ title }}</text>
+				<view :class="themeClass('shell-toolbar-end')">
+					<view
+						v-if="showClose"
+						:class="themeClass('shell-back-button')"
+						role="button"
+						aria-label="关闭"
+						@click="goBack"
+					>
+						<image
+							:class="themeClass('shell-chevron')"
+							:src="themeImage('/static/ios/close-secondary.svg')"
+							mode="aspectFit"
+						></image>
+					</view>
+					<slot
+						v-else
+						name="toolbar"
+					></slot>
 				</view>
 			</view>
-			<scroll-view v-if="scrollable" class="shell-scroll" scroll-y="true" :show-scrollbar="false" @scrolltolower="emit('scrolltolower')">
-				<view class="shell-content">
-					<view class="shell-heading">
-						<text class="shell-title">{{ title }}</text>
-						<text class="shell-subtitle">{{ subtitle }}</text>
-					</view>
+			<scroll-view
+				v-if="scrollable"
+				:class="themeClass('shell-scroll')"
+				scroll-y="true"
+				:show-scrollbar="false"
+				:scroll-into-view="scrollTarget"
+				@scrolltolower="emit('scrolltolower')"
+			>
+				<view :class="themeClass('shell-content')">
+					<text
+						v-if="subtitle != ''"
+						:class="themeClass('shell-subtitle')"
+					>
+						{{ subtitle }}
+					</text>
 					<slot></slot>
 				</view>
 			</scroll-view>
-			<view v-else class="shell-content shell-fixed-content">
-				<view class="shell-heading">
-					<text class="shell-title">{{ title }}</text>
-					<text class="shell-subtitle">{{ subtitle }}</text>
-				</view>
+			<view
+				v-else
+				:class="themeClass('shell-content shell-fixed-content')"
+			>
+				<text
+					v-if="subtitle != ''"
+					:class="themeClass('shell-subtitle')"
+				>
+					{{ subtitle }}
+				</text>
 				<slot></slot>
 			</view>
 		</view>
 	</PageTransition>
 </template>
-
 <script setup lang="uts">
+import { themeClass as resolveThemeClass, themeImage as resolveThemeImage } from '@/utils/app-theme.uts'
 import PageTransition from '@/components/PageTransition.uvue'
 import { logout } from '@/utils/api.uts'
 
-const props = defineProps<{
+const props = withDefaults(
+	defineProps<{
 		title: string
 		subtitle: string
 		scrollable: boolean
-		logoutOnBack: boolean
-	}>()
+		logoutOnBack?: boolean
+		interceptBack?: boolean
+		showClose?: boolean
+		scrollTarget?: string
+	}>(),
+	{ logoutOnBack: false, interceptBack: false, showClose: false, scrollTarget: '' }
+)
 
-const emit = defineEmits(['scrolltolower'])
+const emit = defineEmits(['scrolltolower', 'back'])
 
 function goBack() {
+	if (props.interceptBack) {
+		emit('back')
+		return
+	}
 	if (props.logoutOnBack) {
 		logout()
 		uni.reLaunch({ url: '/pages/auth/login' })
@@ -58,71 +110,92 @@ function navigate(url: string, method: string = 'navigateTo', direction: string 
 }
 
 defineExpose({ navigate })
+
+// 原生模板通过本地方法调用主题函数，避免导入函数被编译为 unref 后调用。
+function themeClass(classes: string): string {
+	return resolveThemeClass(classes)
+}
+
+function themeImage(source: string): string {
+	return resolveThemeImage(source)
+}
 </script>
 
-<style>
+<style lang="scss">
+@import '@/styles/ios-theme.scss';
 .shell-page {
-	position: relative;
 	flex: 1;
 	overflow: hidden;
-	background-color: #f4f7ff;
-}
-.shell-background {
-	position: absolute;
-	top: 0;
-	right: 0;
-	bottom: 0;
-	left: 0;
-	width: 100%;
-	height: 100%;
+	background-color: $ios-page;
 }
 .shell-safe-top {
 	height: var(--status-bar-height);
 }
-.shell-back-row {
-	position: relative;
-	z-index: 2;
-	height: 92rpx;
-	padding-left: 38rpx;
-	justify-content: center;
+.shell-toolbar {
+	box-sizing: border-box;
+	height: 53px;
+	padding: 0 15px;
+	flex-direction: row;
+	align-items: center;
 }
 .shell-back-button {
-	width: 82rpx;
-	height: 84rpx;
+	box-sizing: border-box;
+	width: 44px;
+	height: 44px;
+	border-radius: 22px;
+	background-color: #e8e8ed;
+	align-items: center;
 	justify-content: center;
-	align-items: flex-start;
 }
-.shell-back-icon {
-	width: 50rpx;
-	height: 50rpx;
+.shell-chevron {
+	width: 21px;
+	height: 21px;
+}
+.shell-title {
+	flex: 1;
+	text-align: center;
+	color: $ios-ink;
+	font-size: 17px;
+	font-weight: 600;
+}
+.shell-toolbar-end {
+	min-width: 44px;
+	align-items: flex-end;
 }
 .shell-scroll {
-	position: relative;
-	z-index: 1;
 	flex: 1;
 }
 .shell-content {
 	box-sizing: border-box;
-	padding: 12rpx 44rpx 80rpx;
+	padding: 13px 21px 38px;
 }
 .shell-fixed-content {
-	position: relative;
-	z-index: 1;
 	flex: 1;
 }
-.shell-heading {
-	margin-left: 8rpx;
-}
-.shell-title {
-	color: #123b78;
-	font-size: 48rpx;
-	font-weight: 700;
-	line-height: 62rpx;
-}
 .shell-subtitle {
-	margin-top: 14rpx;
-	color: #7890bc;
-	font-size: 27rpx;
-	line-height: 40rpx;
+	font-size: 13px;
+	line-height: 20px;
+	color: $ios-secondary;
+	margin: 6px 2px 8px;
+}
+
+// Dark appearance. Geometry stays shared with the light appearance.
+.dark-shell-page {
+	background-color: $ios-dark-page;
+}
+.dark-shell-back-button {
+	background-color: $ios-dark-panel;
+}
+.dark-shell-title {
+	color: $ios-dark-ink;
+}
+.dark-shell-subtitle {
+	color: $ios-dark-secondary;
+}
+.contrast-shell-title {
+	color: #ffffff;
+}
+.contrast-shell-subtitle {
+	color: #d2d3dc;
 }
 </style>

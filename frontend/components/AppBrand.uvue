@@ -1,0 +1,98 @@
+<template>
+	<view :class="themeClass('brand-block')">
+		<image
+			v-if="appIcon"
+			class="brand-app-icon"
+			src="/static/manifest/app.png"
+			mode="aspectFit"
+		></image>
+		<view v-else :class="themeClass('brand-mark')">
+			<image
+				:class="themeClass('brand-icon')"
+				:src="themeImage('/static/ios/door-white.svg')"
+				mode="aspectFit"
+			></image>
+		</view>
+		<text :class="themeClass('brand-title')">校园请假</text>
+		<text
+			v-if="subtitle != ''"
+			:class="themeClass('brand-subtitle')"
+		>
+			{{ subtitle }}
+		</text>
+	</view>
+</template>
+<script setup lang="uts">
+import { themeClass as resolveThemeClass, themeImage as resolveThemeImage } from '@/utils/app-theme.uts'
+withDefaults(defineProps<{ subtitle?: string; appIcon?: boolean }>(), {
+	subtitle: '',
+	appIcon: false
+})
+
+// 原生模板通过本地方法调用主题函数，避免导入函数被编译为 unref 后调用。
+function themeClass(classes: string): string {
+	return resolveThemeClass(classes)
+}
+
+function themeImage(source: string): string {
+	return resolveThemeImage(source)
+}
+</script>
+
+<style lang="scss">
+@import '@/styles/ios-theme.scss';
+.brand-block {
+	align-items: center;
+}
+.brand-app-icon {
+	width: 76px;
+	height: 76px;
+	border-radius: 22px;
+}
+.brand-mark {
+	box-sizing: border-box;
+	width: 76px;
+	height: 76px;
+	border-radius: 22px;
+	background-color: #0874ea;
+	background-image: linear-gradient(150deg, #3e98ff, #0367df);
+	align-items: center;
+	justify-content: center;
+	box-shadow: 0 4px 10px rgba(0, 102, 220, 0.12);
+}
+.brand-icon {
+	width: 42px;
+	height: 42px;
+}
+.brand-title {
+	margin-top: 24px;
+	font-size: 29px;
+	line-height: 38px;
+	font-weight: 700;
+	color: $ios-ink;
+}
+.brand-subtitle {
+	margin-top: 9px;
+	font-size: 14px;
+	line-height: 23px;
+	color: $ios-secondary;
+	text-align: center;
+}
+
+// Dark appearance. Geometry stays shared with the light appearance.
+.dark-brand-mark {
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+}
+.dark-brand-title {
+	color: $ios-dark-ink;
+}
+.dark-brand-subtitle {
+	color: $ios-dark-secondary;
+}
+.contrast-brand-title {
+	color: #ffffff;
+}
+.contrast-brand-subtitle {
+	color: #d2d3dc;
+}
+</style>

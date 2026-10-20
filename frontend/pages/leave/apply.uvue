@@ -1,213 +1,392 @@
 <template>
-	<PageTransition ref="pageTransition" enter-direction="forward">
-	<view class="submit-page">
-		<view class="safe-top">
-		</view>
-		<view class="top-nav">
-			<view class="back-button" @click="goHome">
-				<view class="back-chevron">
+	<PageTransition enter-direction="forward">
+		<view :class="themeClass('submit-page')">
+			<view :class="themeClass('safe-top')"></view>
+			<view :class="themeClass('top-nav')">
+				<view
+					:class="themeClass('round-control')"
+					role="button"
+					aria-label="返回"
+					@click="goHome"
+				>
+					<image
+						:class="themeClass('control-icon')"
+						:src="themeImage('/static/ios/back-ink.svg')"
+						mode="aspectFit"
+					></image>
+				</view>
+				<text :class="themeClass('nav-title')">申请请假</text>
+				<view
+					:class="themeClass('round-control')"
+					role="button"
+					aria-label="关闭申请"
+					@click="goHome"
+				>
+					<image
+						:class="themeClass('control-icon')"
+						:src="themeImage('/static/ios/close-secondary.svg')"
+						mode="aspectFit"
+					></image>
 				</view>
 			</view>
-			<text class="nav-title">发起请假</text>
-			<view class="nav-placeholder">
-			</view>
-		</view>
-		<scroll-view class="form-scroll" scroll-y="true" :show-scrollbar="false">
-			<view class="form-content">
-				<view class="hero-copy">
-					<text class="hero-title">请填写请假信息</text>
-					<text class="hero-subtitle">请如实填写，以便审批</text>
-				</view>
-				<image class="hero-illustration" src="/static/leave/apply/2.png" mode="aspectFit"></image>
-				<view class="hero-orb hero-orb-small">
-				</view>
-				<view class="hero-orb hero-orb-large">
-				</view>
-				<view class="form-card single-card">
-					<picker class="field-picker picker-row" :range="leaveTypeNames" @change="leaveTypeChange">
-						<view class="field-row">
-							<view class="label-wrap">
-								<text class="field-label">请假类型</text>
-								<text class="required">*</text>
-							</view>
-							<view class="picker-content">
-								<text :class="leaveType == '' ? 'field-placeholder' : 'field-value'">{{ leaveType == '' ? '请选择请假类型     ' : leaveType }}</text>
-							</view>
-						</view>
-					</picker>
-				</view>
-				<view class="form-card time-card">
-					<view class="field-picker picker-row time-picker-row" @click="openDatePicker('start')">
-						<view class="field-row time-row">
-							<view class="label-wrap">
-								<text class="field-label">开始时间</text>
-								<text class="required">*</text>
-							</view>
-							<view class="date-content">
-								<view class="time-value-wrap">
-									<text :class="startDate == '' ? 'field-placeholder' : 'field-value'">{{ startDate == '' ? '请选择开始时间     ' : startDate }}</text>
+			<scroll-view
+				:class="themeClass('form-scroll')"
+				scroll-y="true"
+				:scroll-into-view="scrollTarget"
+				:show-scrollbar="false"
+			>
+				<view :class="themeClass('form-content')">
+					<view
+						id="apply-type"
+						:class="themeClass(errorField == 'type' ? 'form-card field-invalid' : 'form-card')"
+					>
+						<ThemedPicker title="请假类型"
+							:disabled="isSubmitting || createdRecordID > 0"
+							:range="leaveTypeNames"
+							:value="leaveTypeNames.indexOf(leaveType)"
+							@change="leaveTypeChange"
+						>
+							<view :class="themeClass('field-row')">
+								<view :class="themeClass('label-wrap')">
+									<text :class="themeClass('field-label')">请假类型</text>
+									<text :class="themeClass('required')">*</text>
+								</view>
+								<view :class="themeClass('picker-content')">
+									<text :class="themeClass('field-value')">{{ leaveType == '' ? '请选择' : leaveType }}</text>
+									<image
+										:class="themeClass('picker-arrow')"
+										:src="themeImage('/static/ios/back-ink.svg')"
+										mode="aspectFit"
+									></image>
 								</view>
 							</view>
+						</ThemedPicker>
+						<text
+							v-if="errorField == 'type'"
+							:class="themeClass('field-error')"
+						>
+							{{ formError }}
+						</text>
+					</view>
+					<view
+						id="apply-time"
+						:class="themeClass(errorField == 'time' ? 'form-card field-invalid' : 'form-card')"
+					>
+						<view
+							:class="themeClass('time-row')"
+							@click="openDatePicker('start')"
+						>
+							<view :class="themeClass('label-wrap')">
+								<text :class="themeClass('field-label')">开始时间</text>
+								<text :class="themeClass('required')">*</text>
+							</view>
+							<view :class="themeClass('date-line')">
+								<text :class="themeClass(startDate == '' ? 'date-value date-placeholder' : 'date-value')">
+									{{
+										startDate == ''
+											? '请选择'
+											: startDate.slice(0, 16).replaceAll('-', '/')
+									}}
+								</text>
+								<image
+									:class="themeClass('calendar-icon')"
+									:src="themeImage('/static/ios/calendar-secondary.svg')"
+									mode="aspectFit"
+								></image>
+							</view>
+						</view>
+						<view
+							:class="themeClass('time-row')"
+							@click="openDatePicker('end')"
+						>
+							<view :class="themeClass('label-wrap')">
+								<text :class="themeClass('field-label')">结束时间</text>
+								<text :class="themeClass('required')">*</text>
+							</view>
+							<view :class="themeClass('date-line')">
+								<text :class="themeClass(endDate == '' ? 'date-value date-placeholder' : 'date-value')">
+									{{
+										endDate == '' ? '请选择' : endDate.slice(0, 16).replaceAll('-', '/')
+									}}
+								</text>
+								<image
+									:class="themeClass('calendar-icon')"
+									:src="themeImage('/static/ios/calendar-secondary.svg')"
+									mode="aspectFit"
+								></image>
+							</view>
+						</view>
+						<view :class="themeClass('duration-row')">
+							<text :class="themeClass('field-label')">请假时长</text>
+							<text :class="themeClass('computed-value')">{{ hasDuration ? durationText : '—' }}</text>
+						</view>
+						<text
+							v-if="errorField == 'time'"
+							:class="themeClass('field-error')"
+						>
+							{{ formError }}
+						</text>
+					</view>
+					<view :class="themeClass('form-card')">
+						<view :class="themeClass('field-row')">
+							<text :class="themeClass('field-label')">影响课程</text>
+							<input
+								:class="themeClass('line-input')"
+								v-model="course"
+								:disabled="isSubmitting || createdRecordID > 0"
+								maxlength="255"
+								placeholder="请输入影响课程"
+								:placeholder-class="themeClass('input-placeholder')"
+								:cursor-spacing="24"
+							/>
 						</view>
 					</view>
-					<view class="time-divider">
-					</view>
-					<view class="field-picker picker-row time-picker-row" @click="openDatePicker('end')">
-						<view class="field-row time-row">
-							<view class="label-wrap">
-								<text class="field-label">结束时间</text>
-								<text class="required">*</text>
-							</view>
-							<view class="date-content">
-								<view class="time-value-wrap">
-									<text :class="endDate == '' ? 'field-placeholder' : 'field-value'">{{ endDate == '' ? '请选择结束时间     ' : endDate }}</text>
+					<view :class="themeClass('form-card')">
+						<ThemedPicker title="是否离校"
+							:range="schoolOptions"
+							:value="leaveSchool == '是' ? 0 : 1"
+							:disabled="isSubmitting || createdRecordID > 0"
+							@change="schoolChange"
+						>
+							<view :class="themeClass('field-row')">
+								<view :class="themeClass('label-wrap')">
+									<text :class="themeClass('field-label')">是否离校</text>
+									<text :class="themeClass('required')">*</text>
+								</view>
+								<view :class="themeClass('picker-content')">
+									<text :class="themeClass('field-value')">{{ leaveSchool }}</text>
+									<image
+										:class="themeClass('picker-arrow')"
+										:src="themeImage('/static/ios/back-ink.svg')"
+										mode="aspectFit"
+									></image>
 								</view>
 							</view>
+						</ThemedPicker>
+					</view>
+					<view
+						v-if="leaveSchool == '是'"
+						id="apply-destination"
+						:class="themeClass(errorField == 'destination'
+								? 'form-card destination-card field-invalid'
+								: 'form-card destination-card')"
+					>
+						<view :class="themeClass('label-wrap')">
+							<text :class="themeClass('destination-label')">请假去向</text>
+							<text :class="themeClass('required')">*</text>
+						</view>
+						<view :class="themeClass('region-row')" role="button" aria-label="选择省市区" @click="openRegionPicker">
+							<text :class="themeClass('region-summary')">{{ destination == '' ? '请选择省 / 市 / 区' : destination.replaceAll(',', ' / ') }}</text>
+							<image :class="themeClass('picker-arrow')" :src="themeImage('/static/ios/back-ink.svg')" mode="aspectFit"></image>
+						</view>
+						<text
+							v-if="errorField == 'destination'"
+							:class="themeClass('field-error')"
+						>
+							{{ formError }}
+						</text>
+					</view>
+					<view id="apply-reason">
+						<view :class="themeClass('reason-label')">
+							<text :class="themeClass('destination-label')">请假理由</text>
+							<text :class="themeClass('required')">*</text>
+						</view>
+						<view :class="themeClass(errorField == 'reason' ? 'reason-box field-invalid' : 'reason-box')">
+							<textarea
+								:class="themeClass('reason-input')"
+								v-model="reason"
+								:disabled="isSubmitting || createdRecordID > 0"
+								:focus="focusedField == 'reason'"
+								:cursor-spacing="24"
+								maxlength="200"
+								placeholder="请详细说明请假原因"
+								:placeholder-class="themeClass('input-placeholder')"
+								@input="clearError"
+							/>
+							<text :class="themeClass('word-count')">{{ reason.length }}/200</text>
+						</view>
+						<text
+							v-if="errorField == 'reason'"
+							:class="themeClass('field-error')"
+						>
+							{{ formError }}
+						</text>
+					</view>
+					<view :class="themeClass('form-card travel-card')">
+						<view :class="themeClass('field-row')">
+							<text :class="themeClass('field-label')">出行方式</text>
+							<input
+								:class="themeClass('line-input')"
+								v-model="travel"
+								:disabled="isSubmitting || createdRecordID > 0"
+								maxlength="255"
+								placeholder="请输入出行方式"
+								:placeholder-class="themeClass('input-placeholder')"
+								:cursor-spacing="24"
+							/>
 						</view>
 					</view>
-					<view class="time-divider">
-					</view>
-					<view class="field-row duration-row">
-						<text class="field-label">请假时长</text>
-						<view class="duration-content">
-							<text :class="hasDuration ? 'duration-value' : 'field-placeholder'">{{ hasDuration ? durationText : " " }}</text>
-						</view>
-					</view>
-				</view>
-				<view class="form-card single-card">
-					<view class="field-row">
-						<text class="field-label">影响课程</text>
-						<view class="text-field">
-							<input class="line-input" v-model="course" maxlength="255" placeholder="请输入影响课程     " placeholder-class="course-placeholder" placeholder-style="text-align:right;color:#a6b6d6" />
-						</view>
+					<text
+						v-if="formError != '' && errorField == ''"
+						:class="themeClass('form-error')"
+					>
+						{{ formError }}
+					</text>
+					<view
+						:class="themeClass(isSubmitting ? 'primary-button primary-button-disabled' : 'primary-button')"
+						@click="submit"
+					>
+						<text :class="themeClass('primary-button-text')">
+							{{ isSubmitting ? '提交中…' : createdRecordID > 0 ? '查看已提交申请' : '提交申请' }}
+						</text>
 					</view>
 				</view>
-				<view class="form-card single-card">
-					<view class="field-row">
-						<view class="label-wrap">
-							<text class="field-label">是否离校</text>
-							<text class="required">*</text>
-						</view>
-						<view class="school-segment">
-							<view :class="leaveSchool == '是' ? 'school-option school-option-active' : 'school-option'" @click="setLeaveSchool('是')">
-								<text :class="leaveSchool == '是' ? 'school-text school-text-active' : 'school-text'">是</text>
-							</view>
-							<view :class="leaveSchool == '否' ? 'school-option school-option-active' : 'school-option'" @click="setLeaveSchool('否')">
-								<text :class="leaveSchool == '否' ? 'school-text school-text-active' : 'school-text'">否</text>
-							</view>
-						</view>
+			</scroll-view>
+			<page-container :show="showRegionPicker" position="bottom" @clickoverlay="cancelRegionPicker" @afterleave="cancelRegionPicker">
+				<view :class="themeClass('destination-panel')" :style="{ paddingBottom: pickerBottomInset() + 'px' }">
+					<view :class="themeClass('destination-panel-actions')">
+						<text :class="themeClass('destination-panel-cancel')" @click="cancelRegionPicker">取消</text>
+						<text :class="themeClass('destination-panel-title')">请假去向</text>
+						<text :class="themeClass('destination-panel-confirm')" @click="confirmRegionPicker">确定</text>
 					</view>
-				</view>
-				<view v-if="leaveSchool == '是'" class="form-card single-card destination-card" @click="openDestinationPicker">
-					<view class="destination-content">
-						<view class="label-wrap">
-							<text class="field-label" @click="openDestinationPicker">请假去向</text>
-							<text class="required" @click="openDestinationPicker">*</text>
-						</view>
-						<view class="destination-value-row">
-							<text :class="destination == '' ? 'field-placeholder destination-value' : 'field-value destination-value'" @click="openDestinationPicker">{{ destination == '' ? '请选择省 / 市 / 区县' : destination }}</text>
-							<view class="destination-arrow" @click="openDestinationPicker"></view>
-						</view>
+					<view class="region-headings">
+						<text :class="themeClass('region-heading')">省份</text>
+						<text :class="themeClass('region-heading')">城市</text>
+						<text :class="themeClass('region-heading')">区县</text>
 					</view>
-				</view>
-				<view class="form-card reason-card">
-					<view class="label-wrap reason-label">
-						<text class="field-label">请假理由</text>
-						<text class="required">*</text>
-					</view>
-					<view class="reason-box">
-						<textarea class="reason-input" v-model="reason" maxlength="200" placeholder="请详细说明请假原因" placeholder-class="input-placeholder" />
-						<text class="word-count">{{ reason.length }}/200</text>
-					</view>
-				</view>
-				<view class="form-card single-card travel-card">
-					<view class="field-row">
-						<text class="field-label">出行方式</text>
-						<view class="text-field">
-							<input class="line-input" v-model="travel" maxlength="255" placeholder="请输入出行方式     " placeholder-class="input-placeholder" />
-						</view>
-					</view>
-				</view>
-				<view class="submit-button" @click="submit">
-					<text class="submit-text">{{ isSubmitting ? '提交中…' : createdRecordID > 0 ? '查看已提交申请' : '提交申请' }}</text>
-				</view>
-			</view>
-		</scroll-view>
-		<page-container :show="showDestinationPicker" position="bottom" @clickoverlay="cancelDestinationPicker">
-			<view class="destination-panel">
-				<view class="destination-panel-actions">
-					<text class="destination-panel-cancel" @click="cancelDestinationPicker">取消</text>
-					<text class="destination-panel-confirm" @click="confirmDestinationPicker">确定</text>
-				</view>
-				<picker-view class="destination-picker-view" :value="pendingDestinationRegionIndex" indicator-style="height:72rpx" @change="destinationRegionViewChange">
-					<picker-view-column>
-						<view v-for="(name, index) in destinationRegionOptions[0]" :key="index" class="destination-picker-item">
-							<text class="destination-picker-item-text">{{ name }}</text>
-						</view>
-					</picker-view-column>
-					<picker-view-column>
-						<view v-for="(name, index) in destinationRegionOptions[1]" :key="index" class="destination-picker-item">
-							<text class="destination-picker-item-text">{{ name }}</text>
-						</view>
-					</picker-view-column>
-					<picker-view-column>
-						<view v-for="(name, index) in destinationRegionOptions[2]" :key="index" class="destination-picker-item">
-							<text class="destination-picker-item-text">{{ name }}</text>
-						</view>
-					</picker-view-column>
-				</picker-view>
-			</view>
-		</page-container>
-		<page-container :show="showDatePicker" position="bottom" @clickoverlay="cancelDatePicker">
-			<view class="destination-panel">
-				<view class="destination-panel-actions">
-					<text class="destination-panel-cancel" @click="datePickerBack">{{ datePickerStep == 'date' ? '取消' : '上一步' }}</text>
-					<text class="destination-panel-confirm" @click="advanceDatePicker">{{ datePickerStep == 'date' ? '下一步' : '确定' }}</text>
-				</view>
-				<view class="date-picker-wheel-wrap">
-					<picker-view :class="datePickerStep == 'date' ? 'date-picker-wheel date-picker-wheel-active' : 'date-picker-wheel'" :value="pendingDateIndex" indicator-style="height:36px" @change="dateViewChange">
+					<picker-view class="region-wheel" :value="pendingRegionIndex" :indicator-style="pickerIndicator()"
+						:mask-top-style="pickerMaskTop()" :mask-bottom-style="pickerMaskBottom()"
+						@change="regionViewChange" @pickstart="regionRolling = true" @pickend="regionRolling = false">
 						<picker-view-column>
-							<view v-for="(year, index) in dateYears" :key="index" class="date-picker-item">
-								<text class="destination-picker-item-text">{{ year }}年</text>
+							<view v-for="(item, index) in destinationRegionOptions[0]" :key="index" :class="themeClass('date-picker-item')">
+								<text :class="themeClass('region-wheel-text')">{{ item }}</text>
 							</view>
 						</picker-view-column>
 						<picker-view-column>
-							<view v-for="(month, index) in dateMonths" :key="index" class="date-picker-item">
-								<text class="destination-picker-item-text">{{ twoDigits(month) }}月</text>
+							<view v-for="(item, index) in destinationRegionOptions[1]" :key="index" :class="themeClass('date-picker-item')">
+								<text :class="themeClass('region-wheel-text')">{{ item }}</text>
 							</view>
 						</picker-view-column>
 						<picker-view-column>
-							<view v-for="(day, index) in dateDays" :key="index" class="date-picker-item">
-								<text class="destination-picker-item-text">{{ twoDigits(day) }}日</text>
+							<view v-for="(item, index) in destinationRegionOptions[2]" :key="index" :class="themeClass('date-picker-item')">
+								<text :class="themeClass('region-wheel-text')">{{ item }}</text>
 							</view>
 						</picker-view-column>
 					</picker-view>
-					<picker-view :class="datePickerStep == 'time' ? 'date-picker-wheel date-picker-wheel-active' : 'date-picker-wheel'" :value="pendingTimeIndex" indicator-style="height:36px" @change="timeViewChange">
-						<picker-view-column>
-							<view v-for="(hour, index) in timeHours" :key="index" class="date-picker-item">
-								<text class="destination-picker-item-text">{{ twoDigits(hour) }}时</text>
-							</view>
-						</picker-view-column>
-						<picker-view-column>
-							<view v-for="(minute, index) in timeMinutes" :key="index" class="date-picker-item">
-								<text class="destination-picker-item-text">{{ twoDigits(minute) }}分</text>
-							</view>
-						</picker-view-column>
-						<picker-view-column>
-							<view v-for="(second, index) in timeSeconds" :key="index" class="date-picker-item">
-								<text class="destination-picker-item-text">{{ twoDigits(second) }}秒</text>
-							</view>
-						</picker-view-column>
-					</picker-view>
 				</view>
-			</view>
-		</page-container>
-	</view>
+			</page-container>
+			<page-container
+				:show="showDatePicker"
+				position="bottom"
+				@clickoverlay="cancelDatePicker"
+				@afterleave="cancelDatePicker"
+			>
+				<view :class="themeClass('destination-panel')" :style="{ paddingBottom: pickerBottomInset() + 'px' }">
+					<view :class="themeClass('destination-panel-actions')">
+						<text
+							:class="themeClass('destination-panel-cancel')"
+							@click="datePickerBack"
+						>
+							{{ datePickerStep == 'date' ? '取消' : '上一步' }}
+						</text>
+						<text :class="themeClass('destination-panel-title')">{{ editingDate == 'start' ? '开始时间' : '结束时间' }} · {{ datePickerStep == 'date' ? '日期' : '时间' }}</text>
+						<text
+							:class="themeClass('destination-panel-confirm')"
+							@click="advanceDatePicker"
+						>
+							{{ datePickerStep == 'date' ? '下一步' : '确定' }}
+						</text>
+					</view>
+					<view :class="themeClass('date-picker-wheel-wrap')">
+						<picker-view
+							:class="themeClass(datePickerStep == 'date'
+									? 'date-picker-wheel date-picker-wheel-active'
+									: 'date-picker-wheel')"
+							:value="pendingDateIndex"
+							:indicator-style="pickerIndicator()"
+							:mask-top-style="pickerMaskTop()"
+							:mask-bottom-style="pickerMaskBottom()"
+							@pickstart="dateRolling = true" @pickend="dateRolling = false"
+							@change="dateViewChange"
+						>
+							<picker-view-column>
+								<view
+									v-for="(year, index) in dateYears"
+									:key="index"
+									:class="themeClass('date-picker-item')"
+								>
+									<text :class="themeClass('destination-picker-item-text')">{{ year }}年</text>
+								</view>
+							</picker-view-column>
+							<picker-view-column>
+								<view
+									v-for="(month, index) in dateMonths"
+									:key="index"
+									:class="themeClass('date-picker-item')"
+								>
+									<text :class="themeClass('destination-picker-item-text')">{{ twoDigits(month) }}月</text>
+								</view>
+							</picker-view-column>
+							<picker-view-column>
+								<view
+									v-for="(day, index) in dateDays"
+									:key="index"
+									:class="themeClass('date-picker-item')"
+								>
+									<text :class="themeClass('destination-picker-item-text')">{{ twoDigits(day) }}日</text>
+								</view>
+							</picker-view-column>
+						</picker-view>
+						<picker-view
+							:class="themeClass(datePickerStep == 'time'
+									? 'date-picker-wheel date-picker-wheel-active'
+									: 'date-picker-wheel')"
+							:value="pendingTimeIndex"
+							:indicator-style="pickerIndicator()"
+							:mask-top-style="pickerMaskTop()"
+							:mask-bottom-style="pickerMaskBottom()"
+							@pickstart="dateRolling = true" @pickend="dateRolling = false"
+							@change="timeViewChange"
+						>
+							<picker-view-column>
+								<view
+									v-for="(hour, index) in timeHours"
+									:key="index"
+									:class="themeClass('date-picker-item')"
+								>
+									<text :class="themeClass('destination-picker-item-text')">{{ twoDigits(hour) }}时</text>
+								</view>
+							</picker-view-column>
+							<picker-view-column>
+								<view
+									v-for="(minute, index) in timeMinutes"
+									:key="index"
+									:class="themeClass('date-picker-item')"
+								>
+									<text :class="themeClass('destination-picker-item-text')">{{ twoDigits(minute) }}分</text>
+								</view>
+							</picker-view-column>
+							<picker-view-column>
+								<view
+									v-for="(second, index) in timeSeconds"
+									:key="index"
+									:class="themeClass('date-picker-item')"
+								>
+									<text :class="themeClass('destination-picker-item-text')">{{ twoDigits(second) }}秒</text>
+								</view>
+							</picker-view-column>
+						</picker-view>
+					</view>
+				</view>
+			</page-container>
+		</view>
 	</PageTransition>
 </template>
-
 <script setup lang="uts">
-import { computed, ref } from 'vue'
+import { themeClass as resolveThemeClass, themeImage as resolveThemeImage } from '@/utils/app-theme.uts'
+import { computed, nextTick, ref } from 'vue'
+import { pickerIndicator as resolvePickerIndicator, pickerMaskTop as resolvePickerMaskTop, pickerMaskBottom as resolvePickerMaskBottom, pickerBottomInset as resolvePickerBottomInset } from '@/utils/picker-theme.uts'
+import ThemedPicker from '@/components/ThemedPicker.uvue'
 import PageTransition from '@/components/PageTransition.uvue'
 import { createRecord, getLeaveTypes, LeaveTypeOption } from '@/utils/api.uts'
 import { cityData } from '@/data/city.uts'
@@ -218,6 +397,26 @@ type RegionItem = {
 	children: RegionItem[]
 }
 
+const formError = ref('')
+const errorField = ref('')
+const focusedField = ref('')
+const scrollTarget = ref('')
+const schoolOptions: string[] = ['是', '否']
+function showFieldError(field: string, message: string) {
+	formError.value = message
+	errorField.value = field
+	focusedField.value = ''
+	scrollTarget.value = ''
+	nextTick(() => {
+		scrollTarget.value = 'apply-' + field
+		focusedField.value = field
+	})
+}
+function clearError() {
+	formError.value = ''
+	errorField.value = ''
+}
+
 const leaveTypes = ref<LeaveTypeOption[]>([])
 const leaveType = ref('')
 const leaveTypeID = ref(0)
@@ -226,9 +425,10 @@ const course = ref('')
 const reason = ref('')
 const travel = ref('')
 const destination = ref('')
+const showRegionPicker = ref(false)
+const regionRolling = ref(false)
+const pendingRegionIndex = ref<number[]>([0, 0, 0])
 const destinationRegionIndex = ref<number[]>([0, 0, 0])
-const pendingDestinationRegionIndex = ref<number[]>([0, 0, 0])
-const showDestinationPicker = ref(false)
 const destinationRegionOptions = ref<string[][]>([[], [], []])
 const administrativeRegions = JSON.parse<RegionItem[]>(cityData)!
 const startDate = ref('')
@@ -239,7 +439,11 @@ const datePickerStep = ref('date')
 const pendingDateIndex = ref<number[]>([0, 0, 0])
 // 时间滚轮常驻弹层内，先以当前时间定位，打开字段时再刷新为点击时刻。
 const initialPickerTime = new Date()
-const pendingTimeIndex = ref<number[]>([initialPickerTime.getHours(), initialPickerTime.getMinutes(), initialPickerTime.getSeconds()])
+const pendingTimeIndex = ref<number[]>([
+	initialPickerTime.getHours(),
+	initialPickerTime.getMinutes(),
+	initialPickerTime.getSeconds()
+])
 const dateYears: number[] = []
 const dateMonths: number[] = []
 const timeHours: number[] = []
@@ -255,6 +459,7 @@ for (let value = 0; value < 60; value++) {
 	timeSeconds.push(value)
 }
 const dateDays = ref<number[]>([])
+const dateRolling = ref(false)
 const isSubmitting = ref(false)
 const createdRecordID = ref(0)
 const openingDetail = ref(false)
@@ -269,15 +474,19 @@ const advanceMilliseconds = randomInteger(60 * 60, 2 * 60 * 60) * 1000
 const leaveTypeNames = computed((): string[] => leaveTypes.value.map((item): string => item.name))
 const durationHours = computed((): number => {
 	if (startDate.value == '' || endDate.value == '') return 0
-	const difference = new Date(endDate.value.replace(' ', 'T')).getTime() - new Date(startDate.value.replace(' ', 'T')).getTime()
+	const difference =
+		new Date(endDate.value.replace(' ', 'T')).getTime() -
+		new Date(startDate.value.replace(' ', 'T')).getTime()
 	return difference <= 0 ? 0 : Math.ceil(difference / 3600000)
 })
 const hasDuration = computed((): boolean => durationHours.value > 0)
 const durationDays = computed((): number => Math.floor(durationHours.value / 24))
 const remainingDurationHours = computed((): number => durationHours.value % 24)
-const durationText = computed((): string => `${durationDays.value}天${remainingDurationHours.value}小时`)
-function leaveTypeChange(e: UniPickerChangeEvent) {
-	const selected = leaveTypes.value[e.detail.value as number]
+const durationText = computed(
+	(): string => `${durationDays.value}天${remainingDurationHours.value}小时`
+)
+function leaveTypeChange(index: number) {
+	const selected = leaveTypes.value[index]
 	if (selected == null) return
 	leaveType.value = selected.name
 	leaveTypeID.value = selected.id
@@ -291,6 +500,7 @@ function updateDateDays(yearIndex: number, monthIndex: number) {
 }
 
 function openDatePicker(field: string) {
+	if (isSubmitting.value || createdRecordID.value > 0) return
 	editingDate.value = field
 	const saved = field == 'start' ? startDate.value : endDate.value
 	const now = new Date()
@@ -304,8 +514,13 @@ function openDatePicker(field: string) {
 	if (saved == '') {
 		pendingTimeIndex.value = [now.getHours(), now.getMinutes(), now.getSeconds()]
 	} else {
-		pendingTimeIndex.value = [parseInt(saved.slice(11, 13)), parseInt(saved.slice(14, 16)), parseInt(saved.slice(17, 19))]
+		pendingTimeIndex.value = [
+			parseInt(saved.slice(11, 13)),
+			parseInt(saved.slice(14, 16)),
+			parseInt(saved.slice(17, 19))
+		]
 	}
+	dateRolling.value = false
 	datePickerStep.value = 'date'
 	showDatePicker.value = true
 }
@@ -329,7 +544,11 @@ function dateViewChange(e: UniPickerViewChangeEvent) {
 	if (selected[0] != pendingDateIndex.value[0] || selected[1] != pendingDateIndex.value[1]) {
 		updateDateDays(selected[0], selected[1])
 	}
-	pendingDateIndex.value = [selected[0], selected[1], Math.min(selected[2], dateDays.value.length - 1)]
+	pendingDateIndex.value = [
+		selected[0],
+		selected[1],
+		Math.min(selected[2], dateDays.value.length - 1)
+	]
 }
 
 function timeViewChange(e: UniPickerViewChangeEvent) {
@@ -340,14 +559,23 @@ function timeViewChange(e: UniPickerViewChangeEvent) {
 }
 
 function advanceDatePicker() {
+	if (dateRolling.value) return
 	const date = pendingDateIndex.value
 	const selectedDate = `${dateYears[date[0]]}-${twoDigits(date[1] + 1)}-${twoDigits(date[2] + 1)}`
 	if (datePickerStep.value == 'date') {
-		if (editingDate.value == 'end' && startDate.value != '' && selectedDate < startDate.value.slice(0, 10)) {
+		if (
+			editingDate.value == 'end' &&
+			startDate.value != '' &&
+			selectedDate < startDate.value.slice(0, 10)
+		) {
 			uni.showToast({ title: '结束时间必须晚于开始时间', icon: 'none' })
 			return
 		}
-		if (editingDate.value == 'start' && endDate.value != '' && selectedDate > endDate.value.slice(0, 10)) {
+		if (
+			editingDate.value == 'start' &&
+			endDate.value != '' &&
+			selectedDate > endDate.value.slice(0, 10)
+		) {
 			uni.showToast({ title: '开始时间必须早于结束时间', icon: 'none' })
 			return
 		}
@@ -374,6 +602,7 @@ function advanceDatePicker() {
 }
 
 function setLeaveSchool(value: string) {
+	if (isSubmitting.value || createdRecordID.value > 0) return
 	leaveSchool.value = value
 }
 
@@ -383,47 +612,47 @@ function setDestinationRegionOptions(provinceIndex: number, cityIndex: number) {
 	const cities = province.children
 	destinationRegionOptions.value[1] = cities.map((item): string => item.title)
 	const city = cities[cityIndex]
-	destinationRegionOptions.value[2] = city == null ? [] : city.children.map((item): string => item.title)
+	destinationRegionOptions.value[2] =
+		city == null ? [] : city.children.map((item): string => item.title)
 }
 
-function openDestinationPicker() {
-	if (showDestinationPicker.value) return
-	pendingDestinationRegionIndex.value = [...destinationRegionIndex.value]
-	setDestinationRegionOptions(pendingDestinationRegionIndex.value[0], pendingDestinationRegionIndex.value[1])
-	showDestinationPicker.value = true
+function openRegionPicker() {
+	if (isSubmitting.value || createdRecordID.value > 0) return
+	pendingRegionIndex.value = [...destinationRegionIndex.value]
+	setDestinationRegionOptions(pendingRegionIndex.value[0], pendingRegionIndex.value[1])
+	regionRolling.value = false
+	showRegionPicker.value = true
 }
-
-function cancelDestinationPicker() {
-	showDestinationPicker.value = false
+function cancelRegionPicker() {
+	showRegionPicker.value = false
 }
-
-function destinationRegionViewChange(e: UniPickerViewChangeEvent) {
-	const selected = e.detail.value
-	if (selected.length < 3) return
-	const previous = pendingDestinationRegionIndex.value
-	// 上级地区变化时，下级索引必须回到新列表的首项。
-	if (selected[0] != previous[0]) {
-		pendingDestinationRegionIndex.value = [selected[0], 0, 0]
-		setDestinationRegionOptions(selected[0], 0)
-		return
-	}
-	if (selected[1] != previous[1]) {
-		pendingDestinationRegionIndex.value = [selected[0], selected[1], 0]
-		setDestinationRegionOptions(selected[0], selected[1])
-		return
-	}
-	pendingDestinationRegionIndex.value = selected
+function regionViewChange(event: UniPickerViewChangeEvent) {
+	const selected = event.detail.value
+	if (selected.length < 3 || !showRegionPicker.value) return
+	const previous = pendingRegionIndex.value
+	const provinceIndex = selected[0]
+	if (provinceIndex < 0 || provinceIndex >= administrativeRegions.length) return
+	// 上一级变化后，下级回到首项，避免旧列索引落到新地区中。
+	const provinceChanged = provinceIndex != previous[0]
+	const cities = administrativeRegions[provinceIndex].children
+	const cityIndex = provinceChanged ? 0 : Math.max(0, Math.min(selected[1], cities.length - 1))
+	const cityChanged = provinceChanged || cityIndex != previous[1]
+	const city = cities[cityIndex]
+	const districtIndex = cityChanged || city == null ? 0 : Math.max(0, Math.min(selected[2], city.children.length - 1))
+	setDestinationRegionOptions(provinceIndex, cityIndex)
+	pendingRegionIndex.value = [provinceIndex, cityIndex, districtIndex]
 }
-
-function confirmDestinationPicker() {
-	const selected = pendingDestinationRegionIndex.value
+function confirmRegionPicker() {
+	if (regionRolling.value || isSubmitting.value || createdRecordID.value > 0) return
+	const selected = pendingRegionIndex.value
 	const province = administrativeRegions[selected[0]]
-	const city = province == null ? null : province.children[selected[1]]
-	const district = city == null ? null : city.children[selected[2]]
+	const city = province?.children[selected[1]]
+	const district = city?.children[selected[2]]
 	if (province == null || city == null || district == null) return
 	destinationRegionIndex.value = [...selected]
-	destination.value = `${province.title},${city.title},${district.title}`
-	showDestinationPicker.value = false
+	destination.value = province.title + ',' + city.title + ',' + district.title
+	clearError()
+	showRegionPicker.value = false
 }
 
 function initializeDestinationRegion() {
@@ -465,9 +694,61 @@ function initializeDestinationRegion() {
 
 initializeDestinationRegion()
 
+function schoolChange(index: number) {
+	if (index == 0 || index == 1) setLeaveSchool(schoolOptions[index])
+}
+
+let initialForm = ''
+let leaving = false
+let confirmingLeave = false
+function formSnapshot(): string {
+	return JSON.stringify([
+		leaveType.value,
+		startDate.value,
+		endDate.value,
+		course.value,
+		reason.value,
+		leaveSchool.value,
+		destination.value,
+		travel.value
+	])
+}
+function leavePage() {
+	leaving = true
+	uni.navigateBack({
+		fail: () => {
+			uni.reLaunch({
+				url: '/pages/home/index',
+				fail: () => {
+					leaving = false
+				}
+			})
+		}
+	})
+}
 function goHome() {
-	if (isSubmitting.value || openingDetail.value) return
-	uni.reLaunch({ url: '/pages/home/index' })
+	if (showRegionPicker.value) {
+		cancelRegionPicker()
+		return
+	}
+	if (isSubmitting.value || openingDetail.value || confirmingLeave) return
+	if (createdRecordID.value > 0 || formSnapshot() == initialForm) {
+		leavePage()
+		return
+	}
+	confirmingLeave = true
+	uni.showModal({
+		title: '放弃本次申请？',
+		content: '尚未提交的内容将不会保存。',
+		confirmText: '放弃',
+		cancelText: '继续填写',
+		success: (result) => {
+			if (result.confirm) leavePage()
+		},
+		complete: () => {
+			confirmingLeave = false
+		}
+	})
 }
 function toRFC3339(value: string): string {
 	return new Date(value.replace(' ', 'T')).toISOString()
@@ -481,7 +762,10 @@ async function loadLeaveTypes() {
 		}
 	} catch (error) {
 		const message = (error as Error).message
-		uni.showToast({ title: message == null || message == '' ? '请假类型加载失败' : message, icon: 'none' })
+		uni.showToast({
+			title: message == null || message == '' ? '请假类型加载失败' : message,
+			icon: 'none'
+		})
 	}
 }
 
@@ -493,11 +777,22 @@ function openCreatedRecord() {
 		fail: () => {
 			uni.showToast({ title: '申请已提交，点击按钮查看详情', icon: 'none' })
 		},
-		complete: () => { openingDetail.value = false }
+		complete: () => {
+			openingDetail.value = false
+		}
 	})
 }
 
-onBackPress((): boolean => isSubmitting.value || openingDetail.value)
+onBackPress((): boolean => {
+	if (leaving) return false
+	if (showDatePicker.value) {
+		cancelDatePicker()
+		return true
+	}
+
+	goHome()
+	return true
+})
 
 async function submit() {
 	if (isSubmitting.value) return
@@ -506,25 +801,29 @@ async function submit() {
 		return
 	}
 	if (leaveType.value == '' || leaveTypeID.value == 0) {
-		uni.showToast({ title: '请选择请假类型', icon: 'none' })
+		showFieldError('type', '请选择请假类型')
 		return
 	}
 	if (startDate.value == '' || endDate.value == '') {
-		uni.showToast({ title: '请选择请假时间', icon: 'none' })
+		showFieldError('time', '请选择请假时间')
 		return
 	}
-	if (new Date(endDate.value.replace(' ', 'T')).getTime() <= new Date(startDate.value.replace(' ', 'T')).getTime()) {
-		uni.showToast({ title: '结束时间必须晚于开始时间', icon: 'none' })
+	if (
+		new Date(endDate.value.replace(' ', 'T')).getTime() <=
+		new Date(startDate.value.replace(' ', 'T')).getTime()
+	) {
+		showFieldError('time', '结束时间必须晚于开始时间')
 		return
 	}
 	if (reason.value.trim() == '') {
-		uni.showToast({ title: '请填写请假理由', icon: 'none' })
+		showFieldError('reason', '请填写请假理由')
 		return
 	}
 	if (leaveSchool.value == '是' && destination.value == '') {
-		uni.showToast({ title: '请选择请假去向', icon: 'none' })
+		showFieldError('destination', '请选择请假去向')
 		return
 	}
+	clearError()
 	uni.hideKeyboard()
 	isSubmitting.value = true
 	try {
@@ -545,407 +844,411 @@ async function submit() {
 		openCreatedRecord()
 	} catch (error) {
 		const message = (error as Error).message
-		uni.showToast({ title: message == null || message == '' ? '提交申请失败' : message, icon: 'none' })
+		formError.value = message == null || message == '' ? '提交申请失败，请重试' : message
+		uni.showToast({
+			title: message == null || message == '' ? '提交申请失败' : message,
+			icon: 'none'
+		})
 	} finally {
 		isSubmitting.value = false
 	}
 }
 
 onLoad(() => {
+	initialForm = formSnapshot()
 	appliedAt.value = new Date(Date.now() - advanceMilliseconds).toISOString()
 	loadLeaveTypes()
 })
-</script>
 
-<style>
+// 原生模板通过本地方法调用主题函数，避免导入函数被编译为 unref 后调用。
+function themeClass(classes: string): string {
+	return resolveThemeClass(classes)
+}
+
+function themeImage(source: string): string {
+	return resolveThemeImage(source)
+}
+function pickerIndicator(): string {
+	return resolvePickerIndicator()
+}
+function pickerMaskTop(): string {
+	return resolvePickerMaskTop()
+}
+function pickerMaskBottom(): string {
+	return resolvePickerMaskBottom()
+}
+function pickerBottomInset(): number {
+	return resolvePickerBottomInset()
+}
+</script>
+<style lang="scss">
+@import '@/styles/ios-controls.scss';
 .submit-page {
 	flex: 1;
-	background-color: #f5f7ff;
-	background-image: linear-gradient(180deg, #f2f5ff 0%, #f7f9ff 36%, #f3f6ff 100%);
+	background-color: $ios-page;
 }
 .safe-top {
-	height:var(--status-bar-height)
+	height: var(--status-bar-height);
 }
 .top-nav {
-	height:96rpx;
-	padding:0 44rpx;
-	flex-direction:row;
-	align-items:center;
-	justify-content:space-between
+	box-sizing: border-box;
+	height: 53px;
+	padding: 0 15px;
+	flex-direction: row;
+	align-items: center;
+	justify-content: space-between;
 }
-.back-button {
-	width: 64rpx;
-	height: 72rpx;
+.round-control {
+	box-sizing: border-box;
+	width: 44px;
+	height: 44px;
+	border-radius: 22px;
+	background-color: #eaeaef;
+	align-items: center;
 	justify-content: center;
-	align-items: flex-start;
 }
-.back-chevron {
-	position: relative;
-	left: 8rpx;
-	width: 25rpx;
-	height: 25rpx;
-	border-left-width: 5rpx;
-	border-bottom-width: 5rpx;
-	border-left-style: solid;
-	border-bottom-style: solid;
-	border-color: #193d78;
-	transform: rotate(45deg);
+.control-icon {
+	width: 21px;
+	height: 21px;
 }
 .nav-title {
-	color:#193d78;
-	font-size:40rpx;
-	font-weight:700;
-	letter-spacing:2rpx
-}
-.nav-placeholder {
-	width:64rpx;
-	height:72rpx
+	font-size: 17px;
+	font-weight: 600;
+	color: $ios-ink;
 }
 .form-scroll {
-	flex:1
+	flex: 1;
 }
 .form-content {
-	position:relative;
-	padding:28rpx 50rpx 88rpx;
-	overflow:hidden
-}
-.hero-copy {
-	height:220rpx;
-	position:relative;
-	z-index:2
-}
-.hero-title {
-	color:#153970;
-	font-size:51rpx;
-	font-weight:700;
-	letter-spacing:2rpx
-}
-.hero-subtitle {
-	margin-top:20rpx;
-	color:#8296be;
-	font-size:29rpx
-}
-.hero-illustration {
-	position:absolute;
-	z-index:1;
-	top:2rpx;
-	right:48rpx;
-	width:213rpx;
-	height:213rpx;
-	transform:rotate(-8deg)
-}
-.hero-orb {
-	position:absolute;
-	border-radius:999rpx;
-	border-width:1rpx;
-	border-color:rgba(255,255,255,.75);
-	background-color:rgba(255,255,255,.44)
-}
-.hero-orb-small {
-	top:78rpx;
-	right:242rpx;
-	width:46rpx;
-	height:46rpx;
-	box-shadow:0 8rpx 22rpx rgba(123,150,222,.18)
-}
-.hero-orb-large {
-	top:78rpx;
-	right:-86rpx;
-	width:136rpx;
-	height:136rpx;
-	background-color:rgba(255,255,255,.32)
+	box-sizing: border-box;
+	padding: 13px 21px 38px;
 }
 .form-card {
-	box-sizing:border-box;
-	margin-bottom:28rpx;
-	padding:0 34rpx;
-	border-radius:30rpx;
-	background-color:rgba(255,255,255,.84);
-	box-shadow:0 16rpx 38rpx rgba(101,126,189,.08)
-}
-.single-card {
-	height:144rpx
+	box-sizing: border-box;
+	padding: 0 16px;
+	background-color: $ios-surface;
+	border-radius: 23px;
+	margin-bottom: 14px;
 }
 .field-row {
-	height:100%;
-	flex-direction:row;
-	align-items:center
+	min-height: 54px;
+	flex-direction: row;
+	align-items: center;
 }
 .label-wrap {
-	flex-direction:row;
-	align-items:center;
-	flex-shrink:0
+	flex-direction: row;
+	align-items: center;
 }
 .field-label {
-	color:#173b75;
-	font-size:30rpx;
-	font-weight:700;
-	letter-spacing:1rpx
+	font-size: 14px;
+	color: $ios-ink;
+	line-height: 22px;
 }
 .required {
-	margin-left:10rpx;
-	color:#ff5a5f;
-	font-size:31rpx;
-	font-weight:700
-}
-.picker-control {
-	height:144rpx;
-	flex:1;
-	margin-left:28rpx
-}
-.time-picker-control {
-	height:108rpx;
-	margin-left:28rpx
-}
-.field-picker {
-	width:100%;
-	height:100%
+	font-size: 14px;
+	color: $ios-red;
+	margin-left: 4px;
 }
 .picker-content {
-	flex:1;
-	height:144rpx;
-	flex-direction:row;
-	align-items:center;
-	justify-content:flex-end
-}
-.field-placeholder {
-	color:#a6b6d6;
-	font-size:29rpx
+	flex: 1;
+	min-width: 0;
+	margin-left: 14px;
+	flex-direction: row;
+	align-items: center;
+	justify-content: flex-end;
 }
 .field-value {
-	color:#58729e;
-	font-size:29rpx
+	flex: 1;
+	min-width: 0;
+	font-size: 14px;
+	line-height: 22px;
+	color: $ios-ink;
+	text-align: right;
 }
-.time-card {
-	height:334rpx;
-	padding-left:34rpx;
-	padding-right:34rpx
+.picker-arrow {
+	width: 13px;
+	height: 13px;
+	margin-left: 3px;
+	transform: rotate(-90deg);
 }
 .time-row {
-	height:108rpx
+	box-sizing: border-box;
+	padding: 13px 0 4px;
+	border-bottom: 0.5px solid $ios-separator;
 }
-.time-divider {
-	height:1rpx;
-	margin-left:226rpx;
-	background-color:#e7ecf8
+.date-line {
+	min-height: 44px;
+	flex-direction: row;
+	align-items: center;
+	justify-content: space-between;
 }
-.date-content {
-	flex:1;
-	height:108rpx;
-	flex-direction:row;
-	align-items:center;
-	justify-content:flex-end
+.date-value {
+	font-size: 16px;
+	color: $ios-ink;
 }
-.time-value-wrap {
-	margin-left:auto
+.calendar-icon {
+	width: 18px;
+	height: 18px;
 }
 .duration-row {
-	height:116rpx
+	min-height: 51px;
+	flex-direction: row;
+	align-items: center;
+	justify-content: space-between;
 }
-.duration-content {
-	flex:1;
-	flex-direction:row;
-	align-items:center;
-	justify-content:flex-end;
-	margin-left:73rpx
-}
-.duration-value {
-	color:#7990b7;
-	font-size:29rpx
-}
-.text-field {
-	height:144rpx;
-	flex:1;
-	flex-direction:row;
-	align-items:center;
-	margin-left:48rpx
+.computed-value {
+	font-size: 14px;
+	color: $ios-secondary;
 }
 .line-input {
-	flex:1;
-	height:100%;
-	color:#58729e;
-	font-size:29rpx;
-	text-align:right
+	flex: 1;
+	min-width: 0;
+	height: 54px;
+	margin-left: 14px;
+	font-size: 14px;
+	color: $ios-ink;
+	text-align: right;
 }
 .input-placeholder {
-	color:#a6b6d6
-}
-.course-placeholder {
-	color:#a6b6d6;
-	text-align:right
-}
-.picker-row {
-	width:100%;
-	height:144rpx
-}
-.time-picker-row {
-	height:108rpx
-}
-.school-segment {
-	flex:1;
-	flex-direction:row;
-	justify-content:flex-end
-}
-.school-option {
-	width:180rpx;
-	height:100rpx;
-	margin-left:14rpx;
-	border-radius:52rpx;
-	border-width:1rpx;
-	border-color:#e7ecf7;
-	align-items:center;
-	justify-content:center
-}
-.school-option-active {
-	border-color:#e3eaff;
-	background-color:#e8eeff
-}
-.school-text {
-	color:#9daccc;
-	font-size:29rpx;
-	font-weight:600
-}
-.school-text-active {
-	color:#4d7df4
-}
-.reason-card {
-	height:314rpx;
-	padding-top:32rpx;
-	padding-bottom:30rpx
-}
-.reason-label {
-	height:41rpx
-}
-.reason-box {
-	height:199rpx;
-	margin-top:18rpx;
-	padding:19rpx 18rpx;
-	box-sizing:border-box;
-	border-radius:18rpx;
-	border-width:1rpx;
-	border-color:#e6ebf8;
-	background-color:rgba(247,249,255,.7);
-	position:relative
-}
-.reason-input {
-	width:100%;
-	height:145rpx;
-	color:#58729e;
-	font-size:29rpx;
-	line-height:42rpx
-}
-.word-count {
-	position:absolute;
-	right:20rpx;
-	bottom:16rpx;
-	color:#91a4c8;
-	font-size:23rpx
-}
-.travel-card {
-	margin-bottom:50rpx
+	color: $ios-secondary;
 }
 .destination-card {
-	height:156rpx;
-	padding-top:14rpx;
-	padding-bottom:14rpx;
-	position:relative;
-	z-index:2
+	box-sizing: border-box;
+	padding: 16px 15px 3px;
 }
-.destination-content {
-	height:100%;
-	flex-direction:column;
-	justify-content:center
+.destination-label {
+	font-size: 13px;
+	color: $ios-secondary;
 }
-.destination-value-row {
-	flex-direction:row;
-	align-items:center;
-	margin-top:4rpx
+.region-row {
+	box-sizing: border-box;
+	min-height: 51px;
+	flex-direction: row;
+	align-items: center;
+	border-bottom: 0.5px solid $ios-separator;
 }
-.destination-value {
-	flex:1;
-	font-size:27rpx;
-	line-height:38rpx
+.reason-label {
+	flex-direction: row;
+	align-items: center;
+	margin: 7px 2px 10px;
 }
-.destination-arrow {
-	width:12rpx;
-	height:12rpx;
-	margin-left:16rpx;
-	margin-right:8rpx;
-	border-right-width:3rpx;
-	border-bottom-width:3rpx;
-	border-right-style:solid;
-	border-bottom-style:solid;
-	border-color:#7188b5;
-	transform:rotate(45deg)
+.reason-box {
+	height: 170px;
+	box-sizing: border-box;
+	position: relative;
+	border-radius: 23px;
+	padding: 16px 16px 35px;
+	background-color: $ios-surface;
+}
+.reason-input {
+	width: 100%;
+	flex: 1;
+	min-height: 0;
+	font-size: 16px;
+	line-height: 24px;
+	color: $ios-ink;
+}
+.word-count {
+	position: absolute;
+	right: 16px;
+	bottom: 12px;
+	font-size: 11px;
+	color: $ios-secondary;
+}
+.travel-card {
+	margin-top: 14px;
 }
 .destination-panel {
-	background-color:#ffffff
+	background-color: #ffffff;
 }
 .destination-panel-actions {
-	height:88rpx;
-	padding:0 36rpx;
-	flex-direction:row;
-	align-items:center;
-	justify-content:space-between;
-	border-bottom-width:1rpx;
-	border-bottom-style:solid;
-	border-color:#eef0f5
+	box-sizing: border-box;
+	height: 88rpx;
+	padding: 0 36rpx;
+	flex-direction: row;
+	align-items: center;
+	justify-content: space-between;
+	border-bottom-width: 1rpx;
+	border-bottom-style: solid;
+	border-color: #eef0f5;
 }
 .destination-panel-cancel {
-	color:#333333;
-	font-size:30rpx
+	color: #333333;
+	font-size: 30rpx;
 }
 .destination-panel-confirm {
-	color:#3d8bff;
-	font-size:30rpx
-}
-.destination-picker-view {
-	width:100%;
-	height:432rpx
+	color: #3d8bff;
+	font-size: 30rpx;
 }
 .date-picker-wheel-wrap {
-	position:relative;
-	height:432rpx
+	position: relative;
+	height: 220px;
 }
 .date-picker-wheel {
-	position:absolute;
-	top:0;
-	left:0;
-	z-index:0;
-	width:100%;
-	height:432rpx;
-	background-color:#ffffff
+	position: absolute;
+	top: 0;
+	left: 0;
+	z-index: 0;
+	width: 100%;
+	height: 220px;
+	background-color: #ffffff;
 }
 .date-picker-wheel-active {
-	z-index:1
-}
-.destination-picker-item {
-	height:72rpx;
-	align-items:center;
-	justify-content:center
+	z-index: 1;
 }
 .date-picker-item {
-	height:36px;
-	align-items:center;
-	justify-content:center
+	height: 44px;
+	align-items: center;
+	justify-content: center;
 }
 .destination-picker-item-text {
-	font-size:30rpx;
-	color:#333333
+	font-size: 30rpx;
+	color: #333333;
 }
-.submit-button {
-	height:110rpx;
-	border-radius:58rpx;
-	background-color:#5681f6;
-	background-image:linear-gradient(100deg,#6c95ff 0%,#5681f6 52%,#4b77ed 100%);
-	align-items:center;
-	justify-content:center;
-	box-shadow:0 14rpx 28rpx rgba(57,100,218,.25)
+
+// Dark appearance. Geometry stays shared with the light appearance.
+.dark-submit-page {
+	background-color: $ios-dark-page;
 }
-.submit-text {
-	color:#ffffff;
-	font-size:39rpx;
-	font-weight:700;
-	letter-spacing:3rpx
+.dark-round-control {
+	background-color: $ios-dark-panel;
 }
+.dark-nav-title {
+	color: $ios-dark-ink;
+}
+.dark-form-card {
+	background-color: $ios-dark-surface;
+}
+.dark-field-label {
+	color: $ios-dark-ink;
+}
+.dark-required {
+	color: $ios-dark-red;
+}
+.dark-field-value {
+	color: $ios-dark-ink;
+}
+.dark-time-row {
+	border-bottom: 0.5px solid $ios-dark-separator;
+}
+.dark-date-value {
+	color: $ios-dark-ink;
+}
+.dark-computed-value {
+	color: $ios-dark-secondary;
+}
+.dark-line-input {
+	color: $ios-dark-ink;
+}
+.dark-input-placeholder {
+	color: $ios-dark-secondary;
+}
+.dark-destination-label {
+	color: $ios-dark-secondary;
+}
+.dark-region-row {
+	border-bottom: 0.5px solid $ios-dark-separator;
+}
+.dark-reason-box {
+	background-color: $ios-dark-surface;
+}
+.dark-reason-input {
+	color: $ios-dark-ink;
+}
+.dark-word-count {
+	color: $ios-dark-secondary;
+}
+.dark-destination-panel {
+	background-color: $ios-dark-surface;
+}
+.dark-destination-panel-actions {
+	border-color: $ios-dark-separator;
+}
+.dark-destination-panel-cancel {
+	color: $ios-dark-ink;
+}
+.dark-destination-panel-confirm {
+	color: $ios-dark-blue;
+}
+.dark-date-picker-wheel {
+	background-color: $ios-dark-surface;
+}
+.dark-destination-picker-item-text {
+	color: $ios-dark-ink;
+}
+.contrast-nav-title {
+	color: #ffffff;
+}
+.contrast-field-label {
+	color: #ffffff;
+}
+.contrast-field-value {
+	color: #ffffff;
+}
+.contrast-time-row {
+	border-bottom: 0.5px solid #737580;
+}
+.contrast-date-value {
+	color: #ffffff;
+}
+.contrast-computed-value {
+	color: #d2d3dc;
+}
+.contrast-line-input {
+	color: #ffffff;
+}
+.contrast-input-placeholder {
+	color: #d2d3dc;
+}
+.contrast-destination-label {
+	color: #d2d3dc;
+}
+.contrast-region-row {
+	border-bottom: 0.5px solid #737580;
+}
+.contrast-reason-input {
+	color: #ffffff;
+}
+.contrast-word-count {
+	color: #d2d3dc;
+}
+.contrast-destination-panel-actions {
+	border-color: #737580;
+}
+.contrast-destination-panel-cancel {
+	color: #ffffff;
+}
+.contrast-destination-picker-item-text {
+	color: #ffffff;
+}
+.date-placeholder { color: #8e909d; }
+.dark-date-placeholder { color: #aeaeb8; }
+.contrast-date-placeholder { color: #d2d3dc; }
+.destination-panel-title { font-size: 15px; font-weight: 600; color: #17181b; }
+.dark-destination-panel-title { color: #f2f2f7; }
+.contrast-destination-panel-title { color: #ffffff; }
+.region-summary {
+	flex: 1;
+	margin-right: 12px;
+	font-size: 15px;
+	line-height: 23px;
+	color: $ios-ink;
+}
+.dark-region-summary { color: $ios-dark-ink; }
+.contrast-region-summary { color: #ffffff; }
+.region-headings { flex-direction: row; padding-top: 8px; }
+.region-heading { flex: 1; text-align: center; font-size: 12px; color: $ios-secondary; }
+.dark-region-heading { color: $ios-dark-secondary; }
+.contrast-region-heading { color: #d2d3dc; }
+.region-wheel { width: 100%; height: 220px; }
+.region-wheel-text {
+	width: 100%;
+	padding: 0 6px;
+	font-size: 14px;
+	line-height: 20px;
+	text-align: center;
+	color: $ios-ink;
+}
+.dark-region-wheel-text { color: $ios-dark-ink; }
+.contrast-region-wheel-text { color: #ffffff; }
 </style>

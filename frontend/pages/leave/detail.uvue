@@ -20,7 +20,13 @@
 				<view class="top-back-hit" @click="goHome">
 				</view>
 			</view>
-			<web-view v-if="webSrc != ''" class="compare-web-view" :src="webSrc"></web-view>
+			<!-- 暗色仅作用于原生顶部导航，假条正文保持网页原有配色。 -->
+			<web-view
+				v-if="webSrc != ''"
+				class="compare-web-view"
+				:src="webSrc"
+				:dark-mode="false"
+			></web-view>
 		</view>
 	</PageTransition>
 </template>
@@ -47,18 +53,19 @@ function applyNavTheme(theme: string) {
 
 function syncNavTheme() {
 	// #ifdef APP
-	applyNavTheme(uni.getDeviceInfo().osTheme ?? 'light')
+	const theme = uni.getAppBaseInfo().appTheme
+	applyNavTheme(theme == 'auto' ? uni.getDeviceInfo().osTheme ?? 'light' : theme ?? 'light')
 	// #endif
 }
 
 // #ifdef APP
 syncNavTheme()
-const osThemeChangeId = uni.onOsThemeChange((result: OsThemeChangeResult) => {
-	applyNavTheme(result.osTheme)
+const appThemeChangeId = uni.onAppThemeChange((result: AppThemeChangeResult) => {
+	applyNavTheme(result.appTheme)
 })
 
 onUnload(() => {
-	uni.offOsThemeChange(osThemeChangeId)
+	uni.offAppThemeChange(appThemeChangeId)
 })
 // #endif
 

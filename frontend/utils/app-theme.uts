@@ -1,0 +1,111 @@
+import { reactive } from 'vue'
+import { systemIncreasesContrast } from '@/utils/navigation-preferences.uts'
+
+export type AppearanceMode = 'light' | 'dark' | 'auto'
+
+type AppThemeState = {
+	mode: AppearanceMode
+	isDark: boolean
+	highContrast: boolean
+}
+
+const STORAGE_KEY = 'appearance_mode'
+export const themeState = reactive({ mode: 'auto', isDark: false, highContrast: false } as AppThemeState)
+let initialized = false
+
+export function appearanceLabel(mode: string): string {
+	return mode == 'dark' ? '暗色' : mode == 'light' ? '亮色' : '自动'
+}
+
+export function syncThemePreferences() {
+	themeState.highContrast = uni.getStorageSync('navigation_high_contrast') == true || systemIncreasesContrast()
+}
+
+export function refreshAppTheme() {
+	const appTheme = uni.getAppBaseInfo().appTheme
+	themeState.isDark = appTheme == 'auto'
+		? uni.getDeviceInfo().osTheme == 'dark'
+		: appTheme == 'dark'
+	syncThemePreferences()
+}
+
+export function initializeAppTheme() {
+	if (initialized) return
+	initialized = true
+	const saved = uni.getStorageSync(STORAGE_KEY)
+	const mode = saved == 'light' || saved == 'dark' ? saved as string : 'auto'
+	themeState.mode = mode
+	// 在启动页面创建前先计算颜色，防止暗色启动短暂显示亮色内容。
+	themeState.isDark = mode == 'auto' ? uni.getDeviceInfo().osTheme == 'dark' : mode == 'dark'
+	syncThemePreferences()
+	uni.onAppThemeChange((result: AppThemeChangeResult) => {
+		themeState.isDark = result.appTheme == 'dark'
+	})
+	uni.setAppTheme({ theme: mode, fail: (_) => refreshAppTheme() })
+}
+
+export function setAppearanceMode(mode: AppearanceMode) {
+	uni.setAppTheme({
+		theme: mode,
+		success: (_) => {
+			themeState.mode = mode
+			uni.setStorageSync(STORAGE_KEY, mode)
+			refreshAppTheme()
+		},
+		fail: (_) => {
+			uni.showToast({ title: '外观切换失败，请重试', icon: 'none' })
+		}
+	})
+}
+
+// 每个元素直接绑定自己的主题类，兼容原生 uvue 的样式隔离与缓存页面。
+export function themeClass(classes: string): string {
+	if (!themeState.isDark) return classes
+	let result = classes
+	classes.split(' ').forEach((name: string) => {
+		if (name == '') return
+		result += ' dark-' + name
+		if (themeState.highContrast) result += ' contrast-' + name
+	})
+	return result
+}
+
+export function themeImage(source: string): string {
+	if (!themeState.isDark) return source
+	return darkImages.get(source) ?? source
+}
+
+// 仅替换经过配色的线性 SVG；头像、附件和更新插画保持原图。
+const darkImages = new Map<string, string>()
+
+darkImages.set('/static/ios/arrow-blue.svg', '/static/ios/arrow-blue-dark.svg')
+darkImages.set('/static/ios/arrow-secondary.svg', '/static/ios/arrow-secondary-dark.svg')
+darkImages.set('/static/ios/back-ink.svg', '/static/ios/back-ink-dark.svg')
+darkImages.set('/static/ios/calendar-blue.svg', '/static/ios/calendar-blue-dark.svg')
+darkImages.set('/static/ios/calendar-purple.svg', '/static/ios/calendar-purple-dark.svg')
+darkImages.set('/static/ios/calendar-secondary.svg', '/static/ios/calendar-secondary-dark.svg')
+darkImages.set('/static/ios/check-green.svg', '/static/ios/check-green-dark.svg')
+darkImages.set('/static/ios/clock-secondary.svg', '/static/ios/clock-secondary-dark.svg')
+darkImages.set('/static/ios/close-secondary.svg', '/static/ios/close-secondary-dark.svg')
+darkImages.set('/static/ios/door-blue.svg', '/static/ios/door-blue-dark.svg')
+darkImages.set('/static/ios/edit-blue.svg', '/static/ios/edit-blue-dark.svg')
+darkImages.set('/static/ios/eye-secondary.svg', '/static/ios/eye-secondary-dark.svg')
+darkImages.set('/static/ios/home-blue.svg', '/static/ios/home-blue-dark.svg')
+darkImages.set('/static/ios/home-secondary.svg', '/static/ios/home-secondary-dark.svg')
+darkImages.set('/static/ios/location-secondary.svg', '/static/ios/location-secondary-dark.svg')
+darkImages.set('/static/ios/lock-blue.svg', '/static/ios/lock-blue-dark.svg')
+darkImages.set('/static/ios/plus-blue.svg', '/static/ios/plus-blue-dark.svg')
+darkImages.set('/static/ios/records-blue.svg', '/static/ios/records-blue-dark.svg')
+darkImages.set('/static/ios/records-secondary.svg', '/static/ios/records-secondary-dark.svg')
+darkImages.set('/static/ios/settings-secondary.svg', '/static/ios/settings-secondary-dark.svg')
+darkImages.set('/static/ios/sun-blue.svg', '/static/ios/sun-blue-dark.svg')
+darkImages.set('/static/ios/sun-secondary.svg', '/static/ios/sun-secondary-dark.svg')
+darkImages.set('/static/ios/user-blue.svg', '/static/ios/user-blue-dark.svg')
+darkImages.set('/static/ios/user-secondary.svg', '/static/ios/user-secondary-dark.svg')
+darkImages.set('/static/common/tabbar/home-outline-blue.svg', '/static/common/tabbar/home-outline-blue-dark.svg')
+darkImages.set('/static/common/tabbar/profile-outline-blue.svg', '/static/common/tabbar/profile-outline-blue-dark.svg')
+darkImages.set('/static/common/tabbar/records-filled.svg', '/static/common/tabbar/records-filled-dark.svg')
+darkImages.set('/static/common/tabbar/records-outline-blue.svg', '/static/common/tabbar/records-outline-blue-dark.svg')
+darkImages.set('/static/common/tabbar/records-outline.svg', '/static/common/tabbar/records-outline-dark.svg')
+darkImages.set('/static/common/tabbar/home-outline.svg', '/static/common/tabbar/home-outline-dark.svg')
+darkImages.set('/static/common/tabbar/profile-outline.svg', '/static/common/tabbar/profile-outline-dark.svg')

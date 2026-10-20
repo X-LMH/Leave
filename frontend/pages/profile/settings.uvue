@@ -1,0 +1,165 @@
+<template>
+	<ProfilePageShell
+		title="设置"
+		subtitle=""
+		:scrollable="true"
+	>
+		<view :class="themeClass('settings-group')">
+			<view :class="themeClass('settings-row')" @click="openTheme">
+				<view :class="themeClass('row-icon-box row-icon-blue')">
+					<image :class="themeClass('row-icon')" :src="themeImage('/static/ios/sun-white.svg')" mode="aspectFit"></image>
+				</view>
+				<text :class="themeClass('row-title')">外观模式</text>
+				<text :class="themeClass('row-value')">{{ appearanceLabel(themeState.mode) }}</text>
+				<image :class="themeClass('row-arrow')" :src="themeImage('/static/ios/arrow-secondary.svg')" mode="aspectFit"></image>
+			</view>
+			<view
+				:class="themeClass('settings-row')"
+				@click="openAppearance"
+			>
+				<view :class="themeClass('row-icon-box row-icon-purple')">
+					<image
+						:class="themeClass('row-icon')"
+						:src="themeImage('/static/ios/sun-white.svg')"
+						mode="aspectFit"
+					></image>
+				</view>
+				<text :class="themeClass('row-title')">显示与触感</text>
+				<image
+					:class="themeClass('row-arrow')"
+					:src="themeImage('/static/ios/arrow-secondary.svg')"
+					mode="aspectFit"
+				></image>
+			</view>
+			<view
+				:class="themeClass('settings-row settings-row-last')"
+				@click="openAbout"
+			>
+				<view :class="themeClass('row-icon-box row-icon-grey')">
+					<image
+						:class="themeClass('row-icon')"
+						:src="themeImage('/static/ios/school-white.svg')"
+						mode="aspectFit"
+					></image>
+				</view>
+				<text :class="themeClass('row-title')">关于应用</text>
+				<image
+					:class="themeClass('row-arrow')"
+					:src="themeImage('/static/ios/arrow-secondary.svg')"
+					mode="aspectFit"
+				></image>
+			</view>
+		</view>
+	</ProfilePageShell>
+</template>
+
+<script setup lang="uts">
+import { themeClass as resolveThemeClass, themeImage as resolveThemeImage } from '@/utils/app-theme.uts'
+import ProfilePageShell from '@/components/ProfilePageShell.uvue'
+import { themeState, appearanceLabel as getAppearanceLabel } from '@/utils/app-theme.uts'
+
+function openTheme() {
+	uni.navigateTo({ url: '/pages/profile/theme' })
+}
+
+function openAppearance() {
+	uni.navigateTo({ url: '/pages/profile/appearance' })
+}
+
+function openAbout() {
+	uni.navigateTo({ url: '/pages/profile/about' })
+}
+
+// 原生模板通过本地方法调用主题函数，避免导入函数被编译为 unref 后调用。
+function themeClass(classes: string): string {
+	return resolveThemeClass(classes)
+}
+
+function themeImage(source: string): string {
+	return resolveThemeImage(source)
+}
+function appearanceLabel(mode: string): string {
+	return getAppearanceLabel(mode)
+}
+</script>
+
+<style lang="scss">
+@import '@/styles/ios-theme.scss';
+
+.settings-group {
+	box-sizing: border-box;
+	padding: 0 14px;
+	background-color: $ios-surface;
+	border-radius: $ios-radius;
+}
+.settings-row {
+	box-sizing: border-box;
+	min-height: 58px;
+	flex-direction: row;
+	align-items: center;
+	border-bottom: 0.5px solid $ios-separator;
+}
+.settings-row-last {
+	border-bottom-width: 0px;
+}
+.row-icon-box {
+	box-sizing: border-box;
+	width: 30px;
+	height: 30px;
+	border-radius: 9px;
+	align-items: center;
+	justify-content: center;
+	margin-right: 12px;
+}
+.row-icon-purple {
+	background-color: #9272d8;
+}
+.row-icon-blue {
+	background-color: #2d83ee;
+}
+.row-value {
+	font-size: 14px;
+	color: $ios-secondary;
+}
+.row-icon-grey {
+	background-color: #8e909b;
+}
+.row-icon {
+	width: 21px;
+	height: 21px;
+}
+.row-title {
+	flex: 1;
+	min-width: 0;
+	font-size: 16px;
+	color: $ios-ink;
+}
+.row-arrow {
+	width: 13px;
+	height: 13px;
+	margin-left: 8px;
+}
+
+// Dark appearance. Geometry stays shared with the light appearance.
+.dark-settings-group {
+	background-color: $ios-dark-surface;
+}
+.dark-settings-row {
+	border-bottom: 0.5px solid $ios-dark-separator;
+}
+.dark-row-value {
+	color: $ios-dark-secondary;
+}
+.dark-row-title {
+	color: $ios-dark-ink;
+}
+.contrast-settings-row {
+	border-bottom: 0.5px solid #737580;
+}
+.contrast-row-value {
+	color: #d2d3dc;
+}
+.contrast-row-title {
+	color: #ffffff;
+}
+</style>

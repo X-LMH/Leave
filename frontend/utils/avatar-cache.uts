@@ -44,7 +44,13 @@ export function clearAvatarFileCache(studentID: string) {
 	if (cached != null) deleteAvatarFile(cached.path)
 }
 
+export function getAvatarDisplayURL(url: string): string {
+	const path = url.trim().split('?')[0].split('#')[0]
+	return path.endsWith('/uploads/avatars/default.png') ? '' : url.trim()
+}
+
 export function getCachedAvatarSource(studentID: string, url: string): string {
+	if (getAvatarDisplayURL(url) == '') return ''
 	if (studentID == '' || url == '') return url
 	const cached = readAvatarCache(studentID)
 	if (cached == null || cached.url != url) return url
@@ -58,6 +64,7 @@ export function getCachedAvatarSource(studentID: string, url: string): string {
 }
 
 export function cacheAvatarFile(studentID: string, url: string): Promise<string> {
+	if (getAvatarDisplayURL(url) == '') return Promise.resolve('')
 	if (studentID == '' || url == '') return Promise.resolve(url)
 	const source = getCachedAvatarSource(studentID, url)
 	const cached = readAvatarCache(studentID)

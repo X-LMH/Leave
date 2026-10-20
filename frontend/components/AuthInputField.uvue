@@ -1,49 +1,87 @@
 <template>
-	<view class="auth-field" :class="fieldClass">
-		<view class="auth-label-row">
-			<text class="auth-label">{{ label }}</text>
-			<text v-if="required" class="auth-required">*</text>
-		</view>
-		<view class="auth-input-box">
-			<image class="auth-input-icon" :src="icon" mode="aspectFit"></image>
-			<input class="auth-input" :value="modelValue" @input="updateValue" @confirm="confirm" :disabled="disabled" :password="password && !passwordVisible" :maxlength="maxlength" :placeholder="placeholder" placeholder-class="auth-placeholder" />
-			<view v-if="password" class="auth-eye-button" @click="togglePassword">
-				<view class="auth-eye-outline"></view>
-				<view v-if="!passwordVisible" class="auth-eye-slash"></view>
-			</view>
+	<view
+		:id="'auth-' + fieldId"
+		:class="themeClass(invalid ? 'auth-field field-invalid' : 'auth-field')"
+		:style="
+			fieldClass == ''
+				? ''
+				: 'border-top-width:0.5px;border-top-color:' + (themeState.isDark ? '#383a44' : '#e8e8ed') + ';border-top-style:solid;'
+		"
+	>
+		<text :class="themeClass('auth-label')">{{ label }}</text>
+		<input
+			:class="themeClass('auth-input')"
+			:value="modelValue"
+			@input="updateValue"
+			@confirm="confirm"
+			:disabled="disabled"
+			:focus="focused"
+			:password="password && !passwordVisible"
+			:maxlength="maxlength"
+			:placeholder="placeholder"
+			:cursor-spacing="24"
+			:placeholder-class="themeClass('auth-placeholder')"
+		/>
+		<view
+			v-if="password"
+			:class="themeClass('auth-eye-button')"
+			role="button"
+			:aria-label="passwordVisible ? '隐藏密码' : '显示密码'"
+			@click="togglePassword"
+		>
+			<image
+				:class="themeClass('auth-eye')"
+				:src="themeImage('/static/ios/eye-secondary.svg')"
+				mode="aspectFit"
+			></image>
+			<view
+				v-if="passwordVisible"
+				:class="themeClass('auth-eye-slash')"
+			></view>
 		</view>
 	</view>
 </template>
-
 <script setup lang="uts">
+import { themeClass as resolveThemeClass, themeImage as resolveThemeImage, themeState } from '@/utils/app-theme.uts'
 import { ref, watch } from 'vue'
 
-const props = withDefaults(defineProps<{
-	label: string
-	placeholder: string
-	icon: string
-	password: boolean
-	required: boolean
-	maxlength: number
-	fieldClass: string
-	modelValue: string
-	disabled?: boolean
-}>(), { disabled: false })
+const props = withDefaults(
+	defineProps<{
+		label: string
+		placeholder: string
+		password: boolean
+		maxlength: number
+		fieldClass: string
+		modelValue: string
+		fieldId: string
+		invalid?: boolean
+		focused?: boolean
+		disabled?: boolean
+	}>(),
+	{ disabled: false, invalid: false, focused: false }
+)
 
 const passwordVisible = ref(false)
-const emit = defineEmits(['update:modelValue', 'confirm'])
+const emit = defineEmits(['update:modelValue', 'confirm', 'edit'])
 
-watch((): string => props.modelValue, (value: string) => {
-	if (value == '') passwordVisible.value = false
-})
+watch(
+	(): string => props.modelValue,
+	(value: string) => {
+		if (value == '') passwordVisible.value = false
+	}
+)
 
-watch((): boolean => props.disabled, (disabled: boolean) => {
-	if (disabled) passwordVisible.value = false
-})
+watch(
+	(): boolean => props.disabled,
+	(disabled: boolean) => {
+		if (disabled) passwordVisible.value = false
+	}
+)
 
 function updateValue(event: UniInputEvent) {
 	if (props.disabled) return
 	emit('update:modelValue', event.detail.value)
+	emit('edit')
 }
 
 function togglePassword() {
@@ -54,19 +92,87 @@ function togglePassword() {
 function confirm() {
 	if (!props.disabled) emit('confirm')
 }
-</script>
 
-<style>
-.auth-field { width: 100%; }
-.auth-field-spaced { margin-top: 42rpx; }
-.auth-label-row { flex-direction: row; align-items: center; }
-.auth-label { color: #123b78; font-size: 27rpx; font-weight: 700; line-height: 38rpx; }
-.auth-required { margin-left: 13rpx; color: #f04f48; font-size: 27rpx; font-weight: 700; }
-.auth-input-box { height: 92rpx; margin-top: 22rpx; padding: 0 26rpx; border-width: 1rpx; border-style: solid; border-color: #d9e2f4; border-radius: 19rpx; background-color: rgba(247, 249, 255, 0.72); flex-direction: row; align-items: center; }
-.auth-input-icon { width: 38rpx; height: 38rpx; opacity: 0.72; }
-.auth-input { flex: 1; height: 76rpx; margin-left: 24rpx; color: #405f98; font-size: 25rpx; }
-.auth-placeholder { color: #879bc4; }
-.auth-eye-button { position: relative; width: 42rpx; height: 42rpx; margin-left: 12rpx; justify-content: center; align-items: center; }
-.auth-eye-outline { width: 29rpx; height: 18rpx; border-width: 3rpx; border-style: solid; border-color: #8b9ec7; border-radius: 18rpx; }
-.auth-eye-slash { position: absolute; top: 18rpx; left: 3rpx; width: 37rpx; height: 3rpx; border-radius: 2rpx; background-color: #8b9ec7; transform: rotate(45deg); }
+// 原生模板通过本地方法调用主题函数，避免导入函数被编译为 unref 后调用。
+function themeClass(classes: string): string {
+	return resolveThemeClass(classes)
+}
+
+function themeImage(source: string): string {
+	return resolveThemeImage(source)
+}
+</script>
+<style lang="scss">
+@import '@/styles/ios-theme.scss';
+.auth-field {
+	width: 100%;
+	min-height: 59px;
+	flex-direction: row;
+	align-items: center;
+}
+.field-invalid {
+	box-sizing: border-box;
+	border-bottom: 1px solid $ios-red;
+}
+.auth-label {
+	width: 34px;
+	flex-shrink: 0;
+	font-size: 16px;
+	color: $ios-ink;
+	margin-right: 15px;
+}
+.auth-input {
+	flex: 1;
+	min-width: 0;
+	height: 58px;
+	font-size: 16px;
+	color: $ios-ink;
+}
+.auth-placeholder {
+	color: #767b85;
+}
+.auth-eye-button {
+	width: 44px;
+	height: 44px;
+	margin-right: -10px;
+	align-items: center;
+	justify-content: center;
+}
+.auth-eye {
+	width: 20px;
+	height: 20px;
+}
+.auth-eye-slash {
+	position: absolute;
+	width: 22px;
+	height: 1px;
+	background-color: $ios-secondary;
+	transform: rotate(45deg);
+}
+
+// Dark appearance. Geometry stays shared with the light appearance.
+.dark-field-invalid {
+	border-bottom: 1px solid $ios-dark-red;
+}
+.dark-auth-label {
+	color: $ios-dark-ink;
+}
+.dark-auth-input {
+	color: $ios-dark-ink;
+}
+.dark-auth-placeholder {
+	color: $ios-dark-muted;
+}
+.dark-auth-eye-slash {
+	background-color: $ios-dark-secondary;
+}
+.contrast-auth-label {
+	color: #ffffff;
+}
+.contrast-auth-input {
+	color: #ffffff;
+}
+.contrast-auth-placeholder {
+	color: #d2d3dc;
+}
 </style>

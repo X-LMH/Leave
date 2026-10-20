@@ -1,0 +1,277 @@
+<template>
+	<ProfilePageShell
+		title="外观模式"
+		subtitle=""
+		:scrollable="true"
+	>
+		<view :class="themeClass('preview-row')">
+			<view
+				:class="themeClass('preview-item')"
+				@click="chooseMode('light')"
+				role="button"
+				aria-label="选择亮色模式"
+			>
+				<view :class="themeClass('preview-phone preview-light')">
+					<view :class="themeClass('preview-heading preview-heading-light')"></view>
+					<view :class="themeClass('preview-blue-card')"></view>
+					<view :class="themeClass('preview-white-card')"></view>
+					<view :class="themeClass('preview-white-card preview-short-card')"></view>
+				</view>
+				<text :class="themeClass('preview-label')">亮色</text>
+			</view>
+			<view
+				:class="themeClass('preview-item')"
+				@click="chooseMode('dark')"
+				role="button"
+				aria-label="选择暗色模式"
+			>
+				<view :class="themeClass('preview-phone preview-dark')">
+					<view :class="themeClass('preview-heading preview-heading-dark')"></view>
+					<view :class="themeClass('preview-blue-card preview-blue-card-dark')"></view>
+					<view :class="themeClass('preview-dark-card')"></view>
+					<view :class="themeClass('preview-dark-card preview-short-card')"></view>
+				</view>
+				<text :class="themeClass('preview-label')">暗色</text>
+			</view>
+		</view>
+		<view
+			:class="themeClass('theme-group')"
+			role="radiogroup"
+			aria-label="外观模式"
+		>
+			<view
+				v-for="item in modes"
+				:key="item.value"
+				:id="'mode-' + item.value"
+				:class="themeClass('theme-row')"
+				role="radio"
+				:aria-checked="themeState.mode == item.value"
+				:aria-label="item.label"
+				@click="chooseMode(item.value)"
+			>
+				<view :class="themeClass('theme-copy')">
+					<text :class="themeClass('theme-label')">{{ item.label }}</text>
+					<text
+						v-if="item.value == 'auto'"
+						:class="themeClass('theme-detail')"
+						>随手机系统自动切换亮色与暗色</text
+					>
+				</view>
+				<view
+					:class="
+						themeClass(
+							themeState.mode == item.value
+								? 'choice-circle choice-selected'
+								: 'choice-circle',
+						)
+					"
+				>
+					<image
+						v-if="themeState.mode == item.value"
+						:class="themeClass('choice-check')"
+						:src="themeImage('/static/ios/check-white.svg')"
+						mode="aspectFit"
+					></image>
+				</view>
+			</view>
+		</view>
+		<text :class="themeClass('theme-help')">选择后立即生效，并保存到此设备。</text>
+	</ProfilePageShell>
+</template>
+<script setup lang="uts">
+import { themeClass as resolveThemeClass, themeImage as resolveThemeImage } from '@/utils/app-theme.uts'
+import ProfilePageShell from '@/components/ProfilePageShell.uvue'
+import { themeState, setAppearanceMode, AppearanceMode } from '@/utils/app-theme.uts'
+import { nextTick, watch } from 'vue'
+import { configureNavigationRadio } from '@/utils/navigation-preferences.uts'
+
+type ModeOption = { value: AppearanceMode, label: string }
+const modes: ModeOption[] = [
+	{ value: 'light', label: '亮色' },
+	{ value: 'dark', label: '暗色' },
+	{ value: 'auto', label: '自动' }
+]
+
+function chooseMode(mode: AppearanceMode) {
+	setAppearanceMode(mode)
+}
+
+function updateAccessibility() {
+	modes.forEach((item: ModeOption) => {
+		configureNavigationRadio(
+			uni.getElementById('mode-' + item.value),
+			item.label + (item.value == 'auto' ? '，跟随手机系统' : ''),
+			themeState.mode == item.value,
+			() => chooseMode(item.value)
+		)
+	})
+}
+
+onReady(() => updateAccessibility())
+watch((): string => themeState.mode, () => {
+	nextTick(() => updateAccessibility())
+})
+
+// 原生模板通过本地方法调用主题函数，避免导入函数被编译为 unref 后调用。
+function themeClass(classes: string): string {
+	return resolveThemeClass(classes)
+}
+
+function themeImage(source: string): string {
+	return resolveThemeImage(source)
+}
+</script>
+<style lang="scss">
+@import '@/styles/ios-theme.scss';
+.preview-row {
+	flex-direction: row;
+	justify-content: center;
+	padding: 22px 0 30px;
+}
+.preview-item {
+	align-items: center;
+	margin: 0 20px;
+}
+.preview-phone {
+	width: 104px;
+	height: 170px;
+	border-radius: 18px;
+	padding: 17px 10px 10px;
+	border: 1px solid #8e909b;
+}
+.preview-light {
+	background-color: #f2f2f7;
+}
+.preview-dark {
+	background-color: #111216;
+}
+.preview-heading {
+	width: 34px;
+	height: 7px;
+	border-radius: 3px;
+	margin-bottom: 13px;
+}
+.preview-heading-light {
+	background-color: #17181b;
+}
+.preview-heading-dark {
+	background-color: #f2f2f7;
+}
+.preview-blue-card {
+	height: 37px;
+	border-radius: 8px;
+	background-color: #2354b9;
+	margin-bottom: 9px;
+}
+.preview-blue-card-dark {
+	background-color: #18366a;
+}
+.preview-white-card {
+	height: 32px;
+	border-radius: 8px;
+	background-color: #ffffff;
+	margin-bottom: 9px;
+}
+.preview-dark-card {
+	height: 32px;
+	border-radius: 8px;
+	background-color: #272830;
+	margin-bottom: 9px;
+}
+.preview-short-card {
+	height: 19px;
+}
+.preview-label {
+	margin-top: 12px;
+	font-size: 14px;
+	color: $ios-ink;
+}
+.theme-group {
+	padding: 0 16px;
+	border-radius: 23px;
+	background-color: $ios-surface;
+}
+.theme-row {
+	flex-direction: row;
+	align-items: center;
+	min-height: 64px;
+}
+.theme-copy {
+	flex: 1;
+	min-width: 0;
+	padding: 14px 0;
+}
+.theme-label {
+	color: $ios-ink;
+	font-size: 16px;
+	line-height: 24px;
+}
+.theme-detail {
+	color: $ios-secondary;
+	font-size: 12px;
+	line-height: 19px;
+	margin-top: 3px;
+}
+.choice-circle {
+	width: 23px;
+	height: 23px;
+	border-radius: 12px;
+	border: 1px solid $ios-separator;
+	align-items: center;
+	justify-content: center;
+	margin-left: 12px;
+}
+.choice-selected {
+	background-color: $ios-blue;
+	border-color: $ios-blue;
+}
+.choice-check {
+	width: 16px;
+	height: 16px;
+}
+.theme-help {
+	color: $ios-secondary;
+	font-size: 12px;
+	line-height: 20px;
+	margin: 12px 14px;
+}
+
+// Dark appearance. Geometry stays shared with the light appearance.
+.dark-preview-label {
+	color: $ios-dark-ink;
+}
+.dark-theme-group {
+	background-color: $ios-dark-surface;
+}
+.dark-theme-label {
+	color: $ios-dark-ink;
+}
+.dark-theme-detail {
+	color: $ios-dark-secondary;
+}
+.dark-choice-circle {
+	border: 1px solid $ios-dark-separator;
+}
+.dark-choice-selected {
+	background-color: $ios-dark-button;
+	border-color: $ios-dark-blue;
+}
+.dark-theme-help {
+	color: $ios-dark-secondary;
+}
+.contrast-preview-label {
+	color: #ffffff;
+}
+.contrast-theme-label {
+	color: #ffffff;
+}
+.contrast-theme-detail {
+	color: #d2d3dc;
+}
+.contrast-choice-circle {
+	border: 1px solid #737580;
+}
+.contrast-theme-help {
+	color: #d2d3dc;
+}
+</style>

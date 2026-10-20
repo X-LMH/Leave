@@ -1,0 +1,204 @@
+<template>
+	<ProfilePageShell
+		title="关于应用"
+		subtitle=""
+		:scrollable="true"
+	>
+		<view :class="themeClass('about-hero')">
+			<AppBrand :app-icon="true" subtitle="让每次请假，清楚而简单。" />
+			<text :class="themeClass('app-version')">版本 {{ version }}</text>
+		</view>
+		<view :class="themeClass('about-group')">
+			<view
+				:class="themeClass('about-row')"
+				@click="checkUpdate"
+			>
+				<view :class="themeClass('row-icon-box row-icon-blue')">
+					<image
+						:class="themeClass('row-icon')"
+						:src="themeImage('/static/ios/sun-white.svg')"
+						mode="aspectFit"
+					></image>
+				</view>
+				<text :class="themeClass('row-title')">版本更新</text>
+				<text :class="themeClass('row-detail')">{{ checking ? '检查中…' : '查看' }}</text>
+				<image
+					:class="themeClass('row-arrow')"
+					:src="themeImage('/static/ios/arrow-secondary.svg')"
+					mode="aspectFit"
+				></image>
+			</view>
+			<view
+				:class="themeClass('about-row')"
+				@click="openFeedback"
+			>
+				<view :class="themeClass('row-icon-box row-icon-orange')">
+					<image
+						:class="themeClass('row-icon')"
+						:src="themeImage('/static/ios/bubble-white.svg')"
+						mode="aspectFit"
+					></image>
+				</view>
+				<text :class="themeClass('row-title')">反馈与建议</text>
+				<image
+					:class="themeClass('row-arrow')"
+					:src="themeImage('/static/ios/arrow-secondary.svg')"
+					mode="aspectFit"
+				></image>
+			</view>
+		</view>
+		<text
+			v-if="updateMessage != ''"
+			:class="themeClass(checkFailed ? 'form-error' : 'field-help')"
+		>
+			{{ updateMessage }}
+		</text>
+	</ProfilePageShell>
+</template>
+<script setup lang="uts">
+import { themeClass as resolveThemeClass, themeImage as resolveThemeImage } from '@/utils/app-theme.uts'
+import { ref } from 'vue'
+import ProfilePageShell from '@/components/ProfilePageShell.uvue'
+import AppBrand from '@/components/AppBrand.uvue'
+import { getAppVersion, getAppVersionCode } from '@/utils/device.uts'
+import { getCurrentAppVersion, saveUpdateInfo } from '@/utils/api.uts'
+const version = getAppVersion()
+const checking = ref(false)
+const checkFailed = ref(false)
+const updateMessage = ref('')
+let pageActive = true
+function openFeedback() {
+	uni.navigateTo({ url: '/pages/profile/feedback' })
+}
+async function checkUpdate() {
+	if (checking.value) return
+	checking.value = true
+	checkFailed.value = false
+	updateMessage.value = ''
+	try {
+		const data = await getCurrentAppVersion()
+		if (!pageActive) return
+		if (getAppVersionCode() < data.latest_version_code) {
+			saveUpdateInfo(data)
+			// 沿用强制更新页面，进入后不能跳过更新。
+			uni.reLaunch({
+				url: '/pages/update/index',
+				fail: () => {
+					checkFailed.value = true
+					updateMessage.value = '更新页面打开失败，请重试'
+				}
+			})
+		} else updateMessage.value = '当前已是最新版本'
+	} catch (error) {
+		if (!pageActive) return
+		checkFailed.value = true
+		const message = (error as Error).message
+		updateMessage.value =
+			message == null || message == '' ? '检查失败，请轻点版本更新重试' : message
+	} finally {
+		checking.value = false
+	}
+}
+onUnload(() => {
+	pageActive = false
+})
+
+// 原生模板通过本地方法调用主题函数，避免导入函数被编译为 unref 后调用。
+function themeClass(classes: string): string {
+	return resolveThemeClass(classes)
+}
+
+function themeImage(source: string): string {
+	return resolveThemeImage(source)
+}
+</script>
+<style lang="scss">
+@import '@/styles/ios-controls.scss';
+.about-hero {
+	box-sizing: border-box;
+	padding: 22px 0 37px;
+	align-items: center;
+}
+.app-version {
+	font-size: 12px;
+	color: $ios-secondary;
+	margin-top: 16px;
+}
+.about-group {
+	box-sizing: border-box;
+	padding: 0 16px;
+	background-color: $ios-surface;
+	border-radius: 23px;
+}
+.about-row {
+	box-sizing: border-box;
+	min-height: 61px;
+	flex-direction: row;
+	align-items: center;
+	border-bottom: 0.5px solid $ios-separator;
+}
+.row-icon-box {
+	box-sizing: border-box;
+	width: 30px;
+	height: 30px;
+	border-radius: 9px;
+	align-items: center;
+	justify-content: center;
+	margin-right: 12px;
+}
+.row-icon-blue {
+	background-color: #2d83ee;
+}
+.row-icon-orange {
+	background-color: #e89936;
+}
+.row-icon {
+	width: 21px;
+	height: 21px;
+}
+.row-title {
+	flex: 1;
+	min-width: 0;
+	color: $ios-ink;
+	font-size: 16px;
+}
+.row-detail {
+	font-size: 12px;
+	color: $ios-secondary;
+	margin-left: 8px;
+}
+.row-arrow {
+	width: 13px;
+	height: 13px;
+	margin-left: 8px;
+}
+
+// Dark appearance. Geometry stays shared with the light appearance.
+.dark-app-version {
+	color: $ios-dark-secondary;
+}
+.dark-about-group {
+	background-color: $ios-dark-surface;
+}
+.dark-about-row {
+	border-bottom: 0.5px solid $ios-dark-separator;
+}
+.dark-row-title {
+	color: $ios-dark-ink;
+}
+.dark-row-detail {
+	color: $ios-dark-secondary;
+}
+.contrast-app-version {
+	color: #d2d3dc;
+}
+.contrast-about-row {
+	border-bottom: 0.5px solid #737580;
+}
+.contrast-row-title {
+	color: #ffffff;
+}
+.contrast-row-detail {
+	color: #d2d3dc;
+}
+</style>

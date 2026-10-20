@@ -1,23 +1,109 @@
 <template>
-	<view :class="navigationClass" :style="navigationStyle"
-		@touchstart="handleTouchStart" @touchmove="handleTouchMove"
-		@touchend="handleTouchEnd" @touchcancel="handleTouchCancel">
-		<view class="nav-glass-sheen" :style="sheenStyle"></view>
-		<view :class="selectionClass" :style="selectionStyle"></view>
-		<view class="nav-items" role="tablist">
-			<view id="navigation-home" class="nav-item" role="tab" aria-label="首页" :aria-selected="active == 'home'" @click="selectTab(0)">
-				<image :class="iconClass(0)" :src="selectedIndex == 0 ? '/static/common/tabbar/home-filled.svg' : '/static/common/tabbar/home-outline.svg'" mode="aspectFit"></image>
-				<text :class="labelClass(0)">首页</text>
+	<view
+		:class="themeClass('navigation-dock')"
+		:style="dockStyle"
+	>
+		<view
+			:class="themeClass(navigationClass)"
+			:style="navigationStyle"
+			@touchstart="handleTouchStart"
+			@touchmove="handleTouchMove"
+			@touchend="handleTouchEnd"
+			@touchcancel="handleTouchCancel"
+		>
+			<view
+				:class="themeClass('nav-glass-sheen')"
+				:style="sheenStyle"
+			></view>
+			<view
+				:class="themeClass(selectionClass)"
+				:style="selectionStyle"
+			></view>
+			<view
+				:class="themeClass('nav-items')"
+				role="tablist"
+			>
+				<view
+					id="navigation-home"
+					:class="themeClass('nav-item')"
+					role="tab"
+					aria-label="总览"
+					:aria-selected="active == 'home'"
+					@touchstart.stop="handleTouchStart"
+					@touchmove.stop="handleTouchMove"
+					@touchend.stop="handleTouchEnd"
+					@touchcancel.stop="handleTouchCancel"
+					@click="selectTab(0)"
+				>
+					<image
+						:class="themeClass(iconClass(0))"
+						:src="themeImage(selectedIndex == 0
+								? '/static/common/tabbar/home-outline-blue.svg'
+								: '/static/common/tabbar/home-outline.svg')"
+						mode="aspectFit"
+					></image>
+					<text :class="themeClass(labelClass(0))">总览</text>
+				</view>
+				<view
+					id="navigation-records"
+					:class="themeClass('nav-item')"
+					role="tab"
+					aria-label="记录"
+					:aria-selected="active == 'records'"
+					@touchstart.stop="handleTouchStart"
+					@touchmove.stop="handleTouchMove"
+					@touchend.stop="handleTouchEnd"
+					@touchcancel.stop="handleTouchCancel"
+					@click="selectTab(1)"
+				>
+					<image
+						:class="themeClass(iconClass(1))"
+						:src="themeImage(selectedIndex == 1
+								? '/static/common/tabbar/records-outline-blue.svg'
+								: '/static/common/tabbar/records-outline.svg')"
+						mode="aspectFit"
+					></image>
+					<text :class="themeClass(labelClass(1))">记录</text>
+				</view>
+				<view
+					id="navigation-profile"
+					:class="themeClass('nav-item')"
+					role="tab"
+					aria-label="我的"
+					:aria-selected="active == 'profile'"
+					@touchstart.stop="handleTouchStart"
+					@touchmove.stop="handleTouchMove"
+					@touchend.stop="handleTouchEnd"
+					@touchcancel.stop="handleTouchCancel"
+					@click="selectTab(2)"
+				>
+					<image
+						:class="themeClass(iconClass(2))"
+						:src="themeImage(selectedIndex == 2
+								? '/static/common/tabbar/profile-outline-blue.svg'
+								: '/static/common/tabbar/profile-outline.svg')"
+						mode="aspectFit"
+					></image>
+					<text :class="themeClass(labelClass(2))">我的</text>
+				</view>
 			</view>
-			<view id="navigation-profile" class="nav-item" role="tab" aria-label="我的" :aria-selected="active == 'profile'" @click="selectTab(1)">
-				<image :class="iconClass(1)" :src="selectedIndex == 1 ? '/static/common/tabbar/profile-filled.svg' : '/static/common/tabbar/profile-outline.svg'" mode="aspectFit"></image>
-				<text :class="labelClass(1)">我的</text>
-			</view>
+		</view>
+		<view
+			:class="themeClass('nav-create')"
+			role="button"
+			aria-label="申请请假"
+			@click="emit('create')"
+		>
+			<image
+				:class="themeClass('nav-create-symbol')"
+				:src="themeImage('/static/ios/plus-white.svg')"
+				mode="aspectFit"
+			></image>
 		</view>
 	</view>
 </template>
-
 <script setup lang="uts">
+import { themeClass as resolveThemeClass, themeImage as resolveThemeImage } from '@/utils/app-theme.uts'
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import {
 	configureNavigationAccessibility,
@@ -28,10 +114,21 @@ import {
 } from '@/utils/navigation-preferences.uts'
 
 const props = defineProps<{ active: string }>()
-const emit = defineEmits(['navigate'])
+const emit = defineEmits(['navigate', 'create'])
 const windowWidth = ref(uni.getWindowInfo().windowWidth)
-const navigationWidth = computed((): number => Math.min(264, windowWidth.value - 48))
-const selectedIndex = ref(props.active == 'profile' ? 1 : 0)
+const navigationWidth = computed((): number => Math.min(340, windowWidth.value - 110))
+const dockStyle = computed(
+	(): string =>
+		'width:' +
+		(navigationWidth.value + 68) +
+		'px;left:' +
+		(windowWidth.value - navigationWidth.value - 68) / 2 +
+		'px;'
+)
+function activeIndex(): number {
+	return props.active == 'profile' ? 2 : props.active == 'records' ? 1 : 0
+}
+const selectedIndex = ref(activeIndex())
 const selectionX = ref(0)
 const dragging = ref(false)
 const pressed = ref(false)
@@ -51,7 +148,7 @@ let settleTimer = 0
 
 // Android 页面未开启底部穿透，系统导航区域已在页面之外。
 const navigationStyle = computed((): string => {
-	return 'width:' + navigationWidth.value + 'px;left:' + ((windowWidth.value - navigationWidth.value) / 2) + 'px;'
+	return 'width:' + navigationWidth.value + 'px;'
 })
 const navigationClass = computed((): string => {
 	let value = 'bottom-navigation'
@@ -59,7 +156,7 @@ const navigationClass = computed((): string => {
 	if (highContrast.value) value += ' bottom-navigation-contrast'
 	return value
 })
-const selectionWidth = computed((): number => (navigationWidth.value - 12) / 2)
+const selectionWidth = computed((): number => (navigationWidth.value - 12) / 3)
 const selectionClass = computed((): string => {
 	let value = 'nav-selection'
 	if (highContrast.value) value += ' nav-selection-contrast'
@@ -73,22 +170,40 @@ const selectionStyle = computed((): string => {
 		scaleX = dragging.value ? 1.075 : 1.035
 		scaleY = dragging.value ? 0.96 : 1.06
 	}
-	return 'width:' + selectionWidth.value + 'px;transform:translateX(' + selectionX.value + 'px) scaleX(' + scaleX + ') scaleY(' + scaleY + ');'
+	return (
+		'width:' +
+		selectionWidth.value +
+		'px;transform:translateX(' +
+		selectionX.value +
+		'px) scaleX(' +
+		scaleX +
+		') scaleY(' +
+		scaleY +
+		');'
+	)
 })
 const sheenStyle = computed((): string => {
-	return 'opacity:' + (reduceTransparency.value || highContrast.value ? '0' : (pressed.value ? '0.9' : '0.5')) + ';'
+	return (
+		'opacity:' +
+		(reduceTransparency.value || highContrast.value ? '0' : pressed.value ? '0.9' : '0.5') +
+		';'
+	)
 })
 
 function iconClass(index: number): string {
 	let value = 'nav-icon'
-	if (selectedIndex.value == index && !reduceMotion.value) value += pressed.value ? ' nav-icon-pressed' : ' nav-icon-active'
+	if (selectedIndex.value == index && !reduceMotion.value)
+		value += pressed.value ? ' nav-icon-pressed' : ' nav-icon-active'
 	if (reduceMotion.value) value += ' nav-icon-instant'
 	return value
 }
 
 function labelClass(index: number): string {
-	if (selectedIndex.value != index) return highContrast.value ? 'nav-label nav-label-contrast' : 'nav-label'
-	return highContrast.value ? 'nav-label nav-label-active nav-label-active-contrast' : 'nav-label nav-label-active'
+	if (selectedIndex.value != index)
+		return highContrast.value ? 'nav-label nav-label-contrast' : 'nav-label'
+	return highContrast.value
+		? 'nav-label nav-label-active nav-label-active-contrast'
+		: 'nav-label nav-label-active'
 }
 
 function restore() {
@@ -97,7 +212,7 @@ function restore() {
 	dragging.value = false
 	pressed.value = false
 	locked = false
-	selectedIndex.value = props.active == 'profile' ? 1 : 0
+	selectedIndex.value = activeIndex()
 	selectionX.value = selectedIndex.value * selectionWidth.value
 }
 
@@ -112,24 +227,50 @@ function settle(index: number) {
 	dragging.value = false
 	pressed.value = false
 	locked = true
-	settleTimer = setTimeout(() => {
-		locked = false
-	}, reduceMotion.value ? 0 : 320)
-	if (index != (props.active == 'profile' ? 1 : 0)) {
+	settleTimer = setTimeout(
+		() => {
+			locked = false
+		},
+		reduceMotion.value ? 0 : 320
+	)
+	if (index != activeIndex()) {
 		// 常驻主页面立即确认切换，胶囊在同一视图中继续完成回弹。
-		emit('navigate', index == 0 ? '/pages/home/index' : '/pages/profile/index')
+		emit(
+			'navigate',
+			index == 0
+				? '/pages/home/index'
+				: index == 1
+					? '/pages/leave/records'
+					: '/pages/profile/index'
+		)
 	}
 }
 
 function selectTab(index: number) {
 	if (locked || tracking || Date.now() < suppressClickUntil) return
-	if (index == (props.active == 'profile' ? 1 : 0)) return
+	if (index == activeIndex()) return
 	settle(index)
 }
 
 function updateAccessibility() {
-	configureNavigationAccessibility(uni.getElementById('navigation-home'), '首页', props.active == 'home', () => selectTab(0))
-	configureNavigationAccessibility(uni.getElementById('navigation-profile'), '我的', props.active == 'profile', () => selectTab(1))
+	configureNavigationAccessibility(
+		uni.getElementById('navigation-home'),
+		'总览',
+		props.active == 'home',
+		() => selectTab(0)
+	)
+	configureNavigationAccessibility(
+		uni.getElementById('navigation-records'),
+		'记录',
+		props.active == 'records',
+		() => selectTab(1)
+	)
+	configureNavigationAccessibility(
+		uni.getElementById('navigation-profile'),
+		'我的',
+		props.active == 'profile',
+		() => selectTab(2)
+	)
 }
 
 function refreshPreferences() {
@@ -182,8 +323,8 @@ function handleTouchMove(event: UniTouchEvent) {
 	moved = true
 	dragging.value = true
 	event.preventDefault()
-	selectionX.value = Math.max(0, Math.min(selectionWidth.value, startSelectionX + dx))
-	selectedIndex.value = selectionX.value >= selectionWidth.value / 2 ? 1 : 0
+	selectionX.value = Math.max(0, Math.min(selectionWidth.value * 2, startSelectionX + dx))
+	selectedIndex.value = Math.round(selectionX.value / selectionWidth.value)
 }
 
 function handleTouchEnd(event: UniTouchEvent) {
@@ -201,20 +342,31 @@ function handleTouchEnd(event: UniTouchEvent) {
 	pressed.value = false
 	if (!moved) return
 	suppressClickUntil = Date.now() + 350
-	settle(selectionX.value >= selectionWidth.value / 2 ? 1 : 0)
+	settle(Math.round(selectionX.value / selectionWidth.value))
 }
 
 refreshPreferences()
-watch((): string => props.active, (active: string, previous: string) => {
-	selectedIndex.value = active == 'profile' ? 1 : 0
-	selectionX.value = selectedIndex.value * selectionWidth.value
-	nextTick(() => {
-		updateAccessibility()
-		if (active != previous && haptics.value) {
-			navigationSelectionFeedback(uni.getElementById(active == 'profile' ? 'navigation-profile' : 'navigation-home'))
-		}
-	})
-})
+watch(
+	(): string => props.active,
+	(active: string, previous: string) => {
+		selectedIndex.value = activeIndex()
+		selectionX.value = selectedIndex.value * selectionWidth.value
+		nextTick(() => {
+			updateAccessibility()
+			if (active != previous && haptics.value) {
+				navigationSelectionFeedback(
+					uni.getElementById(
+						active == 'profile'
+							? 'navigation-profile'
+							: active == 'records'
+								? 'navigation-records'
+								: 'navigation-home'
+					)
+				)
+			}
+		})
+	}
+)
 onMounted(() => updateAccessibility())
 onPageShow(() => refreshPreferences())
 onPageHide(() => {
@@ -223,13 +375,46 @@ onPageHide(() => {
 })
 onUnmounted(() => clearTimeout(settleTimer))
 defineExpose({ restore, updateLayout })
+
+// 原生模板通过本地方法调用主题函数，避免导入函数被编译为 unref 后调用。
+function themeClass(classes: string): string {
+	return resolveThemeClass(classes)
+}
+
+function themeImage(source: string): string {
+	return resolveThemeImage(source)
+}
 </script>
 
-<style>
-.bottom-navigation {
+<style lang="scss">
+@import '@/styles/ios-theme.scss';
+
+.navigation-dock {
 	position: fixed;
 	bottom: 12px;
 	z-index: 6;
+	height: 64px;
+	flex-direction: row;
+	align-items: center;
+}
+.nav-create {
+	box-sizing: border-box;
+	width: 56px;
+	height: 56px;
+	margin-left: 12px;
+	border-radius: 28px;
+	background-color: #0066dc;
+	align-items: center;
+	justify-content: center;
+	box-shadow: 0 4px 12px rgba(0, 102, 220, 0.22);
+}
+.nav-create-symbol {
+	width: 29px;
+	height: 29px;
+}
+.bottom-navigation {
+	box-sizing: border-box;
+	position: relative;
 	height: 64px;
 	border-radius: 32px;
 	background-color: rgba(250, 251, 253, 0.83);
@@ -240,10 +425,12 @@ defineExpose({ restore, updateLayout })
 	background-color: #f7f8fa;
 }
 .bottom-navigation-contrast {
+	box-sizing: border-box;
 	background-color: #ffffff;
 	border-color: #727780;
 }
 .nav-glass-sheen {
+	box-sizing: border-box;
 	position: absolute;
 	left: 12px;
 	right: 12px;
@@ -255,6 +442,7 @@ defineExpose({ restore, updateLayout })
 	transition-duration: 120ms;
 }
 .nav-selection {
+	box-sizing: border-box;
 	position: absolute;
 	left: 5px;
 	top: 5px;
@@ -268,6 +456,7 @@ defineExpose({ restore, updateLayout })
 	transition-timing-function: cubic-bezier(0.2, 1.35, 0.35, 1);
 }
 .nav-selection-contrast {
+	box-sizing: border-box;
 	background-color: #e1ebf9;
 	border-color: #0055b3;
 }
@@ -289,8 +478,8 @@ defineExpose({ restore, updateLayout })
 	justify-content: center;
 }
 .nav-icon {
-	width: 25px;
-	height: 25px;
+	width: 21px;
+	height: 21px;
 	transition-property: transform;
 	transition-duration: 320ms;
 	transition-timing-function: cubic-bezier(0.2, 1.35, 0.35, 1);
@@ -320,5 +509,53 @@ defineExpose({ restore, updateLayout })
 }
 .nav-label-active-contrast {
 	color: #004fa8;
+}
+
+// Dark appearance. Geometry stays shared with the light appearance.
+.dark-nav-create {
+	background-color: $ios-dark-button;
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+}
+.dark-bottom-navigation {
+	background-color: rgba(28, 29, 35, 0.94);
+	border-color: $ios-dark-separator;
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+}
+.dark-bottom-navigation-solid {
+	background-color: $ios-dark-panel;
+}
+.dark-bottom-navigation-contrast {
+	background-color: $ios-dark-surface;
+	border-color: #8e909d;
+}
+.dark-nav-glass-sheen {
+	background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0));
+}
+.dark-nav-selection {
+	background-color: #303c50;
+	border-color: #485265;
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+}
+.dark-nav-selection-contrast {
+	background-color: #263c5b;
+	border-color: #91c0ff;
+}
+.dark-nav-label {
+	color: $ios-dark-secondary;
+}
+.dark-nav-label-active {
+	color: $ios-dark-blue;
+}
+.dark-nav-label-contrast {
+	color: $ios-dark-ink;
+}
+.dark-nav-label-active-contrast {
+	color: #91c0ff;
+}
+.contrast-nav-label {
+	color: #d2d3dc;
+}
+.contrast-nav-label-contrast {
+	color: #ffffff;
 }
 </style>

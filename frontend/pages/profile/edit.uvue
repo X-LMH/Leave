@@ -1,49 +1,390 @@
 <template>
-	<ProfilePageShell :title="firstProfile ? '完善个人信息' : '修改个人信息'" :subtitle="firstProfile ? '请先完善您的个人信息' : '修改您的个人信息'" :scrollable="true" :logout-on-back="firstProfile">
-		<view class="edit-content">
-		<view v-if="firstProfile" class="avatar-card">
+	<ProfilePageShell
+		:title="firstProfile ? '完善资料' : '编辑资料'"
+		:subtitle="firstProfile ? '完善必填信息，即可开始请假。' : '更新个人信息，保存后返回我的。'"
+		:scrollable="true"
+		:show-close="true"
+		:scroll-target="scrollTarget"
+		:intercept-back="true"
+		@back="requestLeave"
+	>
+		<view :class="themeClass('edit-content')">
 			<AvatarPicker
 				:avatar-url="avatarURL"
 				:file-path="selectedPath"
-				:disabled="submitting || avatarRetryPending"
+				:initial="name"
+				:disabled="pageLoading || submitting || avatarRetryPending"
 				:compact="true"
 				@select="selectAvatar"
 				@busy="setChoosing"
 				@preview-error="handleAvatarError"
 			/>
-		</view>
-		<view class="form-card">
-			<view v-if="!avatarRetryPending">
-				<view class="form-row"><view class="required-label"><text class="required-field-label">学号</text><text class="required">*</text></view><view class="field-box field-disabled"><text class="disabled-text">{{ studentID }}</text></view></view>
-				<view class="form-row"><view class="required-label"><text class="required-field-label">班级</text><text class="required">*</text></view><picker class="field-picker" :range="classLabels" :value="pickerClassIndex" @change="classChange"><view class="field-box picker-box"><text :class="className == '' ? 'picker-placeholder' : 'picker-value'">{{ className == '' ? '请选择班级' : className }}</text><text class="picker-arrow">⌄</text></view></picker></view>
-				<view class="form-row"><view class="required-label"><text class="required-field-label">姓名</text><text class="required">*</text></view><view class="field-box"><input class="field-input" v-model="name" maxlength="20" /></view></view>
-				<view class="form-row"><view class="required-label"><text class="required-field-label">手机号</text><text class="required">*</text></view><view class="field-box"><input class="field-input" v-model="phone" type="number" maxlength="11" /></view></view>
-				<view class="form-row"><view class="required-label"><text class="required-field-label">性别</text><text class="required">*</text></view><view class="gender-group"><view :class="gender == '男' ? 'gender-item gender-active' : 'gender-item'" @click="setGender('男')"><text :class="gender == '男' ? 'gender-text gender-text-active' : 'gender-text'">男</text></view><view :class="gender == '女' ? 'gender-item gender-active' : 'gender-item'" @click="setGender('女')"><text :class="gender == '女' ? 'gender-text gender-text-active' : 'gender-text'">女</text></view></view></view>
-				<view class="form-row"><view class="required-label"><text class="required-field-label">家长姓名</text><text class="required">*</text></view><view class="field-box"><input class="field-input" v-model="parentName" maxlength="20" /></view></view>
-				<view class="form-row"><view class="required-label"><text class="required-field-label">家长电话</text><text class="required">*</text></view><view class="field-box"><input class="field-input" v-model="parentPhone" type="number" maxlength="11" /></view></view>
-				<view class="form-row"><text class="field-label">公寓名称</text><picker class="field-picker" :range="apartmentLabels" :value="apartmentIndex" @change="apartmentChange"><view class="field-box picker-box"><text :class="apartment == '' ? 'picker-placeholder' : 'picker-value'">{{ apartment == '' ? '请选择公寓名称' : apartment }}</text><text class="picker-arrow">⌄</text></view></picker></view>
-				<view class="form-row"><text class="field-label">宿舍号</text><view class="field-box"><input class="field-input" v-model="dormNumber" maxlength="20" placeholder="请输入宿舍号" placeholder-class="input-placeholder" /></view></view>
-				<view class="form-row"><view class="required-label"><text class="required-field-label">导员姓名</text><text class="required">*</text></view><view class="field-box"><input class="field-input" v-model="counselor" maxlength="20" /></view></view>
+			<text :class="themeClass('field-help')">学号 {{ studentID }} 不可修改。</text>
+			<view
+				v-if="pageLoading"
+				:class="themeClass('load-panel')"
+			>
+				<text :class="themeClass('load-message')">正在加载资料…</text>
 			</view>
-		</view>
-		<view v-if="avatarRetryPending" class="avatar-retry-card">
-			<text class="avatar-retry-message">资料已保存，头像上传失败</text>
-			<text class="avatar-retry-detail">{{ avatarError }}</text>
-			<view class="avatar-retry-action" @click="retryAvatar"><text class="avatar-retry-text">{{ submitting ? '正在上传…' : '重试上传' }}</text></view>
-			<view class="avatar-retry-action" @click="continueWithoutAvatar"><text class="avatar-retry-text">暂不上传，继续</text></view>
-		</view>
-		<view v-else class="primary-button" @click="save"><text class="primary-button-text">{{ submitting ? '正在保存…' : firstProfile ? '完成并保存' : '保存修改' }}</text></view>
+			<view
+				v-else-if="loadError != ''"
+				:class="themeClass('load-panel')"
+				@click="loadPage"
+			>
+				<text :class="themeClass('load-message')">{{ loadError }}</text>
+				<text :class="themeClass('retry-text')">轻点重新加载</text>
+			</view>
+			<view
+				v-else-if="!avatarRetryPending"
+				:class="themeClass('form-card')"
+			>
+				<view
+					id="edit-class"
+					:class="themeClass(errorField == 'class' ? 'form-row form-row-invalid' : 'form-row')"
+				>
+					<view :class="themeClass('field-label-row')">
+						<text :class="themeClass('field-label')">班级</text>
+						<text :class="themeClass('required')">*</text>
+					</view>
+					<view :class="themeClass('field-box')">
+						<ThemedPicker title="班级"
+							:class="themeClass('field-picker')"
+							:disabled="submitting"
+							:range="classLabels"
+							:value="pickerClassIndex"
+							@change="classChange"
+						>
+							<view :class="themeClass('picker-box')">
+								<text :class="themeClass(className == '' ? 'picker-placeholder' : 'picker-value')">
+									{{ className == '' ? '请选择' : className }}
+								</text>
+								<image
+									:class="themeClass('picker-arrow')"
+									:src="themeImage('/static/ios/back-ink.svg')"
+									mode="aspectFit"
+								></image>
+							</view>
+						</ThemedPicker>
+						<text
+							v-if="errorField == 'class'"
+							:class="themeClass('field-error')"
+						>
+							{{ formError }}
+						</text>
+					</view>
+				</view>
+				<view
+					id="edit-name"
+					:class="themeClass(errorField == 'name' ? 'form-row form-row-invalid' : 'form-row')"
+				>
+					<view :class="themeClass('field-label-row')">
+						<text :class="themeClass('field-label')">姓名</text>
+						<text :class="themeClass('required')">*</text>
+					</view>
+					<view :class="themeClass('field-box')">
+						<input
+							:class="themeClass('field-input')"
+							v-model="name"
+							:disabled="submitting"
+							type="text"
+							maxlength="20"
+							:focus="focusedField == 'name'"
+							:cursor-spacing="24"
+							@input="clearError"
+						/>
+						<text
+							v-if="errorField == 'name'"
+							:class="themeClass('field-error')"
+						>
+							{{ formError }}
+						</text>
+					</view>
+				</view>
+				<view
+					id="edit-phone"
+					:class="themeClass(errorField == 'phone' ? 'form-row form-row-invalid' : 'form-row')"
+				>
+					<view :class="themeClass('field-label-row')">
+						<text :class="themeClass('field-label')">手机号</text>
+						<text :class="themeClass('required')">*</text>
+					</view>
+					<view :class="themeClass('field-box')">
+						<input
+							:class="themeClass('field-input')"
+							v-model="phone"
+							:disabled="submitting"
+							type="number"
+							maxlength="11"
+							:focus="focusedField == 'phone'"
+							:cursor-spacing="24"
+							@input="clearError"
+						/>
+						<text
+							v-if="errorField == 'phone'"
+							:class="themeClass('field-error')"
+						>
+							{{ formError }}
+						</text>
+					</view>
+				</view>
+				<view
+					id="edit-gender"
+					:class="themeClass(errorField == 'gender' ? 'form-row form-row-invalid' : 'form-row')"
+				>
+					<view :class="themeClass('field-label-row')">
+						<text :class="themeClass('field-label')">性别</text>
+						<text :class="themeClass('required')">*</text>
+					</view>
+					<view :class="themeClass('field-box')">
+						<ThemedPicker title="性别"
+							:class="themeClass('field-picker')"
+							:disabled="submitting"
+							:range="genders"
+							:value="gender == '女' ? 1 : 0"
+							@change="genderChange"
+						>
+							<view :class="themeClass('picker-box')">
+								<text :class="themeClass(gender == '' ? 'picker-placeholder' : 'picker-value')">
+									{{ gender == '' ? '请选择' : gender }}
+								</text>
+								<image
+									:class="themeClass('picker-arrow')"
+									:src="themeImage('/static/ios/back-ink.svg')"
+									mode="aspectFit"
+								></image>
+							</view>
+						</ThemedPicker>
+						<text
+							v-if="errorField == 'gender'"
+							:class="themeClass('field-error')"
+						>
+							{{ formError }}
+						</text>
+					</view>
+				</view>
+				<view
+					id="edit-parentName"
+					:class="themeClass(errorField == 'parentName' ? 'form-row form-row-invalid' : 'form-row')"
+				>
+					<view :class="themeClass('field-label-row')">
+						<text :class="themeClass('field-label')">家长姓名</text>
+						<text :class="themeClass('required')">*</text>
+					</view>
+					<view :class="themeClass('field-box')">
+						<input
+							:class="themeClass('field-input')"
+							v-model="parentName"
+							:disabled="submitting"
+							type="text"
+							maxlength="20"
+							:focus="focusedField == 'parentName'"
+							:cursor-spacing="24"
+							@input="clearError"
+						/>
+						<text
+							v-if="errorField == 'parentName'"
+							:class="themeClass('field-error')"
+						>
+							{{ formError }}
+						</text>
+					</view>
+				</view>
+				<view
+					id="edit-parentPhone"
+					:class="themeClass(errorField == 'parentPhone' ? 'form-row form-row-invalid' : 'form-row')"
+				>
+					<view :class="themeClass('field-label-row')">
+						<text :class="themeClass('field-label')">家长电话</text>
+						<text :class="themeClass('required')">*</text>
+					</view>
+					<view :class="themeClass('field-box')">
+						<input
+							:class="themeClass('field-input')"
+							v-model="parentPhone"
+							:disabled="submitting"
+							type="number"
+							maxlength="11"
+							:focus="focusedField == 'parentPhone'"
+							:cursor-spacing="24"
+							@input="clearError"
+						/>
+						<text
+							v-if="errorField == 'parentPhone'"
+							:class="themeClass('field-error')"
+						>
+							{{ formError }}
+						</text>
+					</view>
+				</view>
+				<view
+					id="edit-apartment"
+					:class="themeClass(errorField == 'apartment' ? 'form-row form-row-invalid' : 'form-row')"
+				>
+					<view :class="themeClass('field-label-row')"><text :class="themeClass('field-label')">公寓名称</text></view>
+					<view :class="themeClass('field-box')">
+						<ThemedPicker title="宿舍"
+							:class="themeClass('field-picker')"
+							:disabled="submitting || apartmentLoading || gender == ''"
+							:range="apartmentLabels"
+							:value="apartmentIndex"
+							@change="apartmentChange"
+						>
+							<view :class="themeClass('picker-box')">
+								<text :class="themeClass(apartment == '' ? 'picker-placeholder' : 'picker-value')">
+									{{ apartment == '' ? '请选择' : apartment }}
+								</text>
+								<image
+									:class="themeClass('picker-arrow')"
+									:src="themeImage('/static/ios/back-ink.svg')"
+									mode="aspectFit"
+								></image>
+							</view>
+						</ThemedPicker>
+						<text
+							v-if="errorField == 'apartment'"
+							:class="themeClass('field-error')"
+						>
+							{{ formError }}
+						</text>
+					</view>
+				</view>
+				<view
+					id="edit-dormNumber"
+					:class="themeClass(errorField == 'dormNumber' ? 'form-row form-row-invalid' : 'form-row')"
+				>
+					<view :class="themeClass('field-label-row')"><text :class="themeClass('field-label')">宿舍号</text></view>
+					<view :class="themeClass('field-box')">
+						<input
+							:class="themeClass('field-input')"
+							v-model="dormNumber"
+							:disabled="submitting"
+							type="text"
+							maxlength="20"
+							:focus="focusedField == 'dormNumber'"
+							:cursor-spacing="24"
+							@input="clearError"
+						/>
+						<text
+							v-if="errorField == 'dormNumber'"
+							:class="themeClass('field-error')"
+						>
+							{{ formError }}
+						</text>
+					</view>
+				</view>
+				<view
+					id="edit-counselor"
+					:class="themeClass(errorField == 'counselor' ? 'form-row form-row-invalid' : 'form-row')"
+				>
+					<view :class="themeClass('field-label-row')">
+						<text :class="themeClass('field-label')">导员姓名</text>
+						<text :class="themeClass('required')">*</text>
+					</view>
+					<view :class="themeClass('field-box')">
+						<input
+							:class="themeClass('field-input')"
+							v-model="counselor"
+							:disabled="submitting"
+							type="text"
+							maxlength="20"
+							:focus="focusedField == 'counselor'"
+							:cursor-spacing="24"
+							@input="clearError"
+						/>
+						<text
+							v-if="errorField == 'counselor'"
+							:class="themeClass('field-error')"
+						>
+							{{ formError }}
+						</text>
+					</view>
+				</view>
+			</view>
+			<view
+				v-if="avatarRetryPending"
+				:class="themeClass('load-panel')"
+			>
+				<text :class="themeClass('load-message')">资料已保存，头像上传失败</text>
+				<text :class="themeClass('field-help')">{{ avatarError }}</text>
+				<view
+					:class="themeClass('retry-action')"
+					@click="retryAvatar"
+				>
+					<text :class="themeClass('retry-text')">{{ submitting ? '正在上传…' : '重试上传' }}</text>
+				</view>
+				<view
+					:class="themeClass('retry-action')"
+					@click="continueWithoutAvatar"
+				>
+					<text :class="themeClass('retry-text')">暂不上传，继续</text>
+				</view>
+			</view>
+			<text
+				v-else-if="errorField == '' && formError != ''"
+				:class="themeClass('form-error')"
+			>
+				{{ formError }}
+			</text>
+			<view
+				v-if="!avatarRetryPending && loadError == ''"
+				:class="themeClass(submitting || pageLoading ? 'primary-button primary-button-disabled' : 'primary-button')"
+				@click="save"
+			>
+				<text :class="themeClass('primary-button-text')">
+					{{ submitting ? '正在保存…' : firstProfile ? '完成并进入首页' : '保存修改' }}
+				</text>
+			</view>
 		</view>
 	</ProfilePageShell>
 </template>
-
 <script setup lang="uts">
-import { computed, ref } from 'vue'
+import { themeClass as resolveThemeClass, themeImage as resolveThemeImage } from '@/utils/app-theme.uts'
+import { computed, nextTick, ref } from 'vue'
+import ThemedPicker from '@/components/ThemedPicker.uvue'
 import ProfilePageShell from '@/components/ProfilePageShell.uvue'
 import AvatarPicker from '@/components/AvatarPicker.uvue'
-import { ApartmentOption, ClassOption, getApartments, getClassOptions, getCurrentUser, getProfile, getStoredAvatarURL, ProfileData, saveProfile, updateCurrentUser, uploadAvatar, AvatarUploadError } from '@/utils/api.uts'
-import { cacheAvatarFile, clearAvatarFileCache, getCachedAvatarSource } from '@/utils/avatar-cache.uts'
+import {
+	ApartmentOption,
+	ClassOption,
+	getApartments,
+	getClassOptions,
+	getCurrentUser,
+	getProfile,
+	getStoredAvatarURL,
+	ProfileData,
+	saveProfile,
+	updateCurrentUser,
+	uploadAvatar,
+	AvatarUploadError,
+	logout
+} from '@/utils/api.uts'
+import {
+	cacheAvatarFile,
+	clearAvatarFileCache,
+	getCachedAvatarSource
+} from '@/utils/avatar-cache.uts'
 
+const errorField = ref('')
+const formError = ref('')
+const focusedField = ref('')
+const scrollTarget = ref('')
+const loadError = ref('')
+const genders: string[] = ['男', '女']
+
+function showFieldError(field: string, message: string) {
+	errorField.value = field
+	formError.value = message
+	focusedField.value = ''
+	scrollTarget.value = ''
+	nextTick(() => {
+		scrollTarget.value = 'edit-' + field
+		focusedField.value = field
+	})
+}
+function clearError() {
+	errorField.value = ''
+	formError.value = ''
+}
 const studentID = ref('')
 const classOptions = ref<ClassOption[]>([])
 const classIndex = ref(-1)
@@ -68,9 +409,79 @@ const choosing = ref(false)
 const avatarRetryPending = ref(false)
 const avatarError = ref('')
 let pageActive = true
+let initialForm = ''
+let leaving = false
+let confirmingLeave = false
+function formSnapshot(): string {
+	return JSON.stringify([
+		name.value,
+		phone.value,
+		gender.value,
+		parentName.value,
+		parentPhone.value,
+		dormNumber.value,
+		counselor.value,
+		classIndex.value.toString(),
+		apartmentIndex.value.toString(),
+		selectedPath.value
+	])
+}
+function leavePage() {
+	leaving = true
+	if (firstProfile.value) {
+		logout()
+		uni.reLaunch({
+			url: '/pages/auth/login',
+			fail: () => {
+				leaving = false
+			}
+		})
+	} else {
+		uni.navigateBack({
+			fail: () => {
+				leaving = false
+			}
+		})
+	}
+}
+function requestLeave() {
+	if (submitting.value || choosing.value || confirmingLeave) return
+	if (pageLoading.value) {
+		leavePage()
+		return
+	}
+	if (formSnapshot() == initialForm && !avatarRetryPending.value) {
+		leavePage()
+		return
+	}
+	confirmingLeave = true
+	uni.showModal({
+		title: avatarRetryPending.value ? '暂不上传头像？' : '放弃修改？',
+		content: avatarRetryPending.value
+			? '个人资料已保存，离开后不会继续上传本次头像。'
+			: '尚未保存的内容将不会保留。',
+		confirmText: '离开',
+		cancelText: '继续填写',
+		success: (result) => {
+			if (result.confirm) leavePage()
+		},
+		complete: () => {
+			confirmingLeave = false
+		}
+	})
+}
+onBackPress((): boolean => {
+	if (leaving) return false
+	requestLeave()
+	return true
+})
 
-function selectAvatar(path: string) { selectedPath.value = path }
-function setChoosing(value: boolean) { choosing.value = value }
+function selectAvatar(path: string) {
+	selectedPath.value = path
+}
+function setChoosing(value: boolean) {
+	choosing.value = value
+}
 
 function handleAvatarError() {
 	const remoteURL = getStoredAvatarURL()
@@ -81,6 +492,7 @@ function handleAvatarError() {
 
 function finishSave() {
 	if (!pageActive) return
+	leaving = true
 	uni.showToast({ title: '保存成功', icon: 'success' })
 	if (firstProfile.value) uni.reLaunch({ url: '/pages/home/index' })
 	else uni.navigateBack({})
@@ -123,10 +535,20 @@ function formatClass(item: ClassOption): string {
 }
 
 const classLabels = computed((): string[] => classOptions.value.map((item) => formatClass(item)))
-const apartmentLabels = computed((): string[] => apartmentOptions.value.map((item) => item.name + (item.is_enabled ? '' : '（已停用）')))
-const pickerClassIndex = computed((): number => classIndex.value >= 0 ? classIndex.value : 0)
-const className = computed((): string => classIndex.value >= 0 && classIndex.value < classLabels.value.length ? classLabels.value[classIndex.value] : '')
-const apartment = computed((): string => apartmentIndex.value >= 0 && apartmentIndex.value < apartmentLabels.value.length ? apartmentLabels.value[apartmentIndex.value] : '')
+const apartmentLabels = computed((): string[] =>
+	apartmentOptions.value.map((item) => item.name + (item.is_enabled ? '' : '（已停用）'))
+)
+const pickerClassIndex = computed((): number => (classIndex.value >= 0 ? classIndex.value : 0))
+const className = computed((): string =>
+	classIndex.value >= 0 && classIndex.value < classLabels.value.length
+		? classLabels.value[classIndex.value]
+		: ''
+)
+const apartment = computed((): string =>
+	apartmentIndex.value >= 0 && apartmentIndex.value < apartmentLabels.value.length
+		? apartmentLabels.value[apartmentIndex.value]
+		: ''
+)
 
 function genderCode(): string {
 	return gender.value == '男' ? 'male' : 'female'
@@ -141,18 +563,28 @@ async function loadApartments(selectedID: number = 0) {
 		const options = await getApartments(genderCode())
 		if (sequence != apartmentRequestSequence || !pageActive) return
 		apartmentOptions.value = options
-		const selectedIndex = apartmentOptions.value.findIndex((item) => item.id.toString() == selectedID.toString())
+		const selectedIndex = apartmentOptions.value.findIndex(
+			(item) => item.id.toString() == selectedID.toString()
+		)
 		// An existing assignment must never be replaced by a default option.
 		if (selectedID != 0 && selectedIndex < 0) {
 			uni.showToast({ title: '原公寓信息不可用，请重新加载资料', icon: 'none' })
 			return
 		}
-		apartmentIndex.value = selectedIndex >= 0 ? selectedIndex : apartmentOptions.value.length == 1 && apartmentOptions.value[0].is_enabled ? 0 : -1
+		apartmentIndex.value =
+			selectedIndex >= 0
+				? selectedIndex
+				: apartmentOptions.value.length == 1 && apartmentOptions.value[0].is_enabled
+					? 0
+					: -1
 		apartmentOptionsReady.value = true
 	} catch (error) {
 		if (sequence != apartmentRequestSequence || !pageActive) return
 		const message = (error as Error).message
-		uni.showToast({ title: message == null || message == '' ? '公寓列表加载失败' : message, icon: 'none' })
+		uni.showToast({
+			title: message == null || message == '' ? '公寓列表加载失败' : message,
+			icon: 'none'
+		})
 	} finally {
 		if (sequence == apartmentRequestSequence) apartmentLoading.value = false
 	}
@@ -166,21 +598,17 @@ function setGender(value: string) {
 	loadApartments()
 }
 
-function pickerIndex(value: any): number {
-	if (typeof value == 'number') return value
-	if (typeof value == 'string') return parseInt(value, 10)
-	return -1
-}
-
-function classChange(e: UniPickerChangeEvent) {
-	const index = pickerIndex(e.detail.value)
+function classChange(index: number) {
 	if (index < 0 || index >= classOptions.value.length) return
 	classIndex.value = index
 }
-function apartmentChange(e: UniPickerChangeEvent) {
-	const index = pickerIndex(e.detail.value)
+function apartmentChange(index: number) {
 	if (index < 0 || index >= apartmentOptions.value.length) return
 	apartmentIndex.value = index
+}
+
+function genderChange(index: number) {
+	if (index >= 0 && index < genders.length) setGender(genders[index])
 }
 
 function phoneIsValid(value: string): boolean {
@@ -189,7 +617,10 @@ function phoneIsValid(value: string): boolean {
 
 async function fillProfile(profile: ProfileData) {
 	const storedURL = getStoredAvatarURL()
-	avatarURL.value = getCachedAvatarSource(profile.student_id, storedURL == '' ? profile.avatar_url : storedURL)
+	avatarURL.value = getCachedAvatarSource(
+		profile.student_id,
+		storedURL == '' ? profile.avatar_url : storedURL
+	)
 	studentID.value = profile.student_id
 	name.value = profile.name
 	phone.value = profile.phone
@@ -198,11 +629,15 @@ async function fillProfile(profile: ProfileData) {
 	parentPhone.value = profile.parent_phone
 	dormNumber.value = profile.apartment_info.dormitory_number
 	counselor.value = profile.teacher_name
-	classIndex.value = classOptions.value.findIndex((item) => item.id.toString() == profile.class_id.toString())
+	classIndex.value = classOptions.value.findIndex(
+		(item) => item.id.toString() == profile.class_id.toString()
+	)
 	await loadApartments(profile.apartment_id)
 }
 
 async function loadPage() {
+	pageLoading.value = true
+	loadError.value = ''
 	const currentStudentID = getCurrentUser().student_id
 	try {
 		classOptions.value = await getClassOptions()
@@ -213,7 +648,12 @@ async function loadPage() {
 			const storedURL = getStoredAvatarURL()
 			const remoteURL = storedURL == '' ? profile.avatar_url : storedURL
 			const source = await cacheAvatarFile(currentStudentID, remoteURL)
-			if (pageActive && currentStudentID == getCurrentUser().student_id && remoteURL == getStoredAvatarURL()) avatarURL.value = source
+			if (
+				pageActive &&
+				currentStudentID == getCurrentUser().student_id &&
+				remoteURL == getStoredAvatarURL()
+			)
+				avatarURL.value = source
 			return
 		}
 		studentID.value = getCurrentUser().student_id
@@ -221,8 +661,13 @@ async function loadPage() {
 		if (!pageActive || currentStudentID != getCurrentUser().student_id) return
 		const message = (error as Error).message
 		if (firstProfile.value && message == '请先完善个人信息') return
-		uni.showToast({ title: message == null || message == '' ? '个人资料加载失败' : message, icon: 'none' })
+		loadError.value = message == null || message == '' ? '个人资料加载失败' : message
+		uni.showToast({
+			title: message == null || message == '' ? '个人资料加载失败' : message,
+			icon: 'none'
+		})
 	} finally {
+		initialForm = formSnapshot()
 		pageLoading.value = false
 	}
 }
@@ -237,14 +682,36 @@ async function save() {
 		uni.showToast({ title: '请先重新加载公寓信息', icon: 'none' })
 		return
 	}
-	if (name.value.trim() == '' || phone.value.trim() == '' || gender.value == '' || parentName.value.trim() == '' || parentPhone.value.trim() == '' || counselor.value.trim() == '' || classIndex.value < 0) {
-		uni.showToast({ title: '请完整填写必填信息', icon: 'none' })
+	if (classIndex.value < 0) {
+		showFieldError('class', '请选择班级')
 		return
 	}
-	if (!phoneIsValid(phone.value) || !phoneIsValid(parentPhone.value)) {
-		uni.showToast({ title: '请输入正确的 11 位手机号', icon: 'none' })
+	if (name.value.trim() == '') {
+		showFieldError('name', '请填写姓名')
 		return
 	}
+	if (!phoneIsValid(phone.value)) {
+		showFieldError('phone', '请输入正确的 11 位手机号')
+		return
+	}
+	if (gender.value == '') {
+		showFieldError('gender', '请选择性别')
+		return
+	}
+	if (parentName.value.trim() == '') {
+		showFieldError('parentName', '请填写家长姓名')
+		return
+	}
+	if (!phoneIsValid(parentPhone.value)) {
+		showFieldError('parentPhone', '请输入正确的家长手机号')
+		return
+	}
+	if (counselor.value.trim() == '') {
+		showFieldError('counselor', '请填写导员姓名')
+		return
+	}
+	clearError()
+	uni.hideKeyboard()
 
 	submitting.value = true
 	try {
@@ -266,10 +733,11 @@ async function save() {
 			name: name.value.trim(),
 			class_name: classOptions.value[classIndex.value].class_name
 		})
-		if (selectedPath.value != '' && !await saveSelectedAvatar()) return
+		if (selectedPath.value != '' && !(await saveSelectedAvatar())) return
 		finishSave()
 	} catch (error) {
 		const message = (error as Error).message
+		formError.value = message == null || message == '' ? '保存失败，请重试' : message
 		uni.showToast({ title: message == null || message == '' ? '保存失败' : message, icon: 'none' })
 	} finally {
 		submitting.value = false
@@ -282,176 +750,169 @@ onLoad((options) => {
 	loadPage()
 })
 
-onUnload(() => { pageActive = false })
-</script>
+onUnload(() => {
+	pageActive = false
+})
 
-<style>
+// 原生模板通过本地方法调用主题函数，避免导入函数被编译为 unref 后调用。
+function themeClass(classes: string): string {
+	return resolveThemeClass(classes)
+}
+
+function themeImage(source: string): string {
+	return resolveThemeImage(source)
+}
+</script>
+<style lang="scss">
+@import '@/styles/ios-controls.scss';
 .edit-content {
 	width: 100%;
-	box-sizing: border-box;
-	/* 留出按钮阴影的空间，避免 Android 容器在底部裁切。 */
-	padding-bottom: 40rpx;
-}
-.avatar-card {
-	margin-top: 28rpx;
-	padding: 12rpx 16rpx;
-	border-radius: 30rpx;
-	background-color: rgba(255,255,255,0.88);
 }
 .form-card {
-	margin-top: 28rpx;
-	padding: 22rpx 32rpx;
-	border-radius: 30rpx;
-	background-color: rgba(255,255,255,0.88);
-	box-shadow: 0 14rpx 34rpx rgba(92,126,190,0.11);
+	box-sizing: border-box;
+	border-radius: 23px;
+	background-color: $ios-surface;
+	padding: 0 16px;
+	margin-top: 14px;
 }
 .form-row {
-	min-height: 104rpx;
-	padding: 12rpx 0;
 	box-sizing: border-box;
+	min-height: 58px;
 	flex-direction: row;
 	align-items: center;
+	border-bottom: 0.5px solid $ios-separator;
 }
-.required-label {
-	width: 132rpx;
-	flex-shrink: 0;
+.form-row-invalid {
+	border-bottom-color: $ios-red;
+}
+.field-label-row {
 	flex-direction: row;
 	align-items: center;
+	width: 112px;
+	flex-shrink: 0;
 }
 .field-label {
-	width: 132rpx;
-	flex-shrink: 0;
-	color: #123b78;
-	font-size: 25rpx;
-	font-weight: 600;
-}
-.required-field-label {
-	color: #123b78;
-	font-size: 25rpx;
-	font-weight: 600;
+	color: $ios-ink;
+	font-size: 15px;
 }
 .required {
-	margin-left: 8rpx;
-	color: #f04f48;
-	font-size: 26rpx;
+	color: $ios-red;
+	font-size: 14px;
+	margin-left: 4px;
 }
 .field-box {
 	flex: 1;
 	min-width: 0;
-	min-height: 76rpx;
-	padding: 0 16rpx;
-	border-width: 1rpx;
-	border-style: solid;
-	border-color: #d9e2f4;
-	border-radius: 16rpx;
-	justify-content: center;
-	background-color: rgba(255,255,255,0.55);
-}
-.field-picker {
-	flex: 1;
-	min-width: 0;
-}
-.picker-box {
-	padding: 16rpx;
-	flex-direction: row;
-	align-items: center;
-}
-.picker-arrow {
-	margin-left: 12rpx;
-	flex-shrink: 0;
-	color: #7188b5;
-	font-size: 32rpx;
-	line-height: 32rpx;
-}
-.picker-value {
-	flex: 1;
-	min-width: 0;
-	color: #506d9f;
-	font-size: 25rpx;
-	line-height: 38rpx;
-}
-.picker-placeholder, .input-placeholder {
-	flex: 1;
-	color: #9aabd0;
-	font-size: 25rpx;
-	line-height: 38rpx;
-}
-.field-disabled {
-	background-color: rgba(236,240,248,0.75);
-}
-.disabled-text {
-	color: #9aabd0;
-	font-size: 25rpx;
 }
 .field-input {
-	height: 74rpx;
-	color: #506d9f;
-	font-size: 25rpx;
+	height: 58px;
+	color: $ios-ink;
+	font-size: 16px;
+	text-align: right;
 }
-.gender-group {
-	flex: 1;
-	height: 76rpx;
-	padding: 4rpx;
-	border-radius: 18rpx;
-	background-color: #edf2fc;
+.field-picker {
+	min-height: 58px;
+	justify-content: center;
+}
+.picker-box {
+	min-height: 58px;
 	flex-direction: row;
+	align-items: center;
+	justify-content: flex-end;
 }
-.gender-item {
+.picker-value,
+.picker-placeholder {
 	flex: 1;
-	border-width: 1rpx;
-	border-style: solid;
-	border-color: #d9e2f4;
-	border-radius: 16rpx;
-	justify-content: center;
+	min-width: 0;
+	font-size: 16px;
+	line-height: 23px;
+	text-align: right;
+	color: $ios-ink;
+}
+.picker-placeholder {
+	color: $ios-secondary;
+}
+.picker-arrow {
+	width: 13px;
+	height: 13px;
+	margin-left: 3px;
+	transform: rotate(-90deg);
+}
+.load-panel {
+	box-sizing: border-box;
+	background-color: $ios-surface;
+	border-radius: 23px;
+	padding: 20px;
+	margin-top: 16px;
+}
+.load-message {
+	font-size: 14px;
+	line-height: 23px;
+	color: $ios-secondary;
+}
+.retry-text {
+	font-size: 14px;
+	color: $ios-blue;
+	margin-top: 8px;
+}
+.retry-action {
+	min-height: 44px;
 	align-items: center;
-}
-.gender-active {
-	border-color: #4676ff;
-	background-color: rgba(235,241,255,0.6);
-}
-.gender-text {
-	color: #536d9e;
-	font-size: 25rpx;
-}
-.gender-text-active {
-	color: #245cf0;
-}
-.primary-button {
-	height: 94rpx;
-	margin: 36rpx 0 20rpx;
-	border-radius: 47rpx;
-	background-color: #527df3;
 	justify-content: center;
-	align-items: center;
-	box-shadow: 0 12rpx 26rpx rgba(65,102,224,0.25);
 }
-.primary-button-text {
+
+// Dark appearance. Geometry stays shared with the light appearance.
+.dark-form-card {
+	background-color: $ios-dark-surface;
+}
+.dark-form-row {
+	border-bottom: 0.5px solid $ios-dark-separator;
+}
+.dark-form-row-invalid {
+	border-bottom-color: $ios-dark-red;
+}
+.dark-field-label {
+	color: $ios-dark-ink;
+}
+.dark-required {
+	color: $ios-dark-red;
+}
+.dark-field-input {
+	color: $ios-dark-ink;
+}
+.dark-picker-value,
+.dark-picker-placeholder {
+	color: $ios-dark-ink;
+}
+.dark-picker-placeholder {
+	color: $ios-dark-secondary;
+}
+.dark-load-panel {
+	background-color: $ios-dark-surface;
+}
+.dark-load-message {
+	color: $ios-dark-secondary;
+}
+.dark-retry-text {
+	color: $ios-dark-blue;
+}
+.contrast-form-row {
+	border-bottom: 0.5px solid #737580;
+}
+.contrast-field-label {
 	color: #ffffff;
-	font-size: 29rpx;
-	font-weight: 500;
 }
-.avatar-retry-card {
-	margin-top: 28rpx;
-	padding: 24rpx;
-	border-radius: 20rpx;
-	background-color: #ffffff;
+.contrast-field-input {
+	color: #ffffff;
 }
-.avatar-retry-message {
-	color: #123b78;
-	font-size: 27rpx;
+.contrast-picker-value,
+.contrast-picker-placeholder {
+	color: #ffffff;
 }
-.avatar-retry-detail {
-	margin-top: 12rpx;
-	color: #7890bc;
-	font-size: 24rpx;
+.contrast-picker-placeholder {
+	color: #d2d3dc;
 }
-.avatar-retry-action {
-	margin-top: 18rpx;
-	padding: 16rpx;
-	align-items: center;
-}
-.avatar-retry-text {
-	color: #245cf0;
-	font-size: 27rpx;
+.contrast-load-message {
+	color: #d2d3dc;
 }
 </style>

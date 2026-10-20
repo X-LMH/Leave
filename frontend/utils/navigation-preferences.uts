@@ -9,16 +9,18 @@ import AccessibilityNodeInfo from 'android.view.accessibility.AccessibilityNodeI
 class NavigationControlDelegate extends AccessibilityDelegate {
 	private isSwitch: boolean
 	private checked: boolean
+	private radio: boolean
 
-	constructor(isSwitch: boolean, checked: boolean) {
+	constructor(isSwitch: boolean, checked: boolean, radio: boolean = false) {
 		super()
 		this.isSwitch = isSwitch
 		this.checked = checked
+		this.radio = radio
 	}
 
 	override onInitializeAccessibilityNodeInfo(host: View, info: AccessibilityNodeInfo) {
 		super.onInitializeAccessibilityNodeInfo(host, info)
-		info.setClassName(this.isSwitch ? 'android.widget.Switch' : 'android.widget.Button')
+		info.setClassName(this.radio ? 'android.widget.RadioButton' : this.isSwitch ? 'android.widget.Switch' : 'android.widget.Button')
 		if (this.isSwitch) {
 			info.setCheckable(true)
 			info.setChecked(this.checked)
@@ -26,6 +28,16 @@ class NavigationControlDelegate extends AccessibilityDelegate {
 	}
 }
 // #endif
+
+export function configureNavigationRadio(element: UniElement | null, label: string, checked: boolean, activate: () => void) {
+	configureNavigationAccessibility(element, label, checked, activate)
+	// #ifdef APP-ANDROID
+	const view = element?.getAndroidView<ViewGroup>()
+	if (view == null) return
+	view.setContentDescription(label)
+	view.setAccessibilityDelegate(new NavigationControlDelegate(true, checked, true))
+	// #endif
+}
 
 export type NavigationPreferences = {
 	reduceMotion: boolean

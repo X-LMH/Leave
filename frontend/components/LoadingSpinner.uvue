@@ -1,0 +1,48 @@
+<template>
+	<view
+		:class="themeClass('spinner')"
+		role="progressbar"
+		aria-label="正在加载"
+		:style="'transform:rotate(' + rotation + 'deg);'"
+	></view>
+</template>
+<script setup lang="uts">
+import { themeClass as resolveThemeClass } from '@/utils/app-theme.uts'
+import { onMounted, onUnmounted, ref } from 'vue'
+import { readNavigationPreferences, systemReducesMotion } from '@/utils/navigation-preferences.uts'
+const rotation = ref(0)
+let timer = 0
+onMounted(() => {
+	if (readNavigationPreferences().reduceMotion || systemReducesMotion()) return
+	timer = setInterval(() => {
+		rotation.value = (rotation.value + 12) % 360
+	}, 32)
+})
+onUnmounted(() => clearInterval(timer))
+
+// 原生模板通过本地方法调用主题函数，避免导入函数被编译为 unref 后调用。
+function themeClass(classes: string): string {
+	return resolveThemeClass(classes)
+}
+</script>
+<style lang="scss">
+@import '@/styles/ios-theme.scss';
+
+.spinner {
+	box-sizing: border-box;
+	width: 28px;
+	height: 28px;
+	border-radius: 14px;
+	border: 3px solid #dce4ef;
+	border-top-color: #0066dc;
+}
+
+// Dark appearance. Geometry stays shared with the light appearance.
+.dark-spinner {
+	border: 3px solid $ios-dark-separator;
+	border-top-color: $ios-dark-blue;
+}
+.contrast-spinner {
+	border: 3px solid #737580;
+}
+</style>

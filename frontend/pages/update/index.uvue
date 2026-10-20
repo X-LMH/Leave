@@ -1,62 +1,130 @@
 <template>
-	<view class="update-page">
-		<view class="update-content">
-			<view class="update-main">
-				<image class="update-illustration" src="/static/update/version-update.svg" mode="aspectFit" />
-				<text class="update-title">发现新版本</text>
-				<text class="update-subtitle">请更新后继续使用请假申请系统</text>
+	<view :class="themeClass('update-page')">
+		<view :class="themeClass('update-content')">
+			<scroll-view
+				id="update-scroll"
+				:class="themeClass('update-scroll')"
+				scroll-y="true"
+				:show-scrollbar="false"
+				><view
+					:class="themeClass('update-main')"
+					:style="{ minHeight: updateMainHeight + 'px' }"
+				>
+					<image
+						:class="themeClass('update-illustration')"
+						:src="themeImage('/static/update/version-update.svg')"
+						mode="aspectFit"
+					/>
+					<text :class="themeClass('update-title')">发现新版本</text>
+					<text :class="themeClass('update-subtitle')">请更新后继续使用请假申请系统</text>
 
-				<view v-if="loadingVersion" class="loading-panel">
-					<text class="panel-message">正在获取版本信息</text>
-				</view>
-				<view v-else-if="loadError != ''" class="loading-panel">
-					<text class="panel-message">{{ loadError }}</text>
-					<button class="retry-button" @click="loadVersion">重试</button>
-				</view>
-				<view v-else class="version-card">
-					<view class="version-row">
-						<text class="version-label">当前版本</text>
-						<text class="version-value">{{ currentVersionName }}</text>
+					<view
+						v-if="loadingVersion"
+						:class="themeClass('loading-panel')"
+					>
+						<text :class="themeClass('panel-message')">正在获取版本信息</text>
 					</view>
-					<view class="version-row">
-						<text class="version-label">最新版本</text>
-						<text class="version-value version-value-highlight">{{ latestVersionName }}</text>
+					<view
+						v-else-if="loadError != ''"
+						:class="themeClass('loading-panel')"
+					>
+						<text :class="themeClass('panel-message')">{{ loadError }}</text>
+						<button
+							:class="themeClass('retry-button')"
+							@click="loadVersion"
+						>
+							重试
+						</button>
 					</view>
-					<view class="notes-section">
-						<text class="notes-title">本次更新</text>
-						<view v-if="updateGroups.length == 0" class="note-row">
-							<view class="note-dot"></view>
-							<text class="note-text">修复已知问题并提升使用体验</text>
+					<view
+						v-else
+						:class="themeClass('version-card')"
+					>
+						<view :class="themeClass('version-row')">
+							<text :class="themeClass('version-label')">当前版本</text>
+							<text :class="themeClass('version-value')">{{ currentVersionName }}</text>
 						</view>
-						<view v-for="update in updateGroups" :key="update.version_code" class="update-group">
-							<text class="update-version">{{ update.version_name }}</text>
-							<view v-for="(note, noteIndex) in update.release_notes" :key="noteIndex" class="note-row">
-								<view class="note-dot"></view>
-								<text class="note-text">{{ note }}</text>
+						<view :class="themeClass('version-row')">
+							<text :class="themeClass('version-label')">最新版本</text>
+							<text :class="themeClass('version-value version-value-highlight')">{{ latestVersionName }}</text>
+						</view>
+						<view :class="themeClass('notes-section')">
+							<text :class="themeClass('notes-title')">本次更新</text>
+							<view
+								v-if="updateGroups.length == 0"
+								:class="themeClass('note-row')"
+							>
+								<view :class="themeClass('note-dot')"></view>
+								<text :class="themeClass('note-text')">修复已知问题并提升使用体验</text>
+							</view>
+							<view
+								v-for="update in updateGroups"
+								:key="update.version_code"
+								:class="themeClass('update-group')"
+							>
+								<text :class="themeClass('update-version')">{{ update.version_name }}</text>
+								<view
+									v-for="(note, noteIndex) in update.release_notes"
+									:key="noteIndex"
+									:class="themeClass('note-row')"
+								>
+									<view :class="themeClass('note-dot')"></view>
+									<text :class="themeClass('note-text')">{{ note }}</text>
+								</view>
 							</view>
 						</view>
 					</view>
-				</view>
 
-				<view v-if="downloading" class="progress-wrap">
-					<view class="progress-track">
-						<view class="progress-value" :style="{ width: downloadProgress + '%' }"></view>
+					<view
+						v-if="downloading"
+						:class="themeClass('progress-wrap')"
+					>
+						<view :class="themeClass('progress-track')">
+							<view
+								:class="themeClass('progress-value')"
+								:style="{ width: downloadProgress + '%' }"
+							></view>
+						</view>
+						<text :class="themeClass('progress-text')">正在下载 {{ downloadProgressDisplay }}%</text>
 					</view>
-					<text class="progress-text">正在下载 {{ downloadProgressDisplay }}%</text>
 				</view>
-			</view>
-
-			<button v-if="!loadingVersion && loadError == ''" class="update-button" :disabled="downloading || installing" @click="downloadAndInstall">
+			</scroll-view>
+			<button
+				v-if="!loadingVersion && loadError == ''"
+				:class="themeClass('update-button')"
+				:disabled="downloading || installing"
+				@click="downloadAndInstall"
+			>
 				{{ actionText }}
 			</button>
-			<text v-if="actionError != ''" class="action-error">{{ actionError }}</text>
+			<button
+				v-if="!loadingVersion && loadError == '' && downloadedApk != ''"
+				:class="themeClass('redownload-button')"
+				:disabled="downloading || installing"
+				@click="redownloadApk"
+			>
+				重新下载安装包
+			</button>
+			<text
+				v-if="actionError != ''"
+				:class="themeClass('action-error')"
+				>{{ actionError }}</text
+			>
 		</view>
 	</view>
 </template>
 
 <script setup lang="uts">
-import { computed, ref } from 'vue'
-import { AppVersionInfo, AppVersionUpdate, getAppDownloadURL, getCurrentAppVersion, getStoredUpdateInfo, saveUpdateInfo } from '@/utils/api.uts'
+import { themeClass as resolveThemeClass, themeImage as resolveThemeImage } from '@/utils/app-theme.uts'
+import { computed, nextTick, ref, watch } from 'vue'
+import {
+	AppVersionInfo,
+	AppVersionUpdate,
+	getAppDownloadURL,
+	getCurrentAppVersion,
+	getStoredUpdateInfo,
+	saveUpdateInfo
+} from '@/utils/api.uts'
 import { getAppVersion } from '@/utils/device.uts'
 
 const latestVersion = ref<AppVersionInfo | null>(getStoredUpdateInfo())
@@ -67,9 +135,34 @@ const installing = ref(false)
 const downloadProgress = ref(0)
 const downloadProgressDisplay = computed((): number => Math.floor(downloadProgress.value))
 const actionError = ref('')
+const downloadedApk = ref('')
+const updateMainHeight = ref(0)
+
+function measureUpdateArea() {
+	const area = uni.getElementById('update-scroll')
+	if (area != null) updateMainHeight.value = area.offsetHeight
+}
+onReady(() => {
+	nextTick(() => measureUpdateArea())
+})
+onResize(() => {
+	nextTick(() => measureUpdateArea())
+})
+watch(
+	(): string =>
+		(loadingVersion.value ? 'loading' : 'ready') +
+		'|' + loadError.value +
+		'|' + actionError.value +
+		'|' + downloadedApk.value,
+	() => {
+		nextTick(() => measureUpdateArea())
+	}
+)
 
 const currentVersionName = computed((): string => getAppVersion())
-const latestVersionName = computed((): string => latestVersion.value == null ? '' : latestVersion.value.latest_version_name)
+const latestVersionName = computed((): string =>
+	latestVersion.value == null ? '' : latestVersion.value.latest_version_name
+)
 const updateGroups = computed((): AppVersionUpdate[] => {
 	if (latestVersion.value == null) return []
 	const updates = latestVersion.value.updates
@@ -78,7 +171,8 @@ const updateGroups = computed((): AppVersionUpdate[] => {
 const actionText = computed((): string => {
 	if (downloading.value) return '正在下载'
 	if (installing.value) return '正在调起安装'
-	return '下载并安装'
+	if (downloadedApk.value != '') return actionError.value == '' ? '安装更新' : '重试安装'
+	return actionError.value == '' ? '下载并安装' : '重新下载'
 })
 
 async function loadVersion() {
@@ -90,7 +184,8 @@ async function loadVersion() {
 		saveUpdateInfo(version)
 	} catch (error) {
 		const message = (error as Error).message
-		loadError.value = message == null || message == '' ? '无法获取版本信息，请检查网络后重试' : message
+		loadError.value =
+			message == null || message == '' ? '无法获取版本信息，请检查网络后重试' : message
 	} finally {
 		loadingVersion.value = false
 	}
@@ -102,6 +197,7 @@ function downloadFailed(message: string) {
 }
 
 function installDownloadedApk(filePath: string) {
+	actionError.value = ''
 	installing.value = true
 	uni.installApk({
 		filePath: filePath,
@@ -115,8 +211,18 @@ function installDownloadedApk(filePath: string) {
 	})
 }
 
+function redownloadApk() {
+	if (downloading.value || installing.value) return
+	downloadedApk.value = ''
+	downloadAndInstall()
+}
+
 function downloadAndInstall() {
 	if (downloading.value || installing.value) return
+	if (downloadedApk.value != '') {
+		installDownloadedApk(downloadedApk.value)
+		return
+	}
 
 	downloadProgress.value = 0
 	actionError.value = ''
@@ -129,6 +235,7 @@ function downloadAndInstall() {
 				return
 			}
 			downloading.value = false
+			downloadedApk.value = result.tempFilePath
 			installDownloadedApk(result.tempFilePath)
 		},
 		fail: (error) => {
@@ -149,24 +256,35 @@ onLoad(() => {
 })
 
 onBackPress((): boolean => true)
+
+// 原生模板通过本地方法调用主题函数，避免导入函数被编译为 unref 后调用。
+function themeClass(classes: string): string {
+	return resolveThemeClass(classes)
+}
+
+function themeImage(source: string): string {
+	return resolveThemeImage(source)
+}
 </script>
 
-<style>
+<style lang="scss">
+@import '@/styles/ios-theme.scss';
 .update-page {
 	flex: 1;
-	background-color: #F5F7FC;
+	background-color: $ios-page;
 }
 .update-content {
 	flex: 1;
-	padding: 0 56rpx 76rpx;
+	padding: 0 56rpx 40rpx;
 	align-items: center;
 }
 .update-main {
-	flex: 1;
+	box-sizing: border-box;
 	width: 100%;
 	justify-content: center;
 	align-items: center;
 	padding: 40rpx 0;
+	flex-shrink: 0;
 }
 .update-illustration {
 	width: 240rpx;
@@ -174,25 +292,27 @@ onBackPress((): boolean => true)
 }
 .update-title {
 	margin-top: 28rpx;
-	color: #253453;
-	font-size: 46rpx;
+	color: $ios-ink;
+	font-size: 24px;
 	font-weight: 700;
 	text-align: center;
+	line-height: 32px;
 }
 .update-subtitle {
 	margin-top: 16rpx;
-	color: #8994AA;
-	font-size: 28rpx;
+	color: $ios-secondary;
+	font-size: 14px;
 	text-align: center;
+	line-height: 22px;
 }
 .version-card {
 	width: 100%;
 	margin-top: 44rpx;
 	padding: 32rpx;
 	box-sizing: border-box;
-	border-radius: 32rpx;
-	background-color: #FFFFFF;
-	box-shadow: 0 12rpx 36rpx rgba(37, 52, 83, 0.04);
+	border-radius: 23px;
+	background-color: $ios-surface;
+	box-shadow: 0 4px 12px rgba(37, 44, 59, 0.04);
 }
 .version-row {
 	flex-direction: row;
@@ -201,42 +321,42 @@ onBackPress((): boolean => true)
 	padding: 12rpx 0;
 }
 .version-label {
-	color: #8994AA;
-	font-size: 27rpx;
+	color: $ios-secondary;
+	font-size: 14px;
 }
 .version-value {
 	min-width: 84rpx;
 	box-sizing: border-box;
-	color: #52627C;
-	font-size: 28rpx;
+	color: $ios-ink;
+	font-size: 14px;
 	font-weight: 600;
 	text-align: center;
 }
 .version-value-highlight {
 	padding: 6rpx 0;
 	border-radius: 12rpx;
-	background-color: #EDF1FF;
-	color: #5874D8;
+	background-color: #e4edfc;
+	color: $ios-blue;
 }
 .notes-section {
 	margin-top: 28rpx;
 	padding-top: 26rpx;
 	border-top-width: 1rpx;
 	border-top-style: solid;
-	border-top-color: #E8EDF8;
+	border-top-color: $ios-separator;
 }
 .notes-title {
 	margin-bottom: 14rpx;
-	color: #253453;
-	font-size: 28rpx;
+	color: $ios-ink;
+	font-size: 14px;
 	font-weight: 700;
 }
 .update-group {
 	margin-top: 18rpx;
 }
 .update-version {
-	color: #52627C;
-	font-size: 26rpx;
+	color: $ios-ink;
+	font-size: 14px;
 	font-weight: 600;
 }
 .note-row {
@@ -245,18 +365,19 @@ onBackPress((): boolean => true)
 	padding-left: 16rpx;
 }
 .note-dot {
-	width: 8rpx;
-	height: 8rpx;
-	margin-top: 15rpx;
+	width: 4px;
+	height: 4px;
+	margin-top: 9px;
 	margin-right: 16rpx;
 	border-radius: 4rpx;
-	background-color: #A7B7E8;
+	background-color: $ios-blue;
+	flex-shrink: 0;
 }
 .note-text {
 	flex: 1;
-	color: #62738E;
-	font-size: 26rpx;
-	line-height: 38rpx;
+	color: $ios-secondary;
+	font-size: 14px;
+	line-height: 22px;
 }
 .loading-panel {
 	width: 100%;
@@ -264,17 +385,21 @@ onBackPress((): boolean => true)
 	align-items: center;
 }
 .panel-message {
-	color: #8994AA;
-	font-size: 28rpx;
+	color: $ios-secondary;
+	font-size: 12px;
 	text-align: center;
+	line-height: 18px;
 }
 .retry-button {
 	width: 260rpx;
 	margin-top: 34rpx;
-	border-radius: 999rpx;
-	background-color: #5874D8;
-	color: #FFFFFF;
-	font-size: 28rpx;
+	border-radius: 22px;
+	background-color: $ios-blue;
+	color: #ffffff;
+	font-size: 16px;
+	height: 44px;
+	line-height: 44px;
+	padding: 0;
 }
 .progress-wrap {
 	width: 100%;
@@ -285,32 +410,149 @@ onBackPress((): boolean => true)
 	height: 12rpx;
 	overflow: hidden;
 	border-radius: 6rpx;
-	background-color: #DDE5F7;
+	background-color: #dce7f8;
 }
 .progress-value {
 	height: 12rpx;
 	border-radius: 6rpx;
-	background-color: #5874D8;
+	background-color: $ios-blue;
 }
 .progress-text {
 	margin-top: 16rpx;
-	color: #8994AA;
-	font-size: 25rpx;
+	color: $ios-secondary;
+	font-size: 12px;
 	text-align: center;
+	line-height: 18px;
 }
 .update-button {
 	width: 100%;
-	margin-top: auto;
-	border-radius: 999rpx;
-	background-color: #5874D8;
-	color: #FFFFFF;
-	font-size: 32rpx;
+	border-radius: 26px;
+	background-color: $ios-blue;
+	color: #ffffff;
+	font-size: 16px;
 	font-weight: 600;
+	flex-shrink: 0;
+	height: 52px;
+	line-height: 52px;
+	padding: 0;
 }
 .action-error {
 	margin-top: 22rpx;
-	color: #D95B5B;
-	font-size: 25rpx;
+	color: $ios-red;
+	font-size: 12px;
 	text-align: center;
+	line-height: 18px;
+}
+.redownload-button {
+	width: 100%;
+	margin-top: 12px;
+	height: 44px;
+	line-height: 44px;
+	padding: 0;
+	border-radius: 22px;
+	background-color: $ios-surface;
+	color: $ios-blue;
+	font-size: 14px;
+	flex-shrink: 0;
+}
+.update-scroll {
+	flex: 1;
+	width: 100%;
+	min-height: 0;
+}
+
+// Dark appearance. Geometry stays shared with the light appearance.
+.dark-update-page {
+	background-color: $ios-dark-page;
+}
+.dark-update-title {
+	color: $ios-dark-ink;
+}
+.dark-update-subtitle {
+	color: $ios-dark-secondary;
+}
+.dark-version-card {
+	background-color: $ios-dark-surface;
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+}
+.dark-version-label {
+	color: $ios-dark-secondary;
+}
+.dark-version-value {
+	color: $ios-dark-ink;
+}
+.dark-version-value-highlight {
+	background-color: #1c2b43;
+	color: $ios-dark-blue;
+}
+.dark-notes-section {
+	border-top-color: $ios-dark-separator;
+}
+.dark-notes-title {
+	color: $ios-dark-ink;
+}
+.dark-update-version {
+	color: $ios-dark-ink;
+}
+.dark-note-dot {
+	background-color: $ios-dark-button;
+}
+.dark-note-text {
+	color: $ios-dark-secondary;
+}
+.dark-panel-message {
+	color: $ios-dark-secondary;
+}
+.dark-retry-button {
+	background-color: $ios-dark-button;
+}
+.dark-progress-track {
+	background-color: #1c2b43;
+}
+.dark-progress-value {
+	background-color: $ios-dark-button;
+}
+.dark-progress-text {
+	color: $ios-dark-secondary;
+}
+.dark-update-button {
+	background-color: $ios-dark-button;
+}
+.dark-action-error {
+	color: $ios-dark-red;
+}
+.dark-redownload-button {
+	background-color: $ios-dark-surface;
+	color: $ios-dark-blue;
+}
+.contrast-update-title {
+	color: #ffffff;
+}
+.contrast-update-subtitle {
+	color: #d2d3dc;
+}
+.contrast-version-label {
+	color: #d2d3dc;
+}
+.contrast-version-value {
+	color: #ffffff;
+}
+.contrast-notes-section {
+	border-top-color: #737580;
+}
+.contrast-notes-title {
+	color: #ffffff;
+}
+.contrast-update-version {
+	color: #ffffff;
+}
+.contrast-note-text {
+	color: #d2d3dc;
+}
+.contrast-panel-message {
+	color: #d2d3dc;
+}
+.contrast-progress-text {
+	color: #d2d3dc;
 }
 </style>

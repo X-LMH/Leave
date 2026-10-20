@@ -1,102 +1,209 @@
 <template>
-	<view class="page">
-		<image class="page-background" src="/static/my/index/background.png" mode="aspectFill"></image>
-		<scroll-view class="content-scroll" scroll-y="true" :scroll-top="scrollTop" @scroll="rememberScroll" :show-scrollbar="false">
-			<view class="content">
-				<view class="header">
-					<text class="page-title">我的</text>
-					<text class="page-subtitle">管理个人信息与请假记录</text>
-				</view>
-				<view class="profile-card" @click="openInfo">
-					<image v-if="avatarURL != '' && !avatarLoadFailed" class="profile-avatar" :src="avatarURL" mode="aspectFill" @click.stop="openAvatar" @error="handleAvatarError"></image>
-					<view v-else class="profile-avatar profile-avatar-placeholder" @click.stop="openAvatar">
-						<text v-if="avatarLoadFailed" class="profile-avatar-hint">加载失败</text>
-					</view>
-					<view class="profile-details">
-						<view class="profile-name-row">
-							<text class="profile-name">{{ profileName == '' ? '未完善资料' : profileName }}</text>
-							<image class="edit-icon" src="/static/my/index/icons/edit.png" mode="aspectFit" @click.stop="openEdit"></image>
-						</view>
-						<view class="profile-meta-row">
-							<image class="profile-meta-icon" src="/static/my/index/icons/user-badge.png" mode="aspectFit"></image>
-							<text class="profile-meta-text">学号：{{ studentID }}</text>
-						</view>
-						<view class="profile-meta-row profile-school-row">
-							<image class="profile-meta-icon" src="/static/my/index/icons/school.png" mode="aspectFit"></image>
-							<text class="profile-meta-text">{{ className == '' ? '请完善个人资料' : className }}</text>
-						</view>
-					</view>
-					<image class="card-arrow" src="/static/my/index/icons/arrow-right.png" mode="aspectFit"></image>
-				</view>
-				<text class="section-title">我的服务</text>
-				<view class="service-card">
-					<view class="service-item" @click="openInfo">
-						<image class="service-icon" src="/static/my/index/icons/user-avatar.png" mode="aspectFit"></image>
-						<view class="service-copy">
-							<text class="service-title">个人信息</text>
-							<text class="service-description">查看与修改个人资料</text>
-						</view>
-						<image class="service-arrow" src="/static/my/index/icons/arrow-right.png" mode="aspectFit"></image>
-					</view>
-					<view class="service-divider">
-					</view>
-					<view class="service-item" @click="openRecords">
-						<image class="service-icon" src="/static/my/index/icons/form-edit.png" mode="aspectFit"></image>
-						<view class="service-copy">
-							<text class="service-title">请假记录</text>
-							<text class="service-description">查看我的请假申请记录</text>
-						</view>
-						<image class="service-arrow" src="/static/my/index/icons/arrow-right.png" mode="aspectFit"></image>
-					</view>
-					<view class="service-divider">
-					</view>
-					<view class="service-item" @click="openFeedback">
-						<image class="service-icon" src="/static/my/index/icons/feedback.svg" mode="aspectFit"></image>
-						<view class="service-copy">
-							<text class="service-title">用户反馈</text>
-							<text class="service-description">提出建议或反馈使用问题</text>
-						</view>
-						<image class="service-arrow" src="/static/my/index/icons/arrow-right.png" mode="aspectFit"></image>
-					</view>
-					<view class="service-divider">
-					</view>
-					<view class="service-item" @click="openPassword">
-						<image class="service-icon" src="/static/my/index/icons/lock.png" mode="aspectFit"></image>
-						<view class="service-copy">
-							<text class="service-title">修改密码</text>
-							<text class="service-description">修改账户登录密码</text>
-						</view>
-						<image class="service-arrow" src="/static/my/index/icons/arrow-right.png" mode="aspectFit"></image>
-					</view>
-					<view v-if="false" class="service-divider"></view>
-					<view v-if="false" class="service-item" @click.stop="openAppearance">
-						<image class="service-icon" src="/static/common/tabbar/appearance.svg" mode="aspectFit"></image>
-						<view class="service-copy">
-							<text class="service-title">显示与触感</text>
-							<text class="service-description">调整导航动效、对比度与触觉反馈</text>
-						</view>
-						<image class="service-arrow" src="/static/my/index/icons/arrow-right.png" mode="aspectFit"></image>
+	<view :class="themeClass('page')">
+		<scroll-view
+			:class="themeClass('content-scroll')"
+			scroll-y="true"
+			:scroll-top="scrollTop"
+			:show-scrollbar="false"
+			@scroll="rememberScroll"
+		>
+			<view :class="themeClass('safe-top')"></view>
+			<view :class="themeClass('content')">
+				<view :class="themeClass('header')">
+					<text :class="themeClass('page-title')">我的</text>
+					<view
+						:class="themeClass('settings-button')"
+						role="button"
+						aria-label="设置"
+						@click="openSettings"
+					>
+						<image
+							:class="themeClass('settings-symbol')"
+							:src="themeImage('/static/ios/settings-secondary.svg')"
+							mode="aspectFit"
+						></image>
 					</view>
 				</view>
-				<view class="logout-card" @click="handleLogout">
-					<image class="logout-icon" src="/static/my/index/icons/power.png" mode="aspectFit"></image>
-					<text class="logout-text">退出登录</text>
-					<text class="logout-arrow">›</text>
+				<view
+					:class="themeClass('profile-card')"
+					@click="openInfo"
+				>
+					<view :class="themeClass('card-orb')"></view>
+					<view :class="themeClass('identity-row')">
+						<view :class="themeClass('identity-copy')">
+							<image
+								:class="themeClass('identity-icon')"
+								:src="themeImage('/static/ios/school-white.svg')"
+								mode="aspectFit"
+							></image>
+							<text :class="themeClass('identity-label')">校园身份</text>
+						</view>
+						<text :class="themeClass('identity-arrow')">查看信息 ›</text>
+					</view>
+					<view :class="themeClass('profile-main')">
+						<image
+							v-if="avatarURL != '' && !avatarLoadFailed"
+							:class="themeClass('profile-avatar')"
+							:src="themeImage(avatarURL)"
+							mode="aspectFill"
+							@click.stop="openAvatar"
+							@error="handleAvatarError"
+						></image>
+						<view
+							v-else
+							:class="themeClass('profile-avatar profile-avatar-placeholder')"
+							@click.stop="openAvatar"
+						>
+							<text :class="themeClass('avatar-initial')">
+								{{ profileName.trim() == '' ? '同' : profileName.trim().slice(0, 1) }}
+							</text>
+						</view>
+						<view :class="themeClass('profile-details')">
+							<text :class="themeClass('profile-name')">{{ profileName == '' ? '未完善资料' : profileName }}</text>
+							<text :class="themeClass('profile-class')">
+								{{ className == '' ? '请完善个人资料' : className }}
+							</text>
+						</view>
+					</view>
+					<view :class="themeClass('student-row')">
+						<text :class="themeClass('student-label')">学号</text>
+						<text :class="themeClass('student-number')">{{ studentID }}</text>
+					</view>
 				</view>
-				<view class="bottom-spacer">
+				<view :class="themeClass('service-group')">
+					<text :class="themeClass('section-title')"> 资料与账号 </text>
+					<view :class="themeClass('service-card')">
+						<view
+							:class="themeClass('service-item')"
+							@click="openInfo"
+						>
+							<view :class="themeClass('service-icon-box service-icon-blue')">
+								<image
+									:class="themeClass('service-icon')"
+									:src="themeImage('/static/ios/user-white.svg')"
+									mode="aspectFit"
+								></image>
+							</view>
+							<text :class="themeClass('service-title')"> 个人信息 </text>
+							<image
+								:class="themeClass('service-arrow')"
+								:src="themeImage('/static/ios/arrow-secondary.svg')"
+								mode="aspectFit"
+							></image>
+						</view>
+						<view
+							:class="themeClass('service-item')"
+							@click="openEdit"
+						>
+							<view :class="themeClass('service-icon-box service-icon-green')">
+								<image
+									:class="themeClass('service-icon')"
+									:src="themeImage('/static/ios/edit-white.svg')"
+									mode="aspectFit"
+								></image>
+							</view>
+							<text :class="themeClass('service-title')"> 编辑资料 </text>
+							<image
+								:class="themeClass('service-arrow')"
+								:src="themeImage('/static/ios/arrow-secondary.svg')"
+								mode="aspectFit"
+							></image>
+						</view>
+						<view
+							:class="themeClass('service-item')"
+							@click="openPassword"
+						>
+							<view :class="themeClass('service-icon-box service-icon-grey')">
+								<image
+									:class="themeClass('service-icon')"
+									:src="themeImage('/static/ios/lock-white.svg')"
+									mode="aspectFit"
+								></image>
+							</view>
+							<text :class="themeClass('service-title')"> 修改密码 </text>
+							<image
+								:class="themeClass('service-arrow')"
+								:src="themeImage('/static/ios/arrow-secondary.svg')"
+								mode="aspectFit"
+							></image>
+						</view>
+					</view>
+				</view>
+				<view :class="themeClass('service-group')">
+					<text :class="themeClass('section-title')"> 偏好与支持 </text>
+					<view :class="themeClass('service-card')">
+						<view
+							:class="themeClass('service-item')"
+							@click="openSettings"
+						>
+							<view :class="themeClass('service-icon-box service-icon-grey')">
+								<image
+									:class="themeClass('service-icon')"
+									:src="themeImage('/static/ios/settings-white.svg')"
+									mode="aspectFit"
+								></image>
+							</view>
+							<text :class="themeClass('service-title')"> 设置 </text>
+							<image
+								:class="themeClass('service-arrow')"
+								:src="themeImage('/static/ios/arrow-secondary.svg')"
+								mode="aspectFit"
+							></image>
+						</view>
+						<view
+							:class="themeClass('service-item')"
+							@click="openFeedback"
+						>
+							<view :class="themeClass('service-icon-box service-icon-orange')">
+								<image
+									:class="themeClass('service-icon')"
+									:src="themeImage('/static/ios/bubble-white.svg')"
+									mode="aspectFit"
+								></image>
+							</view>
+							<text :class="themeClass('service-title')"> 反馈与建议 </text>
+							<image
+								:class="themeClass('service-arrow')"
+								:src="themeImage('/static/ios/arrow-secondary.svg')"
+								mode="aspectFit"
+							></image>
+						</view>
+					</view>
+				</view>
+				<view
+					:class="themeClass('logout-card')"
+					@click="handleLogout"
+				>
+					<text :class="themeClass('logout-text')">退出登录</text>
 				</view>
 			</view>
 		</scroll-view>
 	</view>
 </template>
-
 <script setup lang="uts">
+import { themeClass as resolveThemeClass, themeImage as resolveThemeImage } from '@/utils/app-theme.uts'
 import { onUnmounted, ref, watch } from 'vue'
-import { cacheAvatarFile, clearAvatarFileCache, getCachedAvatarSource } from '@/utils/avatar-cache.uts'
-import { getCurrentUser, getProfile, getStoredAvatarURL, uploadAvatar, AvatarUploadError, logout as clearSession, logoutRequest } from '@/utils/api.uts'
+import {
+	cacheAvatarFile,
+	clearAvatarFileCache,
+	getCachedAvatarSource
+} from '@/utils/avatar-cache.uts'
+import {
+	getCurrentUser,
+	getProfile,
+	getStoredAvatarURL,
+	uploadAvatar,
+	AvatarUploadError,
+	logout as clearSession,
+	logoutRequest
+} from '@/utils/api.uts'
 import { chooseAvatarImage } from '@/utils/avatar-picker.uts'
 
 const props = defineProps<{ active: boolean }>()
+const scrollTop = ref(0)
+function rememberScroll(event: UniScrollEvent) {
+	scrollTop.value = event.detail.scrollTop
+}
 const profileName = ref(getCurrentUser().name)
 const studentID = ref(getCurrentUser().student_id)
 const className = ref(getCurrentUser().class_name)
@@ -134,7 +241,12 @@ async function changeAvatar(): Promise<void> {
 		avatarLoadFailed.value = false
 		avatarURL.value = remoteURL
 		const source = await cacheAvatarFile(currentStudentID, remoteURL)
-		if (!pageActive || currentStudentID != getCurrentUser().student_id || remoteURL != getStoredAvatarURL()) return
+		if (
+			!pageActive ||
+			currentStudentID != getCurrentUser().student_id ||
+			remoteURL != getStoredAvatarURL()
+		)
+			return
 		avatarLoadFailed.value = false
 		avatarURL.value = source
 		uni.hideLoading()
@@ -152,7 +264,10 @@ async function changeAvatar(): Promise<void> {
 			uni.reLaunch({ url: '/pages/profile/edit?first=1' })
 			return
 		}
-		uni.showToast({ title: message == null || message == '' ? '头像上传失败，请重试' : message, icon: 'none' })
+		uni.showToast({
+			title: message == null || message == '' ? '头像上传失败，请重试' : message,
+			icon: 'none'
+		})
 	} finally {
 		if (uploading) uni.hideLoading()
 		changingAvatar.value = false
@@ -185,7 +300,9 @@ function openAvatar() {
 				}
 			})
 		},
-		complete: (_) => { avatarMenuOpen.value = false }
+		complete: (_) => {
+			avatarMenuOpen.value = false
+		}
 	})
 }
 
@@ -195,7 +312,12 @@ async function loadAvatar() {
 	const currentStudentID = getCurrentUser().student_id
 	try {
 		const profile = await getProfile()
-		if (!pageActive || currentStudentID != getCurrentUser().student_id || updateVersion != avatarUpdateVersion) return
+		if (
+			!pageActive ||
+			currentStudentID != getCurrentUser().student_id ||
+			updateVersion != avatarUpdateVersion
+		)
+			return
 		if (profile == null) {
 			uni.reLaunch({ url: '/pages/profile/edit?first=1' })
 			return
@@ -203,23 +325,35 @@ async function loadAvatar() {
 		const cachedURL = getStoredAvatarURL()
 		const remoteURL = cachedURL == '' ? profile.avatar_url : cachedURL
 		const latestURL = await cacheAvatarFile(currentStudentID, remoteURL)
-		if (!pageActive || currentStudentID != getCurrentUser().student_id || updateVersion != avatarUpdateVersion || remoteURL != getStoredAvatarURL()) return
-		if (latestURL != '' && (latestURL != avatarURL.value || avatarLoadFailed.value)) {
+		if (
+			!pageActive ||
+			currentStudentID != getCurrentUser().student_id ||
+			updateVersion != avatarUpdateVersion ||
+			remoteURL != getStoredAvatarURL()
+		)
+			return
+		if (latestURL != avatarURL.value || avatarLoadFailed.value) {
 			avatarLoadFailed.value = false
 			avatarURL.value = latestURL
 		}
 	} catch (error) {
-		if (!pageActive || currentStudentID != getCurrentUser().student_id || updateVersion != avatarUpdateVersion) return
+		if (
+			!pageActive ||
+			currentStudentID != getCurrentUser().student_id ||
+			updateVersion != avatarUpdateVersion
+		)
+			return
 		const message = (error as Error).message
 		if (message == '请先完善个人信息') {
 			uni.reLaunch({ url: '/pages/profile/edit?first=1' })
 			return
 		}
-		uni.showToast({ title: message == null || message == '' ? '头像加载失败' : message, icon: 'none' })
+		uni.showToast({
+			title: message == null || message == '' ? '头像加载失败' : message,
+			icon: 'none'
+		})
 	}
 }
-
-
 
 function openInfo() {
 	uni.navigateTo({ url: '/pages/profile/info' })
@@ -241,11 +375,8 @@ function openPassword() {
 	uni.navigateTo({ url: '/pages/profile/password' })
 }
 
-function openAppearance() {
-	uni.navigateTo({
-		url: '/pages/profile/appearance',
-		fail: () => uni.showToast({ title: '显示与触感页面打开失败，请重试', icon: 'none' })
-	})
+function openSettings() {
+	uni.navigateTo({ url: '/pages/profile/settings' })
 }
 
 async function handleLogout() {
@@ -253,7 +384,10 @@ async function handleLogout() {
 		await logoutRequest()
 	} catch (error) {
 		const message = (error as Error).message
-		uni.showToast({ title: message == null || message == '' ? '退出登录失败' : message, icon: 'none' })
+		uni.showToast({
+			title: message == null || message == '' ? '退出登录失败' : message,
+			icon: 'none'
+		})
 	} finally {
 		clearSession()
 		uni.reLaunch({ url: '/pages/auth/login' })
@@ -272,220 +406,303 @@ function refresh() {
 	}
 	loadAvatar()
 }
-watch((): boolean => props.active, (active: boolean) => {
-	pageActive = active
-	if (!active) avatarUpdateVersion++
-})
+watch(
+	(): boolean => props.active,
+	(active: boolean) => {
+		pageActive = active
+		if (!active) avatarUpdateVersion++
+	}
+)
 onUnmounted(() => {
 	pageActive = false
 	avatarUpdateVersion++
 })
 
-const scrollTop = ref(0)
-function rememberScroll(event: UniScrollEvent) {
-	scrollTop.value = event.detail.scrollTop
-}
 defineExpose({ refresh })
+
+// 原生模板通过本地方法调用主题函数，避免导入函数被编译为 unref 后调用。
+function themeClass(classes: string): string {
+	return resolveThemeClass(classes)
+}
+
+function themeImage(source: string): string {
+	return resolveThemeImage(source)
+}
 </script>
 
-<style>
+<style lang="scss">
+@import '@/styles/ios-theme.scss';
 .page {
-	position: relative;
 	flex: 1;
-	overflow: hidden;
-	background-color: #f5f8ff;
+	background-color: $ios-page;
 }
-.page-background {
-	position: absolute;
-	top: 0;
-	right: 0;
-	bottom: 0;
-	left: 0;
-	width: 100%;
-	height: 100%;
-}
-.content-scroll {
-	position: relative;
-	z-index: 1;
-	flex: 1;
-	overflow: hidden;
+.safe-top {
+	height: var(--status-bar-height);
 }
 .content {
 	box-sizing: border-box;
-	padding-top: 120rpx;
-	padding-right: 44rpx;
-	padding-left: 44rpx;
+	padding: 16px 21px 88px;
 }
 .header {
-	padding-left: 6rpx;
+	flex-direction: row;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 16px;
+	flex-shrink: 0;
+	height: 44px;
 }
 .page-title {
-	color: #173e79;
-	font-size: 48rpx;
+	font-size: 34px;
 	font-weight: 700;
-	line-height: 60rpx;
+	color: $ios-ink;
+	line-height: 44px;
 }
-.page-subtitle {
-	margin-top: 18rpx;
-	color: #7890bd;
-	font-size: 27rpx;
-	line-height: 38rpx;
+.settings-button {
+	box-sizing: border-box;
+	width: 44px;
+	height: 44px;
+	border-radius: 22px;
+	background-color: #e8e8ed;
+	align-items: center;
+	justify-content: center;
+}
+.settings-symbol {
+	width: 24px;
+	height: 24px;
 }
 .profile-card {
 	box-sizing: border-box;
-	height: 284rpx;
-	margin-top: 44rpx;
-	padding: 42rpx;
-	border-radius: 36rpx;
-	background-color: rgba(255, 255, 255, 0.84);
-	box-shadow: 0 14rpx 34rpx rgba(96, 130, 202, 0.14);
+	position: relative;
+	overflow: hidden;
+	padding: 18px;
+	border-radius: $ios-radius;
+	background-color: #2853b4;
+	background-image: linear-gradient(115deg, #245ac1, #2c4493);
+	box-shadow: 0 4px 10px rgba(35, 65, 140, 0.14);
+	flex-shrink: 0;
+}
+.identity-row {
+	position: relative;
+	z-index: 1;
 	flex-direction: row;
 	align-items: center;
+	justify-content: space-between;
+}
+.identity-label {
+	color: #ffffff;
+	font-size: 12px;
+	font-weight: 600;
+}
+.identity-arrow {
+	color: #d9e6ff;
+	font-size: 12px;
+	margin-left: 12px;
+}
+.profile-main {
+	position: relative;
+	z-index: 1;
+	flex-direction: row;
+	align-items: center;
+	margin-top: 14px;
+	margin-bottom: 16px;
 }
 .profile-avatar {
-	width: 136rpx;
-	height: 136rpx;
-	border-radius: 68rpx;
-	border-width: 8rpx;
-	border-style: solid;
-	border-color: rgba(255, 255, 255, 0.8);
-	box-shadow: 0 8rpx 24rpx rgba(89, 119, 205, 0.18);
+	box-sizing: border-box;
+	width: 48px;
+	height: 48px;
+	border-radius: 24px;
+	flex-shrink: 0;
+	margin-right: 12px;
 }
 .profile-avatar-placeholder {
+	box-sizing: border-box;
+	background-color: rgba(255, 255, 255, 0.15);
 	align-items: center;
 	justify-content: center;
-	background-color: #edf2fc;
+	border: 1px solid rgba(255, 255, 255, 0.3);
 }
-.profile-avatar-hint {
-	font-size: 24rpx;
-	color: #7890bc;
+.avatar-initial {
+	color: #ffffff;
+	font-size: 27px;
 }
 .profile-details {
 	flex: 1;
 	min-width: 0;
-	margin-left: 36rpx;
-}
-.profile-name-row {
-	flex-direction: row;
-	align-items: center;
 }
 .profile-name {
-	color: #153d79;
-	font-size: 36rpx;
+	color: #ffffff;
+	font-size: 22px;
+	line-height: 29px;
 	font-weight: 700;
-	line-height: 48rpx;
 }
-.edit-icon {
-	width: 34rpx;
-	height: 34rpx;
-	margin-left: 22rpx;
+.profile-class {
+	color: #e0eaff;
+	font-size: 12px;
+	line-height: 19px;
+	margin-top: 4px;
 }
-.profile-meta-row {
-	margin-top: 22rpx;
+.student-row {
+	box-sizing: border-box;
+	position: relative;
+	z-index: 1;
+	border-top: 0.5px solid rgba(255, 255, 255, 0.25);
+	padding-top: 11px;
 	flex-direction: row;
 	align-items: center;
+	justify-content: space-between;
 }
-.profile-school-row {
-	margin-top: 12rpx;
+.student-label {
+	color: #dce8ff;
+	font-size: 11px;
 }
-.profile-meta-icon {
-	width: 30rpx;
-	height: 30rpx;
-}
-.profile-meta-text {
-	margin-left: 12rpx;
-	color: #778db8;
-	font-size: 23rpx;
-	line-height: 32rpx;
-}
-.card-arrow {
-	width: 34rpx;
-	height: 34rpx;
-	margin-left: 12rpx;
+.student-number {
+	color: #ffffff;
+	font-size: 14px;
+	font-weight: 600;
 }
 .section-title {
-	margin-top: 36rpx;
-	margin-left: 26rpx;
-	margin-bottom: 26rpx;
-	color: #153d79;
-	font-size: 31rpx;
+	font-size: 20px;
 	font-weight: 700;
-	line-height: 44rpx;
+	color: $ios-ink;
+	margin-top: 16px;
+	margin-bottom: 10px;
+	line-height: 26px;
 }
 .service-card {
-	padding-right: 48rpx;
-	padding-left: 48rpx;
-	border-radius: 36rpx;
-	background-color: rgba(255, 255, 255, 0.84);
-	box-shadow: 0 14rpx 34rpx rgba(96, 130, 202, 0.12);
+	box-sizing: border-box;
+	background-color: $ios-surface;
+	border-radius: $ios-radius;
+	padding: 0 14px;
+	flex-shrink: 0;
 }
 .service-item {
-	height: 124rpx;
+	box-sizing: border-box;
+	min-height: 58px;
 	flex-direction: row;
 	align-items: center;
+	border-bottom: 0.5px solid $ios-separator;
+}
+.service-icon-box {
+	box-sizing: border-box;
+	width: 30px;
+	height: 30px;
+	border-radius: 9px;
+	margin-right: 12px;
+	align-items: center;
+	justify-content: center;
+}
+.service-icon-grey {
+	background-color: #8e909b;
+}
+.service-icon-blue {
+	background-color: #2d83ee;
+}
+.service-icon-green {
+	background-color: #36a778;
+}
+.service-icon-orange {
+	background-color: #e89936;
 }
 .service-icon {
-	width: 84rpx;
-	height: 84rpx;
-}
-.service-copy {
-	flex: 1;
-	min-width: 0;
-	margin-left: 24rpx;
+	width: 21px;
+	height: 21px;
 }
 .service-title {
-	color: #153d79;
-	font-size: 28rpx;
-	font-weight: 600;
-	line-height: 38rpx;
-}
-.service-description {
-	margin-top: 8rpx;
-	color: #8297c0;
-	font-size: 23rpx;
-	line-height: 32rpx;
+	flex-grow: 1;
+	flex-shrink: 1;
+	font-size: 16px;
+	color: $ios-ink;
+	text-align: left;
 }
 .service-arrow {
-	width: 32rpx;
-	height: 32rpx;
-	margin-left: 14rpx;
-}
-.service-divider {
-	height: 1rpx;
-	margin-left: 4rpx;
-	background-color: rgba(121, 150, 208, 0.18);
+	width: 13px;
+	height: 13px;
+	margin-left: 8px;
 }
 .logout-card {
-	height: 128rpx;
-	margin-top: 24rpx;
-	padding-right: 50rpx;
-	padding-left: 48rpx;
-	border-radius: 36rpx;
-	background-color: rgba(255, 255, 255, 0.88);
-	box-shadow: 0 14rpx 34rpx rgba(255, 116, 127, 0.1);
+	box-sizing: border-box;
+	min-height: 50px;
+	margin-top: 16px;
+	background-color: $ios-surface;
+	border-radius: 20px;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+}
+.logout-text {
+	font-size: 16px;
+	color: $ios-red;
+}
+.card-orb {
+	box-sizing: border-box;
+	position: absolute;
+	right: -52px;
+	top: -42px;
+	width: 185px;
+	height: 185px;
+	border-radius: 93px;
+	border: 24px solid rgba(255, 255, 255, 0.055);
+}
+.identity-copy {
 	flex-direction: row;
 	align-items: center;
 }
-.logout-icon {
-	width: 86rpx;
-	height: 86rpx;
+.identity-icon {
+	width: 18px;
+	height: 18px;
+	margin-right: 7px;
 }
-.logout-text {
+
+.service-group {
+	flex-shrink: 0;
+}
+.content-scroll {
 	flex: 1;
-	margin-left: 26rpx;
-	color: #ff4d54;
-	font-size: 29rpx;
-	font-weight: 500;
-	line-height: 40rpx;
 }
-.logout-arrow {
-	margin-top: -6rpx;
-	color: #ff7e86;
-	font-size: 58rpx;
-	font-weight: 300;
-	line-height: 60rpx;
+
+// Dark appearance. Geometry stays shared with the light appearance.
+.dark-page {
+	background-color: $ios-dark-page;
 }
-.bottom-spacer {
-	height: 96px;
+.dark-page-title {
+	color: $ios-dark-ink;
+}
+.dark-settings-button {
+	background-color: $ios-dark-panel;
+}
+.dark-profile-card {
+	background-color: #193569;
+	background-image: linear-gradient(115deg, #183967, #202d51);
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+}
+.dark-section-title {
+	color: $ios-dark-ink;
+}
+.dark-service-card {
+	background-color: $ios-dark-surface;
+}
+.dark-service-item {
+	border-bottom: 0.5px solid $ios-dark-separator;
+}
+.dark-service-title {
+	color: $ios-dark-ink;
+}
+.dark-logout-card {
+	background-color: $ios-dark-surface;
+}
+.dark-logout-text {
+	color: $ios-dark-red;
+}
+.contrast-page-title {
+	color: #ffffff;
+}
+.contrast-section-title {
+	color: #ffffff;
+}
+.contrast-service-item {
+	border-bottom: 0.5px solid #737580;
+}
+.contrast-service-title {
+	color: #ffffff;
 }
 </style>

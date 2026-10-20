@@ -1,74 +1,155 @@
 <template>
-	<view class="appearance-page">
-		<view class="appearance-header">
-			<view id="appearance-back" class="appearance-back" role="button" aria-label="返回我的" @click="goBack">
-				<text class="appearance-chevron">‹</text>
-				<text class="appearance-back-label">我的</text>
+	<view :class="themeClass('appearance-page')">
+		<view :class="themeClass('safe-top')"></view>
+		<view :class="themeClass('appearance-header')">
+			<view
+				id="appearance-back"
+				:class="themeClass('round-control')"
+				role="button"
+				aria-label="返回设置"
+				@click="goBack"
+			>
+				<image
+					:class="themeClass('control-icon')"
+					:src="themeImage('/static/ios/back-ink.svg')"
+					mode="aspectFit"
+				></image>
 			</view>
-			<text class="appearance-title">显示与触感</text>
+			<text :class="themeClass('appearance-title')">显示与触感</text>
+			<view :class="themeClass('header-spacer')"></view>
 		</view>
-		<scroll-view class="appearance-scroll" scroll-y="true" :show-scrollbar="false">
-			<view class="appearance-content">
-				<text class="appearance-section">导航外观</text>
-				<view class="appearance-group">
-					<view id="preference-motion" class="appearance-row" role="switch" aria-label="减少动态效果" :aria-checked="reduceMotion" @click="toggleReduceMotion">
-						<view class="appearance-copy">
-							<text class="appearance-label">减少动态效果</text>
-							<text class="appearance-detail">关闭胶囊伸缩与弹性回弹</text>
+		<scroll-view
+			:class="themeClass('appearance-scroll')"
+			scroll-y="true"
+			:show-scrollbar="false"
+		>
+			<view :class="themeClass('appearance-content')">
+				<view :class="themeClass('utility-intro')">
+					<text :class="themeClass('utility-title')">选择舒服的体验</text>
+					<text :class="themeClass('utility-description')">让界面适应你的使用习惯。</text>
+				</view>
+				<view :class="themeClass('appearance-group')">
+					<view
+						id="preference-motion"
+						:class="themeClass('appearance-row')"
+						role="switch"
+						aria-label="减少动态效果"
+						:aria-checked="reduceMotion"
+						@click="toggleReduceMotion"
+					>
+						<view :class="themeClass('appearance-copy')">
+							<text :class="themeClass('appearance-label')">减少动态效果</text>
+							<text :class="themeClass('appearance-detail')">关闭位移与弹性过渡</text>
 						</view>
-						<view :class="reduceMotion ? 'preference-switch preference-switch-on' : 'preference-switch'">
-							<view :class="reduceMotion ? 'preference-knob preference-knob-on' : 'preference-knob'"></view>
+						<view
+							:style="switchMotionStyle"
+							:class="themeClass(reduceMotion ? 'preference-switch preference-switch-on' : 'preference-switch')"
+						>
+							<view
+								:style="switchMotionStyle"
+								:class="themeClass(reduceMotion ? 'preference-knob preference-knob-on' : 'preference-knob')"
+							></view>
 						</view>
 					</view>
-					<view class="appearance-divider"></view>
-					<view id="preference-transparency" class="appearance-row" role="switch" aria-label="减少透明度" :aria-checked="reduceTransparency" @click="toggleReduceTransparency">
-						<view class="appearance-copy">
-							<text class="appearance-label">减少透明度</text>
-							<text class="appearance-detail">使用实色底座，提高内容辨识度</text>
+					<view
+						id="preference-transparency"
+						:class="themeClass('appearance-row')"
+						role="switch"
+						aria-label="减少透明度"
+						:aria-checked="reduceTransparency"
+						@click="toggleReduceTransparency"
+					>
+						<view :class="themeClass('appearance-copy')">
+							<text :class="themeClass('appearance-label')">减少透明度</text>
+							<text :class="themeClass('appearance-detail')">使用实色导航与面板</text>
 						</view>
-						<view :class="reduceTransparency ? 'preference-switch preference-switch-on' : 'preference-switch'">
-							<view :class="reduceTransparency ? 'preference-knob preference-knob-on' : 'preference-knob'"></view>
+						<view
+							:style="switchMotionStyle"
+							:class="themeClass(reduceTransparency ? 'preference-switch preference-switch-on' : 'preference-switch')"
+						>
+							<view
+								:style="switchMotionStyle"
+								:class="themeClass(reduceTransparency ? 'preference-knob preference-knob-on' : 'preference-knob')"
+							></view>
 						</view>
 					</view>
-					<view class="appearance-divider"></view>
-					<view id="preference-contrast" class="appearance-row" role="switch" aria-label="增强对比度" :aria-checked="highContrast" @click="toggleHighContrast">
-						<view class="appearance-copy">
-							<text class="appearance-label">增强对比度</text>
-							<text class="appearance-detail">加深文字与边界，同时减少透明度</text>
+					<view
+						id="preference-contrast"
+						:class="themeClass('appearance-row')"
+						role="switch"
+						aria-label="增强对比度"
+						:aria-checked="highContrast"
+						@click="toggleHighContrast"
+					>
+						<view :class="themeClass('appearance-copy')">
+							<text :class="themeClass('appearance-label')">增强对比度</text>
+							<text :class="themeClass('appearance-detail')">加深文字和边界</text>
 						</view>
-						<view :class="highContrast ? 'preference-switch preference-switch-on' : 'preference-switch'">
-							<view :class="highContrast ? 'preference-knob preference-knob-on' : 'preference-knob'"></view>
+						<view
+							:style="switchMotionStyle"
+							:class="themeClass(highContrast ? 'preference-switch preference-switch-on' : 'preference-switch')"
+						>
+							<view
+								:style="switchMotionStyle"
+								:class="themeClass(highContrast ? 'preference-knob preference-knob-on' : 'preference-knob')"
+							></view>
+						</view>
+					</view>
+					<view
+						id="preference-haptics"
+						:class="themeClass('appearance-row')"
+						role="switch"
+						aria-label="切换轻触反馈"
+						:aria-checked="haptics"
+						@click="toggleHaptics"
+					>
+						<view :class="themeClass('appearance-copy')">
+							<text :class="themeClass('appearance-label')">切换轻触反馈</text>
+							<text :class="themeClass('appearance-detail')">切换标签页时尝试轻微振动</text>
+						</view>
+						<view
+							:style="switchMotionStyle"
+							:class="themeClass(haptics ? 'preference-switch preference-switch-on' : 'preference-switch')"
+						>
+							<view
+								:style="switchMotionStyle"
+								:class="themeClass(haptics ? 'preference-knob preference-knob-on' : 'preference-knob')"
+							></view>
 						</view>
 					</view>
 				</view>
-				<text class="appearance-footnote">系统关闭动画或启用高对比度时，导航也会应用相应的辅助效果。</text>
-				<text class="appearance-section appearance-section-next">触觉反馈</text>
-				<view class="appearance-group">
-					<view id="preference-haptics" class="appearance-row" role="switch" aria-label="切换轻触反馈" :aria-checked="haptics" @click="toggleHaptics">
-						<view class="appearance-copy">
-							<text class="appearance-label">切换轻触反馈</text>
-							<text class="appearance-detail">切换标签页时给予一次轻微反馈</text>
-						</view>
-						<view :class="haptics ? 'preference-switch preference-switch-on' : 'preference-switch'">
-							<view :class="haptics ? 'preference-knob preference-knob-on' : 'preference-knob'"></view>
-						</view>
-					</view>
-				</view>
-				<text class="appearance-footnote">触觉反馈同时遵循设备的系统设置。更改会自动保存到此设备。</text>
+				<text :class="themeClass('field-help')">
+					系统辅助设置同样生效。触觉反馈遵循设备系统设置，更改会自动保存到此设备。
+				</text>
 			</view>
 		</scroll-view>
 	</view>
 </template>
-
 <script setup lang="uts">
-import { nextTick, ref, watch } from 'vue'
-import { configureNavigationSwitch, labelNavigationPreference, readNavigationPreferences, saveNavigationPreferences } from '@/utils/navigation-preferences.uts'
+import { themeClass as resolveThemeClass, themeImage as resolveThemeImage } from '@/utils/app-theme.uts'
+import { computed, nextTick, ref, watch } from 'vue'
+import { syncThemePreferences } from '@/utils/app-theme.uts'
+import {
+	configureNavigationSwitch,
+	labelNavigationPreference,
+	readNavigationPreferences,
+	saveNavigationPreferences,
+	systemReducesMotion
+} from '@/utils/navigation-preferences.uts'
 
 const preferences = readNavigationPreferences()
 const reduceMotion = ref(preferences.reduceMotion)
 const reduceTransparency = ref(preferences.reduceTransparency)
 const highContrast = ref(preferences.highContrast)
 const haptics = ref(preferences.haptics)
+const systemMotion = ref(systemReducesMotion())
+const switchMotionStyle = computed(
+	(): string =>
+		'transition-duration:' + (reduceMotion.value || systemMotion.value ? '0ms' : '220ms') + ';'
+)
+onPageShow(() => {
+	systemMotion.value = systemReducesMotion()
+})
 
 function save() {
 	saveNavigationPreferences({
@@ -89,6 +170,7 @@ function toggleReduceTransparency() {
 function toggleHighContrast() {
 	highContrast.value = !highContrast.value
 	save()
+	syncThemePreferences()
 }
 function toggleHaptics() {
 	haptics.value = !haptics.value
@@ -102,122 +184,197 @@ function goBack() {
 	})
 }
 function updateAccessibility() {
-	labelNavigationPreference(uni.getElementById('appearance-back'), '返回我的', () => goBack())
-	configureNavigationSwitch(uni.getElementById('preference-motion'), '减少动态效果', reduceMotion.value, () => toggleReduceMotion())
-	configureNavigationSwitch(uni.getElementById('preference-transparency'), '减少透明度', reduceTransparency.value, () => toggleReduceTransparency())
-	configureNavigationSwitch(uni.getElementById('preference-contrast'), '增强对比度', highContrast.value, () => toggleHighContrast())
-	configureNavigationSwitch(uni.getElementById('preference-haptics'), '切换轻触反馈', haptics.value, () => toggleHaptics())
+	labelNavigationPreference(uni.getElementById('appearance-back'), '返回设置', () => goBack())
+	configureNavigationSwitch(
+		uni.getElementById('preference-motion'),
+		'减少动态效果',
+		reduceMotion.value,
+		() => toggleReduceMotion()
+	)
+	configureNavigationSwitch(
+		uni.getElementById('preference-transparency'),
+		'减少透明度',
+		reduceTransparency.value,
+		() => toggleReduceTransparency()
+	)
+	configureNavigationSwitch(
+		uni.getElementById('preference-contrast'),
+		'增强对比度',
+		highContrast.value,
+		() => toggleHighContrast()
+	)
+	configureNavigationSwitch(
+		uni.getElementById('preference-haptics'),
+		'切换轻触反馈',
+		haptics.value,
+		() => toggleHaptics()
+	)
 }
 onReady(() => updateAccessibility())
-watch((): string => '' + reduceMotion.value + reduceTransparency.value + highContrast.value + haptics.value, () => {
-	nextTick(() => updateAccessibility())
-})
-</script>
+watch(
+	(): string =>
+		'' + reduceMotion.value + reduceTransparency.value + highContrast.value + haptics.value,
+	() => {
+		nextTick(() => updateAccessibility())
+	}
+)
 
-<style>
+// 原生模板通过本地方法调用主题函数，避免导入函数被编译为 unref 后调用。
+function themeClass(classes: string): string {
+	return resolveThemeClass(classes)
+}
+
+function themeImage(source: string): string {
+	return resolveThemeImage(source)
+}
+</script>
+<style lang="scss">
+@import '@/styles/ios-controls.scss';
 .appearance-page {
 	flex: 1;
-	background-color: #f2f2f7;
+	background-color: $ios-page;
+}
+.safe-top {
+	height: var(--status-bar-height);
 }
 .appearance-header {
-	padding: 52px 24px 20px;
-}
-.appearance-back {
+	box-sizing: border-box;
+	height: 53px;
+	padding: 0 15px;
 	flex-direction: row;
 	align-items: center;
-	width: 90px;
+}
+.round-control {
+	box-sizing: border-box;
+	width: 44px;
 	height: 44px;
-	margin-left: -8px;
+	border-radius: 22px;
+	background-color: #eaeaef;
+	align-items: center;
+	justify-content: center;
 }
-.appearance-chevron {
-	font-size: 38px;
-	line-height: 42px;
-	color: #007aff;
-}
-.appearance-back-label {
-	margin-left: 5px;
-	font-size: 17px;
-	color: #007aff;
+.control-icon {
+	width: 21px;
+	height: 21px;
 }
 .appearance-title {
-	margin-top: 12px;
-	font-size: 32px;
-	line-height: 40px;
-	font-weight: 700;
-	color: #1c1c1e;
+	flex: 1;
+	font-size: 17px;
+	font-weight: 600;
+	color: $ios-ink;
+	text-align: center;
+}
+.header-spacer {
+	width: 44px;
 }
 .appearance-scroll {
 	flex: 1;
 }
 .appearance-content {
-	padding: 8px 20px 36px;
-}
-.appearance-section {
-	margin: 0 16px 9px;
-	font-size: 13px;
-	color: #636366;
-}
-.appearance-section-next {
-	margin-top: 28px;
+	box-sizing: border-box;
+	padding: 13px 21px 38px;
 }
 .appearance-group {
-	border-radius: 14px;
-	background-color: #ffffff;
+	box-sizing: border-box;
+	padding: 0 16px;
+	border-radius: 23px;
+	background-color: $ios-surface;
 }
 .appearance-row {
 	box-sizing: border-box;
-	min-height: 82px;
-	padding: 16px;
+	min-height: 68px;
+	padding: 12px 0;
 	flex-direction: row;
 	align-items: center;
+	border-bottom: 0.5px solid $ios-separator;
 }
 .appearance-copy {
 	flex: 1;
-	margin-right: 12px;
+	min-width: 0;
+	margin-right: 14px;
 }
 .appearance-label {
 	font-size: 16px;
 	line-height: 23px;
-	color: #1c1c1e;
+	color: $ios-ink;
 }
 .appearance-detail {
-	margin-top: 4px;
-	font-size: 12px;
-	line-height: 18px;
-	color: #636366;
-}
-.appearance-divider {
-	height: 0.5px;
-	margin-left: 16px;
-	background-color: #d1d1d6;
-}
-.appearance-footnote {
-	margin: 9px 16px 0;
 	font-size: 12px;
 	line-height: 19px;
-	color: #636366;
+	margin-top: 2px;
+	color: $ios-secondary;
 }
 .preference-switch {
-	position: relative;
+	box-sizing: border-box;
 	width: 51px;
 	height: 31px;
 	border-radius: 16px;
-	background-color: #e9e9eb;
+	background-color: #d5d6de;
+	padding: 2px;
+	transition-property: background-color;
+	transition-duration: 220ms;
+	transition-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 .preference-switch-on {
-	background-color: #34c759;
+	background-color: $ios-blue;
 }
 .preference-knob {
-	position: absolute;
-	top: 2px;
-	left: 2px;
+	box-sizing: border-box;
 	width: 27px;
 	height: 27px;
 	border-radius: 14px;
 	background-color: #ffffff;
-	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.14);
+	transform: translateX(0px);
+	transition-property: transform;
+	transition-duration: 220ms;
+	transition-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 .preference-knob-on {
 	transform: translateX(20px);
+}
+
+// Dark appearance. Geometry stays shared with the light appearance.
+.dark-appearance-page {
+	background-color: $ios-dark-page;
+}
+.dark-round-control {
+	background-color: $ios-dark-panel;
+}
+.dark-appearance-title {
+	color: $ios-dark-ink;
+}
+.dark-appearance-group {
+	background-color: $ios-dark-surface;
+}
+.dark-appearance-row {
+	border-bottom: 0.5px solid $ios-dark-separator;
+}
+.dark-appearance-label {
+	color: $ios-dark-ink;
+}
+.dark-appearance-detail {
+	color: $ios-dark-secondary;
+}
+.dark-preference-switch {
+	background-color: #444650;
+}
+.dark-preference-switch-on {
+	background-color: $ios-dark-button;
+}
+.dark-preference-knob {
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+}
+.contrast-appearance-title {
+	color: #ffffff;
+}
+.contrast-appearance-row {
+	border-bottom: 0.5px solid #737580;
+}
+.contrast-appearance-label {
+	color: #ffffff;
+}
+.contrast-appearance-detail {
+	color: #d2d3dc;
 }
 </style>

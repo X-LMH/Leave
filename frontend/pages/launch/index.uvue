@@ -1,20 +1,49 @@
 <template>
-	<view class="launch-page">
-		<view v-if="checking" class="launch-content">
-			<text class="launch-title">正在检查版本</text>
-			<text class="launch-message">请稍候</text>
-		</view>
-		<view v-else class="launch-content">
-			<text class="launch-title">无法检查版本</text>
-			<text class="launch-message">{{ errorMessage }}</text>
-			<button class="retry-button" @click="checkVersion">重试</button>
-		</view>
+	<view :class="themeClass('launch-page')">
+		<view :class="themeClass('safe-top')"></view>
+		<scroll-view
+			:class="themeClass('launch-scroll')"
+			scroll-y="true"
+			:show-scrollbar="false"
+		>
+			<view :class="themeClass('launch-content')">
+				<AppBrand />
+				<view :class="themeClass('launch-state')">
+					<LoadingSpinner v-if="checking" />
+					<view
+						v-else
+						:class="themeClass('error-symbol')"
+					>
+						<text :class="themeClass('error-symbol-text')">!</text>
+					</view>
+					<text :class="themeClass('launch-title')">{{ checking ? '正在检查版本' : '暂时无法检查版本' }}</text>
+					<text :class="themeClass('launch-message')">
+						{{ checking ? '即将进入你的校园空间。' : errorMessage }}
+					</text>
+					<view
+						v-if="!checking"
+						:class="themeClass('primary-button retry-button')"
+						@click="checkVersion"
+					>
+						<text :class="themeClass('primary-button-text')">重新检查</text>
+					</view>
+				</view>
+			</view>
+		</scroll-view>
 	</view>
 </template>
-
 <script setup lang="uts">
+import { themeClass as resolveThemeClass } from '@/utils/app-theme.uts'
 import { ref } from 'vue'
-import { getCurrentAppVersion, getProfile, saveUpdateInfo, STORAGE_TOKEN_KEY, updateClientInfo } from '@/utils/api.uts'
+import AppBrand from '@/components/AppBrand.uvue'
+import LoadingSpinner from '@/components/LoadingSpinner.uvue'
+import {
+	getCurrentAppVersion,
+	getProfile,
+	saveUpdateInfo,
+	STORAGE_TOKEN_KEY,
+	updateClientInfo
+} from '@/utils/api.uts'
 import { getAppVersion, getAppVersionCode, getDeviceName } from '@/utils/device.uts'
 
 const checking = ref(true)
@@ -60,36 +89,86 @@ async function checkVersion() {
 onLoad(() => {
 	checkVersion()
 })
-</script>
 
-<style>
+// 原生模板通过本地方法调用主题函数，避免导入函数被编译为 unref 后调用。
+function themeClass(classes: string): string {
+	return resolveThemeClass(classes)
+}
+</script>
+<style lang="scss">
+@import '@/styles/ios-controls.scss';
 .launch-page {
 	flex: 1;
-	background-color: #F4F7FF;
+	background-color: $ios-page;
+}
+.safe-top {
+	height: var(--status-bar-height);
+}
+.launch-scroll {
+	flex: 1;
 }
 .launch-content {
-	flex: 1;
-	padding: 0 72rpx;
+	box-sizing: border-box;
+	padding: 113px 29px 38px;
+	align-items: center;
+}
+.launch-state {
+	align-items: center;
+	width: 100%;
+	margin-top: 65px;
+}
+.launch-title {
+	font-size: 18px;
+	line-height: 25px;
+	font-weight: 600;
+	color: $ios-ink;
+	margin-top: 20px;
+}
+.launch-message {
+	font-size: 13px;
+	line-height: 23px;
+	color: $ios-secondary;
+	margin-top: 11px;
+	text-align: center;
+}
+.error-symbol {
+	box-sizing: border-box;
+	width: 36px;
+	height: 36px;
+	border-radius: 18px;
+	background-color: #fde9e8;
 	align-items: center;
 	justify-content: center;
 }
-.launch-title {
-	color: #173766;
-	font-size: 42rpx;
-	font-weight: 700;
-}
-.launch-message {
-	margin-top: 22rpx;
-	color: #7d90b3;
-	font-size: 28rpx;
-	text-align: center;
+.error-symbol-text {
+	color: $ios-red;
+	font-size: 24px;
 }
 .retry-button {
-	width: 300rpx;
-	margin-top: 56rpx;
-	border-radius: 999rpx;
-	background-color: #5475d8;
+	width: 100%;
+	margin-top: 36px;
+}
+
+// Dark appearance. Geometry stays shared with the light appearance.
+.dark-launch-page {
+	background-color: $ios-dark-page;
+}
+.dark-launch-title {
+	color: $ios-dark-ink;
+}
+.dark-launch-message {
+	color: $ios-dark-secondary;
+}
+.dark-error-symbol {
+	background-color: #40262c;
+}
+.dark-error-symbol-text {
+	color: $ios-dark-red;
+}
+.contrast-launch-title {
 	color: #ffffff;
-	font-size: 30rpx;
+}
+.contrast-launch-message {
+	color: #d2d3dc;
 }
 </style>

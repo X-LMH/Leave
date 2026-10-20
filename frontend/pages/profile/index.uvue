@@ -1,8 +1,9 @@
 <template>
-	<view class="profile-entry"></view>
+	<view :class="themeClass('profile-entry')"></view>
 </template>
 
 <script setup lang="uts">
+import { themeClass as resolveThemeClass } from '@/utils/app-theme.uts'
 // 保留旧路由入口；首页和我的现在由同一个常驻主页面承载。
 onLoad(() => {
 	uni.reLaunch({
@@ -12,11 +13,23 @@ onLoad(() => {
 		}
 	})
 })
+
+// 原生模板通过本地方法调用主题函数，避免导入函数被编译为 unref 后调用。
+function themeClass(classes: string): string {
+	return resolveThemeClass(classes)
+}
 </script>
 
-<style>
+<style lang="scss">
+@import '@/styles/ios-theme.scss';
+
 .profile-entry {
 	flex: 1;
 	background-color: #f5f5f7;
+}
+
+// Dark appearance. Geometry stays shared with the light appearance.
+.dark-profile-entry {
+	background-color: $ios-dark-page;
 }
 </style>

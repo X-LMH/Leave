@@ -1,315 +1,920 @@
 <template>
-	<view class="page">
-		<image class="page-background" src="/static/home/index/background.png" mode="aspectFill"></image>
-		<scroll-view class="home-scroll" scroll-y="true" :scroll-top="scrollTop" @scroll="rememberScroll" :show-scrollbar="false">
-			<view class="foreground-content">
-				<view class="welcome-row">
-					<view class="welcome-copy">
-						<view class="greeting-row">
-							<text class="greeting">{{ timeGreeting }}，</text>
-							<text class="greeting-name">{{ userName == '' ? '同学' : userName }}</text>
-							<text class="greeting-wave"> 👋</text>
+	<view :class="themeClass('home-page')">
+		<scroll-view
+			:class="themeClass('home-scroll')"
+			scroll-y="true"
+			:scroll-top="scrollTop"
+			:show-scrollbar="false"
+			@scroll="rememberScroll"
+		>
+			<view :class="themeClass('safe-top')"></view>
+			<view :class="themeClass('home-content')">
+				<view :class="themeClass('home-header')">
+					<text :class="themeClass('page-title')">请假</text>
+					<view
+						:class="themeClass('account-button')"
+						role="button"
+						aria-label="个人信息"
+						@click="openInfo"
+					>
+						<image
+							v-if="avatarURL != '' && !avatarFailed"
+							:class="themeClass('account-avatar')"
+							:src="themeImage(avatarURL)"
+							mode="aspectFill"
+							@error="handleAvatarError"
+						></image>
+						<view
+							v-else
+							:class="themeClass('account-avatar account-avatar-placeholder')"
+						>
+							<text :class="themeClass('account-initial')">
+								{{ profileName.trim() == '' ? '同' : profileName.trim().slice(0, 1) }}
+							</text>
 						</view>
-						<text class="greeting-subtitle">{{ greetingSubtitle }}</text>
 					</view>
 				</view>
-				<view class="hero">
-					<text class="hero-title">请假申请</text>
-					<text class="hero-subtitle">轻松请假 · 简单高效</text>
-					<view class="leave-wrap" @touchstart="handleLeavePress" @touchend="handleLeaveRelease" @touchcancel="handleLeaveRelease" @click="handleCreateLeave">
-						<view :class="isLeavePressed ? 'leave-halo halo-outer halo-outer-pressed' : 'leave-halo halo-outer'">
+				<view
+					:class="themeClass('application-card')"
+					role="button"
+					aria-label="申请请假"
+					@click="createLeave"
+				>
+					<view :class="themeClass('application-copy')">
+						<text :class="themeClass('application-title')">申请请假</text>
+						<text :class="themeClass('application-description')">填写信息，生成假条</text>
+					</view>
+					<view :class="themeClass('application-art-back')"></view>
+					<view :class="themeClass('application-art')">
+						<image
+							:class="themeClass('application-art-symbol')"
+							:src="themeImage('/static/ios/calendar-blue.svg')"
+							mode="aspectFit"
+						></image>
+						<view :class="themeClass('paper-line')"></view>
+						<view :class="themeClass('paper-line paper-line-short')"></view>
+					</view>
+				</view>
+
+				<view :class="themeClass('overview-section')">
+					<view :class="themeClass('overview-heading')">
+						<text :class="themeClass('section-title')">数据概览</text>
+						<view :class="themeClass('example-badge')"><text :class="themeClass('example-text')">示例</text></view>
+					</view>
+					<view :class="themeClass('overview-card')">
+						<view
+							v-for="(metric, index) in homeOverview.metrics"
+							:key="metric.label"
+							:class="themeClass(index == 2 ? 'overview-item overview-item-last' : 'overview-item')"
+						>
+							<view :class="themeClass('metric-value-row')">
+								<text :class="themeClass('metric-value')">{{ metric.value }}</text>
+								<text :class="themeClass('metric-unit')">{{ metric.unit }}</text>
+							</view>
+							<text :class="themeClass('metric-label')">{{ metric.label }}</text>
 						</view>
-						<view :class="isLeavePressed ? 'leave-halo halo-middle halo-middle-pressed' : 'leave-halo halo-middle'">
+					</view>
+				</view>
+				<view :class="themeClass('latest-section')">
+					<view :class="themeClass('section-heading')">
+						<text :class="themeClass('section-title')">最新假条</text>
+						<view
+							:class="themeClass('records-link')"
+							@click="emit('records')"
+						>
+							<text :class="themeClass('link-text')">查看记录 ›</text>
 						</view>
-						<view :class="isLeavePressed ? 'leave-halo halo-inner halo-inner-pressed' : 'leave-halo halo-inner'">
-						</view>
-						<view :class="isLeavePressed ? 'leave-button leave-button-pressed' : 'leave-button'">
-							<view class="leave-button-content">
-								<image class="leave-icon" src="/static/home/index/icons/leave-main.png" mode="widthFix"></image>
-								<text class="leave-label">发起请假</text>
+					</view>
+					<view
+						v-if="loading"
+						:class="themeClass('empty-card')"
+					>
+						<text :class="themeClass('state-text')">正在加载最新假条…</text>
+					</view>
+					<view
+						v-else-if="loadError != ''"
+						:class="themeClass('empty-card')"
+						@click="refresh"
+					>
+						<text :class="themeClass('state-text')">{{ loadError }}</text>
+						<text :class="themeClass('retry-text')">轻点重试</text>
+					</view>
+					<view
+						v-else-if="recordID > 0"
+						:class="themeClass('latest-card')"
+						@click="openDetail"
+					>
+						<view :class="themeClass('request-heading')">
+							<view :class="themeClass('request-type-row')">
+								<image
+									:class="themeClass('request-type-icon')"
+									:src="themeImage('/static/ios/calendar-purple.svg')"
+									mode="aspectFit"
+								></image>
+								<text :class="themeClass('request-type')">{{ leaveType }}</text>
+							</view>
+							<view :class="themeClass('request-status-row')">
+								<image
+									:class="themeClass('status-icon')"
+									:src="themeImage('/static/ios/check-green.svg')"
+									mode="aspectFit"
+								></image>
+								<text :class="themeClass('request-status')">已同意</text>
 							</view>
 						</view>
+						<text :class="themeClass('request-date')">{{ dateText }}</text>
+						<text :class="themeClass('request-time')">{{ timeText }}</text>
+						<view :class="themeClass('request-meta')">
+							<view :class="themeClass('meta-item')">
+								<image
+									:class="themeClass('meta-icon')"
+									:src="themeImage('/static/ios/clock-secondary.svg')"
+									mode="aspectFit"
+								></image>
+								<text :class="themeClass('meta-text')">{{ durationText }}</text>
+							</view>
+							<view
+								v-if="outsideText != ''"
+								:class="themeClass('meta-item')"
+							>
+								<image
+									:class="themeClass('meta-icon')"
+									:src="themeImage('/static/ios/location-secondary.svg')"
+									mode="aspectFit"
+								></image>
+								<text :class="themeClass('meta-text')">{{ outsideText }}</text>
+							</view>
+						</view>
+						<view :class="themeClass('request-footer')">
+							<text :class="themeClass('link-text')">查看假条</text>
+							<image
+								:class="themeClass('link-arrow')"
+								:src="themeImage('/static/ios/arrow-blue.svg')"
+								mode="aspectFit"
+							></image>
+						</view>
+					</view>
+					<view
+						v-else
+						:class="themeClass('empty-card')"
+					>
+						<text :class="themeClass('empty-title')">还没有假条</text>
+						<text :class="themeClass('state-text')">需要请假时，轻点下方的加号。</text>
 					</view>
 				</view>
-				<view class="records-card" @click="openRecords">
-					<view class="records-icon-wrap">
-						<image class="records-icon" src="/static/my/index/icons/form-edit.png" mode="aspectFit"></image>
+				<view :class="themeClass('shortcut-row')">
+					<view
+						:class="themeClass('shortcut')"
+						@click="openInfo"
+					>
+						<image
+							:class="themeClass('shortcut-symbol')"
+							:src="themeImage('/static/common/tabbar/profile-outline-blue.svg')"
+							mode="aspectFit"
+						></image>
+						<view :class="themeClass('shortcut-copy')">
+							<text :class="themeClass('shortcut-title')">个人资料</text>
+							<text :class="themeClass('shortcut-description')">身份与联系方式</text>
+						</view>
 					</view>
-					<view class="records-copy">
-						<text class="records-title">请假记录</text>
-						<text class="records-description">查看申请进度与历史记录</text>
+					<view
+						:class="themeClass('shortcut')"
+						@click="createLeave"
+					>
+						<image
+							:class="themeClass('shortcut-symbol')"
+							:src="themeImage('/static/common/tabbar/records-outline-blue.svg')"
+							mode="aspectFit"
+						></image>
+						<view :class="themeClass('shortcut-copy')">
+							<text :class="themeClass('shortcut-title')">填写申请</text>
+							<text :class="themeClass('shortcut-description')">时间、课程与去向</text>
+						</view>
 					</view>
-					<image class="records-arrow" src="/static/my/index/icons/arrow-right.png" mode="aspectFit"></image>
+				</view>
+
+				<view :class="themeClass('reminder-card')">
+					<image
+						:class="themeClass('reminder-icon')"
+						:src="themeImage('/static/ios/calendar-blue.svg')"
+						mode="aspectFit"
+					></image>
+					<view :class="themeClass('reminder-copy')"
+						><text :class="themeClass('reminder-title')">{{ homeOverview.reminderTitle }}</text>
+						<text :class="themeClass('reminder-text')">{{ homeOverview.reminderText }}</text></view
+					>
 				</view>
 			</view>
 		</scroll-view>
 	</view>
 </template>
-
 <script setup lang="uts">
-import { ref } from 'vue'
-import { getCurrentUser } from '@/utils/api.uts'
+import { themeClass as resolveThemeClass, themeImage as resolveThemeImage } from '@/utils/app-theme.uts'
+import { onUnmounted, ref } from 'vue'
+import {
+	getCurrentUser,
+	getRecord,
+	getRecords,
+	getStoredAvatarURL,
+	getProfile
+} from '@/utils/api.uts'
+import {
+	cacheAvatarFile,
+	getCachedAvatarSource,
+	clearAvatarFileCache
+} from '@/utils/avatar-cache.uts'
 
-const isLeavePressed = ref(false)
-const userName = ref(getCurrentUser().name)
-function getTimeGreeting(date: Date): string {
-	const hour = date.getHours()
-	if (hour >= 5 && hour < 11) return '早上好'
-	if (hour >= 11 && hour < 13) return '中午好'
-	if (hour >= 13 && hour < 18) return '下午好'
-	return '晚上好'
+type HomeMetric = {
+	label: string
+	value: number
+	unit: string
+}
+type HomeOverview = {
+	metrics: HomeMetric[]
+	reminderTitle: string
+	reminderText: string
+}
+// 独立于真实最新假条；统计区域明确标注示例，后续由后端提供同形数据。
+const homeOverview: HomeOverview = {
+	metrics: [
+		{ label: '累计请假', value: 12, unit: '次' },
+		{ label: '本月请假', value: 2, unit: '次' },
+		{ label: '累计时长', value: 36, unit: '小时' }
+	],
+	reminderTitle: '校园提醒',
+	reminderText: '提交前核对时间、课程与去向，确保联系方式准确'
 }
 
-const timeGreeting = ref(getTimeGreeting(new Date()))
-const greetingSubtitles = [
-	'今天也要好好照顾自己哦',
-	'愿你今天也有好心情',
-	'累了就休息一下吧',
-	'照顾好自己，再出发',
-	'愿每一天都轻松一点'
-]
-const greetingIndexStorageKey = 'home_greeting_index'
-const storedGreetingIndex = uni.getStorageSync(greetingIndexStorageKey)
-let greetingIndex = typeof storedGreetingIndex == 'number' ? storedGreetingIndex as number : 0
-const greetingSubtitle = ref(greetingSubtitles[0])
-
-function handleLeavePress() {
-	isLeavePressed.value = true
-}
-
-function handleLeaveRelease() {
-	isLeavePressed.value = false
-}
-
-function handleCreateLeave() {
-	isLeavePressed.value = false
-	uni.navigateTo({ url: '/pages/leave/apply' })
-}
-
-function openRecords() {
-	uni.navigateTo({ url: '/pages/leave/records' })
-}
-
-function refresh() {
-	userName.value = getCurrentUser().name
-	timeGreeting.value = getTimeGreeting(new Date())
-	greetingSubtitle.value = greetingSubtitles[greetingIndex]
-	greetingIndex = (greetingIndex + 1) % greetingSubtitles.length
-	uni.setStorageSync(greetingIndexStorageKey, greetingIndex)
-}
-
+const emit = defineEmits(['records'])
 const scrollTop = ref(0)
 function rememberScroll(event: UniScrollEvent) {
 	scrollTop.value = event.detail.scrollTop
 }
+const profileName = ref(getCurrentUser().name)
+const avatarURL = ref(getCachedAvatarSource(getCurrentUser().student_id, getStoredAvatarURL()))
+const avatarFailed = ref(false)
+let avatarRequest = 0
+function handleAvatarError() {
+	const remoteURL = getStoredAvatarURL()
+	if (remoteURL != '' && avatarURL.value != remoteURL) {
+		clearAvatarFileCache(getCurrentUser().student_id)
+		avatarURL.value = getCachedAvatarSource('', remoteURL)
+		return
+	}
+	avatarFailed.value = true
+}
+async function refreshAvatar() {
+	const request = ++avatarRequest
+	const user = getCurrentUser()
+	profileName.value = user.name
+	avatarURL.value = getCachedAvatarSource(user.student_id, getStoredAvatarURL())
+	avatarFailed.value = false
+	try {
+		const profile = await getProfile()
+		if (
+			request != avatarRequest ||
+			user.student_id != getCurrentUser().student_id ||
+			profile == null
+		)
+			return
+		profileName.value = profile.name
+		const storedURL = getStoredAvatarURL()
+		const remoteURL = storedURL == '' ? profile.avatar_url : storedURL
+		const source = await cacheAvatarFile(user.student_id, remoteURL)
+		if (
+			request != avatarRequest ||
+			user.student_id != getCurrentUser().student_id ||
+			remoteURL != getStoredAvatarURL()
+		)
+			return
+		avatarURL.value = source
+		avatarFailed.value = false
+	} catch (_) {
+		/* 头像失败不阻断首页真实假条。 */
+	}
+}
+const loading = ref(false)
+const loadError = ref('')
+const recordID = ref(0)
+const leaveType = ref('')
+const dateText = ref('')
+const timeText = ref('')
+const durationText = ref('')
+const outsideText = ref('')
+let requestVersion = 0
+function createLeave() {
+	uni.navigateTo({ url: '/pages/leave/apply' })
+}
+function openInfo() {
+	uni.navigateTo({ url: '/pages/profile/info' })
+}
+function openDetail() {
+	uni.navigateTo({ url: '/pages/leave/detail?id=' + recordID.value + '&source=records' })
+}
+function clock(value: string): string {
+	const date = new Date(value)
+	if (isNaN(date.getTime())) return value
+	return (
+		(date.getHours() < 10 ? '0' : '') +
+		date.getHours() +
+		':' +
+		(date.getMinutes() < 10 ? '0' : '') +
+		date.getMinutes()
+	)
+}
+function day(value: string): string {
+	const date = new Date(value)
+	if (isNaN(date.getTime())) return value
+	return date.getMonth() + 1 + '月' + date.getDate() + '日'
+}
+async function refresh() {
+	refreshAvatar()
+	const version = ++requestVersion
+	const studentID = getCurrentUser().student_id
+	loading.value = true
+	loadError.value = ''
+	outsideText.value = ''
+	try {
+		const records = await getRecords(1, 1)
+		if (version != requestVersion || studentID != getCurrentUser().student_id) return
+		if (records.length == 0) {
+			recordID.value = 0
+			return
+		}
+		const item = records[0]
+		recordID.value = item.id
+		leaveType.value = item.leave_type.replace('-本科生', '')
+		dateText.value =
+			day(item.start_time) +
+			(day(item.start_time) == day(item.end_time) ? '' : ' — ' + day(item.end_time))
+		timeText.value = clock(item.start_time) + ' — ' + clock(item.end_time)
+		durationText.value =
+			(item.duration_days > 0 ? item.duration_days.toFixed(0) + '天' : '') +
+			(item.duration_hours > 0 || item.duration_days == 0
+				? item.duration_hours.toFixed(0) + '小时'
+				: '')
+		// 列表不含离校字段；详情失败不影响已加载的假条入口。
+		try {
+			const detail = await getRecord(item.id)
+			if (version == requestVersion && studentID == getCurrentUser().student_id)
+				outsideText.value = detail.is_leave_school ? '离校' : '不离校'
+		} catch (_) {}
+	} catch (error) {
+		if (version != requestVersion || studentID != getCurrentUser().student_id) return
+		const message = (error as Error).message
+		loadError.value = message == null || message == '' ? '最新假条加载失败' : message
+	} finally {
+		if (version == requestVersion) loading.value = false
+	}
+}
+onUnmounted(() => {
+	requestVersion++
+	avatarRequest++
+})
 defineExpose({ refresh })
+
+// 原生模板通过本地方法调用主题函数，避免导入函数被编译为 unref 后调用。
+function themeClass(classes: string): string {
+	return resolveThemeClass(classes)
+}
+
+function themeImage(source: string): string {
+	return resolveThemeImage(source)
+}
 </script>
 
-<style>
-.page {
-	position:relative;
-	flex:1;
-	overflow:hidden;
-	background:#f0f3fa
+<style lang="scss">
+@import '@/styles/ios-theme.scss';
+.safe-top {
+	height: var(--status-bar-height);
 }
-.page-background {
-	position:absolute;
-	top:0;
-	right:0;
-	bottom:0;
-	left:0;
-	width:100%;
-	height:100%
+.home-page {
+	flex: 1;
+	background-color: $ios-page;
+}
+.home-content {
+	box-sizing: border-box;
+	padding: 16px 21px 88px;
+}
+.home-header {
+	flex-direction: row;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 16px;
+	flex-shrink: 0;
+	height: 44px;
+}
+.page-title {
+	color: $ios-ink;
+	font-size: 34px;
+	font-weight: 700;
+	line-height: 44px;
+}
+.account-button {
+	box-sizing: border-box;
+	width: 44px;
+	height: 44px;
+	border-radius: 22px;
+	background-color: $ios-surface;
+	align-items: center;
+	justify-content: center;
+}
+.application-card {
+	box-sizing: border-box;
+	position: relative;
+	overflow: hidden;
+	height: 125px;
+	padding: 22px;
+	border-radius: $ios-radius;
+	background-color: #2354b9;
+	background-image: linear-gradient(120deg, #2359c3, #294ba2);
+	flex-direction: row;
+	align-items: center;
+	justify-content: space-between;
+	box-shadow: 0 5px 12px rgba(30, 65, 140, 0.16);
+	flex-shrink: 0;
+}
+.application-copy {
+	flex: 1;
+}
+.application-title {
+	font-size: 25px;
+	font-weight: 700;
+	color: #ffffff;
+}
+.application-description {
+	font-size: 12px;
+	line-height: 20px;
+	color: #e2edff;
+	margin-top: 6px;
+}
+.application-art {
+	box-sizing: border-box;
+	position: relative;
+	z-index: 1;
+	width: 58px;
+	height: 72px;
+	border-radius: 15px;
+	background-color: #d5e8ff;
+	transform: rotate(12deg);
+	align-items: center;
+	justify-content: center;
+	margin-left: 12px;
+}
+.application-art-symbol {
+	width: 26px;
+	height: 26px;
+	margin-bottom: 7px;
+}
+.section-heading {
+	flex-direction: row;
+	align-items: center;
+	justify-content: space-between;
+	margin-top: 12px;
+	margin-bottom: 8px;
+	flex-shrink: 0;
+}
+.section-title {
+	font-size: 17px;
+	font-weight: 600;
+	color: $ios-ink;
+}
+.records-link {
+	min-height: 44px;
+	justify-content: center;
+}
+.link-text {
+	font-size: 12px;
+	color: $ios-blue;
+}
+.latest-card {
+	box-sizing: border-box;
+	padding: 14px 18px;
+	border-radius: $ios-radius;
+	background-color: $ios-surface;
+	flex-shrink: 0;
+	min-height: 175px;
+}
+.request-heading {
+	flex-direction: row;
+	align-items: center;
+	justify-content: space-between;
+}
+.request-type {
+	color: #8061c3;
+	font-size: 14px;
+	font-weight: 500;
+}
+.request-status {
+	color: $ios-green;
+	font-size: 11px;
+}
+.request-date {
+	color: $ios-secondary;
+	font-size: 13px;
+	margin-top: 10px;
+}
+.request-time {
+	font-size: 29px;
+	font-weight: 700;
+	color: $ios-ink;
+	margin-top: 4px;
+}
+.request-meta {
+	flex-direction: row;
+	flex-wrap: wrap;
+	margin-top: 6px;
+}
+.request-footer {
+	box-sizing: border-box;
+	flex-direction: row;
+	justify-content: space-between;
+	border-top: 0.5px solid $ios-separator;
+	padding-top: 8px;
+	margin-top: 10px;
+}
+.empty-card {
+	box-sizing: border-box;
+	padding: 26px;
+	border-radius: $ios-radius;
+	background-color: $ios-surface;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	min-height: 175px;
+}
+.empty-title {
+	font-size: 20px;
+	font-weight: 600;
+	color: $ios-ink;
+	margin-bottom: 10px;
+}
+.state-text {
+	font-size: 13px;
+	line-height: 21px;
+	color: $ios-secondary;
+	text-align: center;
+}
+.retry-text {
+	font-size: 13px;
+	color: $ios-blue;
+	margin-top: 12px;
+}
+.shortcut-row {
+	flex-direction: row;
+	margin-top: 14px;
+	flex-shrink: 0;
+}
+.shortcut {
+	box-sizing: border-box;
+	flex: 1;
+	min-width: 0;
+	padding: 14px 12px;
+	margin: 0 4px;
+	border-radius: 18px;
+	background-color: $ios-surface;
+	flex-direction: row;
+	align-items: center;
+	min-height: 84px;
+}
+.shortcut-symbol {
+	width: 24px;
+	height: 24px;
+	flex-shrink: 0;
+	margin-right: 10px;
+}
+.shortcut-copy {
+	flex: 1;
+	min-width: 0;
+}
+.shortcut-title {
+	font-size: 15px;
+	line-height: 22px;
+	font-weight: 600;
+	color: $ios-ink;
+}
+.shortcut-description {
+	font-size: 11px;
+	line-height: 17px;
+	color: $ios-secondary;
+	margin-top: 3px;
+}
+.application-art-back {
+	box-sizing: border-box;
+	position: absolute;
+	right: 42px;
+	top: 28px;
+	width: 54px;
+	height: 70px;
+	border: 1px solid rgba(255, 255, 255, 0.35);
+	border-radius: 12px;
+	background-color: rgba(178, 216, 255, 0.3);
+	transform: rotate(-13deg);
+}
+.paper-line {
+	box-sizing: border-box;
+	width: 27px;
+	height: 2px;
+	margin-top: 4px;
+	border-radius: 1px;
+	background-color: #9ebfe1;
+}
+.paper-line-short {
+	width: 20px;
+}
+.request-type-row,
+.request-status-row {
+	flex-direction: row;
+	align-items: center;
+}
+.request-type-icon {
+	width: 16px;
+	height: 16px;
+	margin-right: 6px;
+}
+.status-icon {
+	width: 11px;
+	height: 11px;
+	margin-right: 3px;
+}
+.meta-item {
+	flex-direction: row;
+	align-items: center;
+	margin-right: 14px;
+}
+.meta-icon {
+	width: 13px;
+	height: 13px;
+	margin-right: 4px;
+}
+.meta-text {
+	font-size: 12px;
+	color: $ios-secondary;
+}
+.link-arrow {
+	width: 13px;
+	height: 13px;
+}
+
+.overview-heading {
+	flex-direction: row;
+	align-items: center;
+	margin-top: 16px;
+	margin-bottom: 8px;
+	flex-shrink: 0;
+}
+.example-badge {
+	margin-left: 8px;
+	padding: 2px 6px;
+	border-radius: 5px;
+	background-color: #e6e9ef;
+}
+.example-text {
+	font-size: 10px;
+	line-height: 14px;
+	color: $ios-secondary;
+}
+.overview-card {
+	padding: 17px 0;
+	border-radius: 20px;
+	background-color: $ios-surface;
+	flex-direction: row;
+	flex-shrink: 0;
+}
+.overview-item {
+	flex: 1;
+	min-width: 0;
+	align-items: center;
+	border-right: 0.5px solid $ios-separator;
+}
+.overview-item-last {
+	border-right-width: 0px;
+}
+.metric-value-row {
+	flex-direction: row;
+	align-items: flex-end;
+}
+.metric-value {
+	font-size: 25px;
+	line-height: 32px;
+	font-weight: 700;
+	color: $ios-ink;
+}
+.metric-unit {
+	font-size: 11px;
+	line-height: 17px;
+	color: $ios-secondary;
+	margin-left: 4px;
+	margin-bottom: 3px;
+}
+.metric-label {
+	font-size: 11px;
+	line-height: 18px;
+	color: $ios-secondary;
+	margin-top: 5px;
+}
+.reminder-card {
+	margin-top: 14px;
+	padding: 17px 16px;
+	border-radius: 18px;
+	background-color: #e7eef9;
+	flex-direction: row;
+	align-items: flex-start;
+	flex-shrink: 0;
+}
+.reminder-title {
+	font-size: 14px;
+	line-height: 21px;
+	font-weight: 600;
+	color: $ios-ink;
+}
+.reminder-text {
+	font-size: 12px;
+	line-height: 21px;
+	color: $ios-secondary;
+	margin-top: 4px;
+}
+
+.account-avatar {
+	width: 40px;
+	height: 40px;
+	border-radius: 20px;
+}
+.account-avatar-placeholder {
+	box-sizing: border-box;
+	background-color: #5265a2;
+	border: 1px solid #8290bb;
+	align-items: center;
+	justify-content: center;
+}
+.account-initial {
+	font-size: 21px;
+	line-height: 28px;
+	color: #ffffff;
+}
+.overview-section,
+.latest-section {
+	flex-shrink: 0;
 }
 .home-scroll {
-	position:relative;
-	z-index:1;
-	flex:1
+	flex: 1;
 }
-.foreground-content {
-	position:relative;
-	z-index:1;
-	box-sizing:border-box;
-	padding:120rpx 48rpx 112px
+.reminder-icon {
+	width: 20px;
+	height: 20px;
+	margin-top: 1px;
+	margin-right: 10px;
 }
-.welcome-row {
-	flex-direction:row;
-	justify-content:space-between;
-	align-items:center
+.reminder-copy {
+	flex: 1;
+	min-width: 0;
 }
-.welcome-copy {
-	flex:1;
-	flex-direction:column
+
+// Dark appearance. Geometry stays shared with the light appearance.
+.dark-home-page {
+	background-color: $ios-dark-page;
 }
-.greeting-row {
-	flex-direction:row;
-	align-items:center
+.dark-page-title {
+	color: $ios-dark-ink;
 }
-.greeting {
-	flex-shrink:0;
-	color:#173766;
-	font-size:38rpx;
-	font-weight:700
+.dark-account-button {
+	background-color: $ios-dark-surface;
 }
-.greeting-name {
-	flex-shrink:1;
-	color:#254989;
-	font-size:48rpx;
-	font-weight:700;
-	line-height:64rpx
+.dark-application-card {
+	background-color: #18366a;
+	background-image: linear-gradient(120deg, #183c77, #233964);
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
 }
-.greeting-wave {
-	flex-shrink:0;
-	color:#173766;
-	font-size:42rpx;
-	font-weight:700
+.dark-application-art {
+	background-color: #2a4670;
 }
-.greeting-subtitle {
-	margin-top:12rpx;
-	color:#7d90b3;
-	font-size:28rpx;
-	line-height:42rpx
+.dark-section-title {
+	color: $ios-dark-ink;
 }
-.hero {
-	align-items:center;
-	margin-top:128rpx
+.dark-link-text {
+	color: $ios-dark-blue;
 }
-.hero-title {
-	color:#173766;
-	font-size:48rpx;
-	font-weight:700;
-	letter-spacing:2rpx
+.dark-latest-card {
+	background-color: $ios-dark-surface;
 }
-.hero-subtitle {
-	margin-top:12rpx;
-	color:#7d90b3;
-	font-size:28rpx;
-	line-height:42rpx
+.dark-request-type {
+	color: #c2a2ff;
 }
-.leave-wrap {
-	position:relative;
-	z-index:2;
-	width:100%;
-	height:520rpx;
-	margin-top:48rpx;
-	align-items:center;
-	justify-content:center
+.dark-request-status {
+	color: $ios-dark-green;
 }
-.leave-halo {
-	position:absolute;
-	border-radius:9999rpx;
-	transition-property:opacity;
-	transition-duration:140ms
+.dark-request-date {
+	color: $ios-dark-secondary;
 }
-.halo-outer {
-	width:520rpx;
-	height:520rpx;
-	opacity:.72;
-	background:rgba(255,255,255,.12);
-	border:2rpx solid rgba(255,255,255,.38)
+.dark-request-time {
+	color: $ios-dark-ink;
 }
-.halo-middle {
-	width:476rpx;
-	height:476rpx;
-	opacity:.86;
-	background:rgba(255,255,255,.2);
-	border:3rpx solid rgba(255,255,255,.58);
-	box-shadow:0 0 36rpx rgba(255,255,255,.48)
+.dark-request-footer {
+	border-top: 0.5px solid $ios-dark-separator;
 }
-.halo-inner {
-	width:426rpx;
-	height:426rpx;
-	background:rgba(255,255,255,.42);
-	border:3rpx solid rgba(255,255,255,.9);
-	box-shadow:inset 0 0 24rpx rgba(255,255,255,.72)
+.dark-empty-card {
+	background-color: $ios-dark-surface;
 }
-.halo-outer-pressed {
-	opacity:.42
+.dark-empty-title {
+	color: $ios-dark-ink;
 }
-.halo-middle-pressed {
-	opacity:.58
+.dark-state-text {
+	color: $ios-dark-secondary;
 }
-.halo-inner-pressed {
-	opacity:.78
+.dark-retry-text {
+	color: $ios-dark-blue;
 }
-.leave-button {
-	position:relative;
-	width:360rpx;
-	height:360rpx;
-	border-radius:180rpx;
-	align-items:center;
-	justify-content:center;
-	background-color:#4778f6;
-	background-image:linear-gradient(145deg,#5b8cff 0%,#4778f6 50%,#315fdf 100%);
-	border:3rpx solid rgba(255,255,255,.72);
-	box-shadow:inset 0 10rpx 18rpx rgba(255,255,255,.26),0 18rpx 34rpx rgba(55,88,196,.3);
-	transition-property:transform,box-shadow;
-	transition-duration:140ms
+.dark-shortcut {
+	background-color: $ios-dark-surface;
 }
-.leave-button-pressed {
-	transform:scale(.96);
-	box-shadow:inset 0 7rpx 14rpx rgba(255,255,255,.24),0 8rpx 18rpx rgba(55,88,196,.2)
+.dark-shortcut-title {
+	color: $ios-dark-ink;
 }
-.leave-button-content {
-	position:relative;
-	align-items:center;
-	justify-content:center;
-	padding-top:8rpx;
-	box-sizing:border-box
+.dark-shortcut-description {
+	color: $ios-dark-secondary;
 }
-.leave-icon {
-	width:150rpx;
-	height:138rpx
+.dark-meta-text {
+	color: $ios-dark-secondary;
 }
-.leave-label {
-	margin-top:14rpx;
-	color:#fff;
-	font-size:37rpx;
-	font-weight:700;
-	line-height:48rpx;
-	letter-spacing:2rpx
+.dark-example-badge {
+	background-color: $ios-dark-panel;
 }
-.records-card {
-	flex-direction:row;
-	align-items:center;
-	margin-top:64rpx;
-	padding:32rpx 28rpx;
-	border-radius:32rpx;
-	background:rgba(255,255,255,.78);
-	border:2rpx solid rgba(255,255,255,.9);
-	box-shadow:0 12rpx 32rpx rgba(79,106,180,.06)
+.dark-example-text {
+	color: $ios-dark-secondary;
 }
-.records-icon-wrap {
-	width:88rpx;
-	height:88rpx;
-	border-radius:24rpx;
-	background:#edf2ff;
-	align-items:center;
-	justify-content:center
+.dark-overview-card {
+	background-color: $ios-dark-surface;
 }
-.records-icon {
-	width:52rpx;
-	height:52rpx
+.dark-overview-item {
+	border-right: 0.5px solid $ios-dark-separator;
 }
-.records-copy {
-	flex:1;
-	margin-left:24rpx
+.dark-metric-value {
+	color: $ios-dark-ink;
 }
-.records-title {
-	color:#173766;
-	font-size:32rpx;
-	font-weight:700;
-	line-height:44rpx
+.dark-metric-unit {
+	color: $ios-dark-secondary;
 }
-.records-description {
-	margin-top:8rpx;
-	color:#7285a9;
-	font-size:24rpx;
-	line-height:36rpx
+.dark-metric-label {
+	color: $ios-dark-secondary;
 }
-.records-arrow {
-	width:28rpx;
-	height:28rpx;
-	margin-left:16rpx
+.dark-reminder-card {
+	background-color: #1c2b43;
+}
+.dark-reminder-title {
+	color: $ios-dark-ink;
+}
+.dark-reminder-text {
+	color: $ios-dark-secondary;
+}
+.contrast-page-title {
+	color: #ffffff;
+}
+.contrast-section-title {
+	color: #ffffff;
+}
+.contrast-request-date {
+	color: #d2d3dc;
+}
+.contrast-request-time {
+	color: #ffffff;
+}
+.contrast-request-footer {
+	border-top: 0.5px solid #737580;
+}
+.contrast-empty-title {
+	color: #ffffff;
+}
+.contrast-state-text {
+	color: #d2d3dc;
+}
+.contrast-shortcut-title {
+	color: #ffffff;
+}
+.contrast-shortcut-description {
+	color: #d2d3dc;
+}
+.contrast-meta-text {
+	color: #d2d3dc;
+}
+.contrast-example-text {
+	color: #d2d3dc;
+}
+.contrast-overview-item {
+	border-right: 0.5px solid #737580;
+}
+.contrast-metric-value {
+	color: #ffffff;
+}
+.contrast-metric-unit {
+	color: #d2d3dc;
+}
+.contrast-metric-label {
+	color: #d2d3dc;
+}
+.contrast-reminder-title {
+	color: #ffffff;
+}
+.contrast-reminder-text {
+	color: #d2d3dc;
 }
 </style>

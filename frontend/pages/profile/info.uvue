@@ -1,66 +1,143 @@
 <template>
-	<ProfilePageShell ref="pageShell" title="个人信息" subtitle="查看您的个人资料" :scrollable="true" :logout-on-back="false">
-		<view class="info-content">
-			<view class="avatar-section">
-				<view class="avatar-frame" @click.stop="openAvatar">
-					<image
-						v-if="avatarURL != '' && !avatarLoadFailed"
-						class="profile-avatar"
-						:src="avatarURL"
-						mode="aspectFill"
-						@error="handleAvatarError"
-					></image>
-					<view v-else class="profile-avatar avatar-placeholder">
-						<text v-if="avatarLoadFailed" class="avatar-placeholder-text">加载失败</text>
-					</view>
+	<ProfilePageShell
+		title="个人信息"
+		subtitle=""
+		:scrollable="true"
+		:logout-on-back="false"
+	>
+		<template #toolbar>
+			<view
+				:class="themeClass('toolbar-edit')"
+				@click="editProfile"
+			>
+				<text :class="themeClass('toolbar-edit-text')">编辑</text>
+			</view>
+		</template>
+		<view :class="themeClass('avatar-section')">
+			<view
+				:class="themeClass('avatar-frame')"
+				@click.stop="openAvatar"
+			>
+				<image
+					v-if="avatarURL != '' && !avatarLoadFailed"
+					:class="themeClass('profile-avatar')"
+					:src="themeImage(avatarURL)"
+					mode="aspectFill"
+					@error="handleAvatarError"
+				></image>
+				<view
+					v-else
+					:class="themeClass('profile-avatar avatar-placeholder')"
+				>
+					<text :class="themeClass('avatar-initial')">
+						{{ profile.name.trim() == '' ? '同' : profile.name.trim().slice(0, 1) }}
+					</text>
 				</view>
 			</view>
-			<view class="info-card first-card">
-				<view class="card-title-row">
-					<view class="title-icon-wrap">
-						<image class="title-icon" src="/static/my/info/gerenxinxi.svg" mode="aspectFit"></image>
-					</view>
-					<text class="card-title">学生信息</text>
-				</view>
-				<view class="info-row"><text class="info-label">学号</text><text class="info-value">{{ profile.student_id }}</text></view>
-				<view class="divider"></view>
-				<view class="info-row"><text class="info-label">班级</text><text class="info-value">{{ profile.class_info.class_name }}</text></view>
-				<view class="divider"></view>
-				<view class="info-row"><text class="info-label">姓名</text><text class="info-value">{{ profile.name }}</text></view>
-				<view class="divider"></view>
-				<view class="info-row"><text class="info-label">手机号</text><text class="info-value">{{ formatPhone(profile.phone) }}</text></view>
-				<view class="divider"></view>
-				<view class="info-row"><text class="info-label">性别</text><text class="info-value">{{ profile.gender == 'male' ? '男' : '女' }}</text></view>
-			</view>
-
-			<view class="info-card second-card">
-				<view class="card-title-row">
-					<view class="title-icon-wrap">
-						<image class="title-icon" src="/static/my/info/zhuzhi.svg" mode="aspectFit"></image>
-					</view>
-					<text class="card-title">其他信息</text>
-				</view>
-				<view class="info-row"><text class="info-label">家长姓名</text><text class="info-value">{{ profile.parent_name }}</text></view>
-				<view class="divider"></view>
-				<view class="info-row"><text class="info-label">家长电话</text><text class="info-value">{{ formatPhone(profile.parent_phone) }}</text></view>
-				<view class="divider"></view>
-				<view class="info-row"><text class="info-label">公寓名称</text><text class="info-value">{{ profile.apartment_info.apartment_name == '' ? '未填写' : profile.apartment_info.apartment_name }}</text></view>
-				<view class="divider"></view>
-				<view class="info-row"><text class="info-label">宿舍号</text><text class="info-value">{{ profile.apartment_info.dormitory_number == '' ? '未填写' : profile.apartment_info.dormitory_number }}</text></view>
-				<view class="divider"></view>
-				<view class="info-row"><text class="info-label">导员姓名</text><text class="info-value">{{ profile.teacher_name }}</text></view>
-			</view>
-
-			<view class="primary-button" @click="editProfile"><text class="primary-button-text">修改个人信息</text></view>
+			<text :class="themeClass('profile-name')">{{ profile.name }}</text>
+			<text :class="themeClass('profile-class')">{{ profile.class_info.class_name }}</text>
 		</view>
+		<view :class="themeClass('quick-actions')">
+			<view
+				:class="themeClass('quick-action')"
+				@click="editProfile"
+			>
+				<image
+					:class="themeClass('action-symbol')"
+					:src="themeImage('/static/ios/edit-blue.svg')"
+					mode="aspectFit"
+				></image>
+				<text :class="themeClass('action-label')">编辑资料</text>
+			</view>
+			<view
+				:class="themeClass('quick-action')"
+				@click="openPassword"
+			>
+				<image
+					:class="themeClass('action-symbol')"
+					:src="themeImage('/static/ios/lock-blue.svg')"
+					mode="aspectFit"
+				></image>
+				<text :class="themeClass('action-label')">账号安全</text>
+			</view>
+		</view>
+		<text :class="themeClass('group-title')">学生资料</text>
+		<view :class="themeClass('info-card')">
+			<view :class="themeClass('info-row')">
+				<text :class="themeClass('info-label')">学号</text>
+				<text :class="themeClass('info-value')">{{ profile.student_id }}</text>
+			</view>
+			<view :class="themeClass('info-row')">
+				<text :class="themeClass('info-label')">班级</text>
+				<text :class="themeClass('info-value')">{{ profile.class_info.class_name }}</text>
+			</view>
+			<view :class="themeClass('info-row')">
+				<text :class="themeClass('info-label')">性别</text>
+				<text :class="themeClass('info-value')">{{ profile.gender == 'male' ? '男' : '女' }}</text>
+			</view>
+			<view :class="themeClass('info-row')">
+				<text :class="themeClass('info-label')">导员</text>
+				<text :class="themeClass('info-value')">{{ profile.teacher_name }}</text>
+			</view>
+		</view>
+		<text :class="themeClass('group-title')">联系方式</text>
+		<view :class="themeClass('info-card')">
+			<view :class="themeClass('info-row')">
+				<text :class="themeClass('info-label')">手机号</text>
+				<text :class="themeClass('info-value')">{{ formatPhone(profile.phone) }}</text>
+			</view>
+			<view :class="themeClass('info-row')">
+				<text :class="themeClass('info-label')">家长姓名</text>
+				<text :class="themeClass('info-value')">{{ profile.parent_name }}</text>
+			</view>
+			<view :class="themeClass('info-row')">
+				<text :class="themeClass('info-label')">家长电话</text>
+				<text :class="themeClass('info-value')">{{ formatPhone(profile.parent_phone) }}</text>
+			</view>
+		</view>
+		<text :class="themeClass('group-title')">住宿信息</text>
+		<view :class="themeClass('info-card')">
+			<view :class="themeClass('info-row')">
+				<text :class="themeClass('info-label')">公寓</text>
+				<text :class="themeClass('info-value')">
+					{{
+						profile.apartment_info.apartment_name == ''
+							? '未填写'
+							: profile.apartment_info.apartment_name
+					}}
+				</text>
+			</view>
+			<view :class="themeClass('info-row')">
+				<text :class="themeClass('info-label')">宿舍号</text>
+				<text :class="themeClass('info-value')">
+					{{
+						profile.apartment_info.dormitory_number == ''
+							? '未填写'
+							: profile.apartment_info.dormitory_number
+					}}
+				</text>
+			</view>
+		</view>
+		<text :class="themeClass('privacy-note')">资料仅用于请假申请与身份核验</text>
 	</ProfilePageShell>
 </template>
-
 <script setup lang="uts">
+import { themeClass as resolveThemeClass, themeImage as resolveThemeImage } from '@/utils/app-theme.uts'
 import ProfilePageShell from '@/components/ProfilePageShell.uvue'
 import { ref } from 'vue'
-import { getCurrentUser, getProfile, getStoredAvatarURL, ProfileData, uploadAvatar, AvatarUploadError } from '@/utils/api.uts'
-import { cacheAvatarFile, clearAvatarFileCache, getCachedAvatarSource } from '@/utils/avatar-cache.uts'
+import {
+	getCurrentUser,
+	getProfile,
+	getStoredAvatarURL,
+	ProfileData,
+	uploadAvatar,
+	AvatarUploadError
+} from '@/utils/api.uts'
+import {
+	cacheAvatarFile,
+	clearAvatarFileCache,
+	getCachedAvatarSource
+} from '@/utils/avatar-cache.uts'
 import { chooseAvatarImage } from '@/utils/avatar-picker.uts'
 
 const avatarURL = ref(getCachedAvatarSource(getCurrentUser().student_id, getStoredAvatarURL()))
@@ -72,12 +149,26 @@ let pageActive = true
 
 const profile = ref<ProfileData>({
 	avatar_url: '',
-	student_id: '', name: '', phone: '', gender: '', parent_name: '', parent_phone: '', teacher_name: '', class_id: 0, apartment_id: 0,
+	student_id: '',
+	name: '',
+	phone: '',
+	gender: '',
+	parent_name: '',
+	parent_phone: '',
+	teacher_name: '',
+	class_id: 0,
+	apartment_id: 0,
 	class_info: { college: '', major: '', class_name: '' },
 	apartment_info: { apartment_name: '', dormitory_number: '' }
 })
 
-function editProfile() { uni.navigateTo({ url: '/pages/profile/edit' }) }
+function openPassword() {
+	uni.navigateTo({ url: '/pages/profile/password' })
+}
+
+function editProfile() {
+	uni.navigateTo({ url: '/pages/profile/edit' })
+}
 
 function handleAvatarError() {
 	const remoteURL = getStoredAvatarURL()
@@ -106,7 +197,12 @@ async function changeAvatar(): Promise<void> {
 		avatarLoadFailed.value = false
 		avatarURL.value = remoteURL
 		const source = await cacheAvatarFile(currentStudentID, remoteURL)
-		if (!pageActive || currentStudentID != getCurrentUser().student_id || remoteURL != getStoredAvatarURL()) return
+		if (
+			!pageActive ||
+			currentStudentID != getCurrentUser().student_id ||
+			remoteURL != getStoredAvatarURL()
+		)
+			return
 		avatarLoadFailed.value = false
 		avatarURL.value = source
 		uni.hideLoading()
@@ -124,7 +220,10 @@ async function changeAvatar(): Promise<void> {
 			uni.reLaunch({ url: '/pages/profile/edit?first=1' })
 			return
 		}
-		uni.showToast({ title: message == null || message == '' ? '头像上传失败，请重试' : message, icon: 'none' })
+		uni.showToast({
+			title: message == null || message == '' ? '头像上传失败，请重试' : message,
+			icon: 'none'
+		})
 	} finally {
 		if (uploading) uni.hideLoading()
 		changingAvatar.value = false
@@ -157,7 +256,9 @@ function openAvatar() {
 				}
 			})
 		},
-		complete: (_) => { avatarMenuOpen.value = false }
+		complete: (_) => {
+			avatarMenuOpen.value = false
+		}
 	})
 }
 
@@ -181,7 +282,14 @@ async function loadProfile() {
 		const cachedURL = getStoredAvatarURL()
 		const remoteURL = cachedURL == '' ? data.avatar_url : cachedURL
 		const source = await cacheAvatarFile(studentID, remoteURL)
-		if (!pageActive || changingAvatar.value || updateVersion != avatarUpdateVersion || studentID != getCurrentUser().student_id || remoteURL != getStoredAvatarURL()) return
+		if (
+			!pageActive ||
+			changingAvatar.value ||
+			updateVersion != avatarUpdateVersion ||
+			studentID != getCurrentUser().student_id ||
+			remoteURL != getStoredAvatarURL()
+		)
+			return
 		avatarLoadFailed.value = false
 		avatarURL.value = source
 	} catch (error) {
@@ -191,7 +299,10 @@ async function loadProfile() {
 			uni.reLaunch({ url: '/pages/profile/edit?first=1' })
 			return
 		}
-		uni.showToast({ title: message == null || message == '' ? '个人资料加载失败' : message, icon: 'none' })
+		uni.showToast({
+			title: message == null || message == '' ? '个人资料加载失败' : message,
+			icon: 'none'
+		})
 	}
 }
 
@@ -203,116 +314,199 @@ onShow(() => {
 	}
 	loadProfile()
 })
-onUnload(() => { pageActive = false })
+onUnload(() => {
+	pageActive = false
+})
+
+// 原生模板通过本地方法调用主题函数，避免导入函数被编译为 unref 后调用。
+function themeClass(classes: string): string {
+	return resolveThemeClass(classes)
+}
+
+function themeImage(source: string): string {
+	return resolveThemeImage(source)
+}
 </script>
 
-<style>
-.info-content {
-	width: 100%;
+<style lang="scss">
+@import '@/styles/ios-theme.scss';
+.toolbar-edit {
+	min-width: 44px;
+	min-height: 44px;
+	align-items: flex-end;
+	justify-content: center;
+}
+.toolbar-edit-text {
+	color: $ios-blue;
+	font-size: 15px;
 }
 .avatar-section {
-	padding: 36rpx 0 32rpx;
+	box-sizing: border-box;
 	align-items: center;
+	padding: 12px 0 26px;
 }
 .avatar-frame {
 	box-sizing: border-box;
-	width: 168rpx;
-	height: 168rpx;
-	border-radius: 84rpx;
-	border-width: 8rpx;
-	border-style: solid;
-	border-color: rgba(255, 255, 255, 0.8);
-	box-shadow: 0 8rpx 24rpx rgba(89, 119, 205, 0.18);
-	background-color: #ffffff;
+	width: 88px;
+	height: 88px;
+	border-radius: 44px;
+	background-color: #dedee6;
 }
 .profile-avatar {
-	width: 152rpx;
-	height: 152rpx;
-	border-radius: 76rpx;
+	box-sizing: border-box;
+	width: 88px;
+	height: 88px;
+	border-radius: 44px;
 }
 .avatar-placeholder {
-	background-color: #edf2fc;
+	align-items: center;
+	justify-content: center;
+
+	background-color: #5265a2;
+
+	border: 1px solid #8290bb;
+}
+.avatar-initial {
+	font-size: 40px;
+
+	color: #ffffff;
+}
+.profile-name {
+	font-size: 28px;
+	font-weight: 700;
+	color: $ios-ink;
+	margin-top: 16px;
+}
+.profile-class {
+	font-size: 13px;
+	line-height: 21px;
+	color: $ios-secondary;
+	margin-top: 6px;
+	text-align: center;
+}
+.quick-actions {
+	flex-direction: row;
+	margin-bottom: 8px;
+}
+.quick-action {
+	box-sizing: border-box;
+	flex: 1;
+	min-height: 66px;
+	margin: 0 4px;
+	border-radius: 16px;
+	background-color: $ios-surface;
 	align-items: center;
 	justify-content: center;
 }
-.avatar-placeholder-text {
-	font-size: 24rpx;
-	color: #7890bc;
+.action-symbol {
+	width: 24px;
+	height: 24px;
+}
+.action-label {
+	font-size: 12px;
+	color: $ios-blue;
+	margin-top: 4px;
+}
+.group-title {
+	color: $ios-secondary;
+	font-size: 12px;
+	margin: 24px 14px 10px;
 }
 .info-card {
-	padding: 28rpx 32rpx 12rpx;
-	border-radius: 30rpx;
-	background-color: rgba(255, 255, 255, 0.87);
-	box-shadow: 0 14rpx 34rpx rgba(92, 126, 190, 0.11);
-}
-.first-card {
-	margin-top: 8rpx;
-}
-.second-card {
-	margin-top: 28rpx;
-}
-.card-title-row {
-	margin-bottom: 16rpx;
-	flex-direction: row;
-	align-items: center;
-}
-.title-icon-wrap {
-	width: 60rpx;
-	height: 60rpx;
-	border-radius: 30rpx;
-	background-color: #e0eaff;
-	justify-content: center;
-	align-items: center;
-}
-.title-icon {
-	width: 38rpx;
-	height: 38rpx;
-}
-.card-title {
-	margin-left: 18rpx;
-	color: #123b78;
-	font-size: 30rpx;
-	font-weight: 700;
+	box-sizing: border-box;
+	border-radius: $ios-radius;
+	background-color: $ios-surface;
+	padding: 0 16px;
 }
 .info-row {
-	min-height: 84rpx;
-	padding: 20rpx 0;
 	box-sizing: border-box;
+	min-height: 51px;
 	flex-direction: row;
 	align-items: center;
+	border-bottom: 0.5px solid $ios-separator;
 }
 .info-label {
-	width: 120rpx;
+	margin-top: 14px;
+	margin-bottom: 14px;
+	width: 80px;
 	flex-shrink: 0;
-	color: #7188b5;
-	font-size: 26rpx;
-	line-height: 38rpx;
+	color: $ios-ink;
+	font-size: 14px;
 }
 .info-value {
+	margin-top: 14px;
+	margin-bottom: 14px;
 	flex: 1;
 	min-width: 0;
-	margin-left: 20rpx;
-	color: #506d9f;
-	font-size: 26rpx;
-	line-height: 38rpx;
+	margin-left: 12px;
+	font-size: 14px;
+	line-height: 21px;
+	color: $ios-secondary;
 	text-align: right;
 }
-.divider {
-	height: 1rpx;
-	background-color: rgba(112, 143, 202, 0.14);
+.privacy-note {
+	font-size: 11px;
+	color: $ios-secondary;
+	margin-top: 28px;
+	text-align: center;
 }
-.primary-button {
-	height: 94rpx;
-	margin-top: 36rpx;
-	border-radius: 47rpx;
-	background-color: #527df3;
-	justify-content: center;
-	align-items: center;
-	box-shadow: 0 12rpx 26rpx rgba(65, 102, 224, 0.25);
+
+// Dark appearance. Geometry stays shared with the light appearance.
+.dark-toolbar-edit-text {
+	color: $ios-dark-blue;
 }
-.primary-button-text {
+.dark-avatar-frame {
+	background-color: $ios-dark-panel;
+}
+.dark-profile-name {
+	color: $ios-dark-ink;
+}
+.dark-profile-class {
+	color: $ios-dark-secondary;
+}
+.dark-quick-action {
+	background-color: $ios-dark-surface;
+}
+.dark-action-label {
+	color: $ios-dark-blue;
+}
+.dark-group-title {
+	color: $ios-dark-secondary;
+}
+.dark-info-card {
+	background-color: $ios-dark-surface;
+}
+.dark-info-row {
+	border-bottom: 0.5px solid $ios-dark-separator;
+}
+.dark-info-label {
+	color: $ios-dark-ink;
+}
+.dark-info-value {
+	color: $ios-dark-secondary;
+}
+.dark-privacy-note {
+	color: $ios-dark-secondary;
+}
+.contrast-profile-name {
 	color: #ffffff;
-	font-size: 29rpx;
-	font-weight: 500;
+}
+.contrast-profile-class {
+	color: #d2d3dc;
+}
+.contrast-group-title {
+	color: #d2d3dc;
+}
+.contrast-info-row {
+	border-bottom: 0.5px solid #737580;
+}
+.contrast-info-label {
+	color: #ffffff;
+}
+.contrast-info-value {
+	color: #d2d3dc;
+}
+.contrast-privacy-note {
+	color: #d2d3dc;
 }
 </style>

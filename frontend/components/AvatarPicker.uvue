@@ -1,52 +1,79 @@
 <template>
-	<view class="avatar-picker">
-		<view :class="props.compact == true ? 'avatar-frame avatar-frame-compact' : 'avatar-frame'">
-		<image
-			v-if="previewURL != '' && !previewFailed"
-			:class="props.compact == true ? 'avatar-preview avatar-preview-compact' : 'avatar-preview'"
-			:src="previewURL"
-			mode="aspectFill"
-			@error="handlePreviewError"
-		/>
-		<view v-else :class="props.compact == true ? 'avatar-preview avatar-preview-compact avatar-placeholder' : 'avatar-preview avatar-placeholder'">
-			<text class="avatar-placeholder-text">{{ previewFailed ? '加载失败' : '选择头像' }}</text>
+	<view :class="themeClass('avatar-picker')">
+		<view :class="themeClass(props.compact == true ? 'avatar-frame avatar-frame-compact' : 'avatar-frame')">
+			<image
+				v-if="previewURL != '' && !previewFailed"
+				:class="themeClass(props.compact == true ? 'avatar-preview avatar-preview-compact' : 'avatar-preview')"
+				:src="themeImage(previewURL)"
+				mode="aspectFill"
+				@error="handlePreviewError"
+			/>
+			<view
+				v-else
+				:class="themeClass(props.compact == true
+						? 'avatar-preview avatar-preview-compact avatar-placeholder'
+						: 'avatar-preview avatar-placeholder')"
+			>
+				<text :class="themeClass('avatar-placeholder-text')">
+					{{ props.initial == null || props.initial == '' ? '同' : props.initial.slice(0, 1) }}
+				</text>
+			</view>
 		</view>
+		<view
+			:class="themeClass('avatar-select')"
+			@click="choose"
+		>
+			<text :class="themeClass('avatar-select-text')">{{ choosing ? '正在读取图片…' : '选择头像' }}</text>
 		</view>
-		<view class="avatar-select" @click="choose">
-			<text class="avatar-select-text">{{ choosing ? '正在读取图片…' : '选择头像' }}</text>
-		</view>
-		<text v-if="props.compact != true" class="avatar-hint">支持相册或拍照，JPEG / PNG，不超过 5 MiB</text>
-		<text v-if="props.compact != true" class="avatar-hint">图片宽高分别不超过 4096 像素</text>
+		<text
+			v-if="props.compact != true"
+			:class="themeClass('avatar-hint')"
+		>
+			支持相册或拍照，JPEG / PNG，不超过 5 MiB
+		</text>
+		<text
+			v-if="props.compact != true"
+			:class="themeClass('avatar-hint')"
+		>
+			图片宽高分别不超过 4096 像素
+		</text>
 	</view>
 </template>
-
 <script setup lang="uts">
+import { themeClass as resolveThemeClass, themeImage as resolveThemeImage } from '@/utils/app-theme.uts'
 import { computed, ref, watch } from 'vue'
 import { chooseAvatarImage } from '@/utils/avatar-picker.uts'
-import { DEFAULT_AVATAR_URL } from '@/utils/api.uts'
+import { getAvatarDisplayURL } from '@/utils/avatar-cache.uts'
 
 const props = defineProps<{
 	avatarUrl: string
 	filePath: string
 	disabled: boolean
 	compact?: boolean
+	initial?: string
 }>()
 const emit = defineEmits(['select', 'busy', 'previewError'])
 const choosing = ref(false)
 const previewFailed = ref(false)
 const previewURL = computed((): string => {
 	if (props.filePath != '') return props.filePath
-	// 首次完善资料还没有头像地址，直接展示 Nginx 的默认头像，不作为待上传文件。
-	return props.avatarUrl != '' ? props.avatarUrl : DEFAULT_AVATAR_URL
+	// 未上传头像时使用姓名首字，服务器默认图片不作为用户头像。
+	return getAvatarDisplayURL(props.avatarUrl)
 })
 
-watch((): string => props.filePath, () => {
-	previewFailed.value = false
-})
+watch(
+	(): string => props.filePath,
+	() => {
+		previewFailed.value = false
+	}
+)
 
-watch((): string => props.avatarUrl, () => {
-	previewFailed.value = false
-})
+watch(
+	(): string => props.avatarUrl,
+	() => {
+		previewFailed.value = false
+	}
+)
 
 function handlePreviewError() {
 	previewFailed.value = true
@@ -65,18 +92,31 @@ async function choose() {
 		emit('busy', false)
 	}
 }
+
+// 原生模板通过本地方法调用主题函数，避免导入函数被编译为 unref 后调用。
+function themeClass(classes: string): string {
+	return resolveThemeClass(classes)
+}
+
+function themeImage(source: string): string {
+	return resolveThemeImage(source)
+}
 </script>
 
-<style>
+<style lang="scss">
+@import '@/styles/ios-theme.scss';
+
 .avatar-picker {
-	padding: 30rpx 16rpx;
+	box-sizing: border-box;
+	padding: 14px 0 12px;
 	align-items: center;
 }
 .avatar-preview {
+	box-sizing: border-box;
 	width: 180rpx;
 	height: 180rpx;
 	border-radius: 90rpx;
-	background-color: #edf2fc;
+	background-color: #dce0e8;
 }
 .avatar-frame {
 	width: 180rpx;
@@ -84,42 +124,60 @@ async function choose() {
 }
 .avatar-frame-compact {
 	box-sizing: border-box;
-	width: 136rpx;
-	height: 136rpx;
-	border-radius: 68rpx;
-	border-width: 8rpx;
-	border-style: solid;
-	border-color: rgba(255, 255, 255, 0.8);
-	background-color: #ffffff;
-	box-shadow: 0 8rpx 24rpx rgba(89, 119, 205, 0.18);
+	width: 88px;
+	height: 88px;
+	border-radius: 44px;
 }
 .avatar-preview-compact {
-	width: 120rpx;
-	height: 120rpx;
-	border-radius: 60rpx;
+	box-sizing: border-box;
+	width: 88px;
+	height: 88px;
+	border-radius: 44px;
 }
 .avatar-placeholder {
 	align-items: center;
 	justify-content: center;
+
+	background-color: #5265a2;
+
+	border: 1px solid #8290bb;
 }
 .avatar-placeholder-text {
-	font-size: 26rpx;
-	color: #7890bc;
+	font-size: 43px;
+	font-weight: 500;
+
+	color: #ffffff;
 }
 .avatar-select {
-	margin-top: 24rpx;
-	padding: 16rpx 36rpx;
-	border-radius: 30rpx;
-	background-color: #edf2ff;
+	box-sizing: border-box;
+	height: 44px;
+	margin-top: 6px;
+	padding: 8px 0;
+	align-items: center;
+	justify-content: center;
 }
 .avatar-select-text {
-	font-size: 27rpx;
-	color: #245cf0;
+	font-size: 15px;
+	color: #0066dc;
 }
 .avatar-hint {
 	margin-top: 14rpx;
 	font-size: 22rpx;
 	color: #7890bc;
 	text-align: center;
+}
+
+// Dark appearance. Geometry stays shared with the light appearance.
+.dark-avatar-preview {
+	background-color: $ios-dark-panel;
+}
+.dark-avatar-select-text {
+	color: $ios-dark-blue;
+}
+.dark-avatar-hint {
+	color: $ios-dark-secondary;
+}
+.contrast-avatar-hint {
+	color: #d2d3dc;
 }
 </style>

@@ -1,13 +1,16 @@
 <script setup lang="uts">
+import { initializeAppTheme, refreshAppTheme } from '@/utils/app-theme.uts'
 // #ifdef APP-ANDROID || APP-HARMONY
 	let firstBackTime = 0
 	// #endif
 
 	onLaunch(() => {
+		initializeAppTheme()
 		console.log('App Launch')
 	})
 
 	onAppShow(() => {
+		refreshAppTheme()
 		console.log('App Show')
 	})
 

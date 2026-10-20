@@ -3,12 +3,13 @@
 		<slot></slot>
 	</view>
 </template>
-
 <script setup lang="uts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { readNavigationPreferences, systemReducesMotion } from '@/utils/navigation-preferences.uts'
 
 const props = defineProps<{ enterDirection: string }>()
 
+const reduceMotion = ref(readNavigationPreferences().reduceMotion || systemReducesMotion())
 const phase = ref('enter')
 const direction = ref(props.enterDirection)
 const isNavigating = ref(false)
@@ -16,6 +17,7 @@ let enterTimer = 0
 let navigationTimer = 0
 
 const transitionClass = computed((): string => {
+	if (reduceMotion.value) return 'page-transition page-transition-active page-transition-instant'
 	if (phase.value == 'active') return 'page-transition page-transition-active'
 	if (phase.value == 'exit') {
 		if (direction.value == 'back') return 'page-transition page-transition-exit-back'
@@ -30,6 +32,10 @@ const transitionClass = computed((): string => {
 function beginEnter(enterDirection: string) {
 	clearTimeout(enterTimer)
 	direction.value = enterDirection
+	if (reduceMotion.value) {
+		phase.value = 'active'
+		return
+	}
 	phase.value = 'enter'
 	enterTimer = setTimeout(() => {
 		phase.value = 'active'
@@ -75,11 +81,18 @@ function navigate(url: string, method: string = 'navigateTo', exitDirection: str
 	clearTimeout(enterTimer)
 	direction.value = exitDirection
 	phase.value = 'exit'
+	if (reduceMotion.value) {
+		performNavigation(url, method)
+		return
+	}
 	navigationTimer = setTimeout(() => {
 		performNavigation(url, method)
 	}, 200)
 }
 
+onPageShow(() => {
+	reduceMotion.value = readNavigationPreferences().reduceMotion || systemReducesMotion()
+})
 onMounted(() => beginEnter(props.enterDirection))
 onUnmounted(() => {
 	clearTimeout(enterTimer)
@@ -91,33 +104,36 @@ defineExpose({ navigate, beginEnter })
 
 <style>
 .page-transition {
-	flex:1;
-	opacity:0;
-	transition-property:opacity,transform;
-	transition-duration:200ms;
-	transition-timing-function:cubic-bezier(0.22, 1, 0.36, 1)
+	flex: 1;
+	opacity: 0;
+	transition-property: opacity, transform;
+	transition-duration: 200ms;
+	transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
 }
 .page-transition-active {
-	opacity:1;
-	transform:translateX(0)
+	opacity: 1;
+	transform: translateX(0);
 }
 .page-transition-enter-forward {
-	opacity:0;
-	transform:translateX(12rpx)
+	opacity: 0;
+	transform: translateX(12rpx);
 }
 .page-transition-enter-back {
-	opacity:0;
-	transform:translateX(-12rpx)
+	opacity: 0;
+	transform: translateX(-12rpx);
 }
 .page-transition-exit-forward {
-	opacity:0;
-	transform:translateX(-12rpx)
+	opacity: 0;
+	transform: translateX(-12rpx);
 }
 .page-transition-exit-back {
-	opacity:0;
-	transform:translateX(12rpx)
+	opacity: 0;
+	transform: translateX(12rpx);
 }
 .page-transition-peer {
-	opacity:0
+	opacity: 0;
+}
+.page-transition-instant {
+	transition-duration: 0ms;
 }
 </style>

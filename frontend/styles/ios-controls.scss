@@ -1,0 +1,101 @@
+@import "@/styles/ios-theme.scss";
+.utility-intro {
+	margin: 5px 0 25px;
+}
+.utility-title {
+	font-size: 25px;
+	line-height: 35px;
+	font-weight: 700;
+	color: $ios-ink;
+}
+.utility-description {
+	font-size: 13px;
+	line-height: 23px;
+	color: $ios-secondary;
+	margin-top: 9px;
+}
+.utility-mark {
+	width: 50px;
+	height: 50px;
+	border-radius: 16px;
+	background-color: #e4edf9;
+	align-items: center;
+	justify-content: center;
+	margin: 4px 0 20px;
+}
+.utility-icon {
+	width: 27px;
+	height: 27px;
+}
+.primary-button {
+	min-height: 52px;
+	border-radius: 26px;
+	background-color: $ios-blue;
+	align-items: center;
+	justify-content: center;
+	margin-top: 30px;
+}
+.primary-button-disabled {
+	opacity: 0.6;
+}
+.primary-button-text {
+	font-size: 17px;
+	font-weight: 600;
+	color: #ffffff;
+}
+.form-error {
+	font-size: 13px;
+	line-height: 21px;
+	color: $ios-red;
+	margin: 10px 2px 0;
+}
+.field-help {
+	font-size: 12px;
+	line-height: 19px;
+	color: $ios-secondary;
+	margin: 10px 13px;
+}
+.field-invalid {
+	border-bottom: 1px solid $ios-red;
+}
+.field-error {
+	font-size: 12px;
+	line-height: 18px;
+	color: $ios-red;
+	padding-bottom: 6px;
+}
+
+// Dark appearance. Geometry stays shared with the light appearance.
+.dark-utility-title {
+	color: $ios-dark-ink;
+}
+.dark-utility-description {
+	color: $ios-dark-secondary;
+}
+.dark-utility-mark {
+	background-color: #1c2b43;
+}
+.dark-primary-button {
+	background-color: $ios-dark-button;
+}
+.dark-form-error {
+	color: $ios-dark-red;
+}
+.dark-field-help {
+	color: $ios-dark-secondary;
+}
+.dark-field-invalid {
+	border-bottom: 1px solid $ios-dark-red;
+}
+.dark-field-error {
+	color: $ios-dark-red;
+}
+.contrast-utility-title {
+	color: #ffffff;
+}
+.contrast-utility-description {
+	color: #d2d3dc;
+}
+.contrast-field-help {
+	color: #d2d3dc;
+}

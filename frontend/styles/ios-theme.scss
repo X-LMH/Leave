@@ -1,0 +1,23 @@
+// uni-app x 使用编译期 SCSS 常量，避免依赖浏览器 CSS 变量。
+$ios-page: #f2f2f7;
+$ios-surface: #ffffff;
+$ios-ink: #17181b;
+$ios-secondary: #676b73;
+$ios-blue: #0066dc;
+$ios-green: #207a50;
+$ios-red: #c32934;
+$ios-separator: #e8e8ed;
+$ios-radius: 23px;
+
+// Runtime dark classes use the same semantic palette across native pages.
+$ios-dark-page: #111216;
+$ios-dark-surface: #1c1d23;
+$ios-dark-panel: #272830;
+$ios-dark-ink: #f2f2f7;
+$ios-dark-secondary: #aeaeb8;
+$ios-dark-muted: #8e909d;
+$ios-dark-separator: #383a44;
+$ios-dark-blue: #6aa9ff;
+$ios-dark-button: #1768d5;
+$ios-dark-green: #63d69a;
+$ios-dark-red: #ff858d;

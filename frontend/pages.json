@@ -5,8 +5,9 @@
 			"style": {
 				"navigationStyle": "custom",
 				"disableScroll": true,
-				"backgroundColor": "#F4F7FF",
-				"backgroundColorContent": "#F4F7FF"
+				"backgroundColor": "@pageBackground",
+				"backgroundColorContent": "@pageBackground",
+				"navigationBarBackgroundColor": "@pageBackground"
 			}
 		},
 		{
@@ -14,9 +15,10 @@
 			"style": {
 				"navigationStyle": "custom",
 				"disableScroll": true,
-				"backgroundColor": "#F4F7FF",
-				"backgroundColorContent": "#F4F7FF",
-				"swipeBackAsBackPress": false
+				"backgroundColor": "@pageBackground",
+				"backgroundColorContent": "@pageBackground",
+				"swipeBackAsBackPress": false,
+				"navigationBarBackgroundColor": "@pageBackground"
 			}
 		},
 		{
@@ -24,8 +26,9 @@
 			"style": {
 				"navigationStyle": "custom",
 				"disableScroll": true,
-				"backgroundColor": "#F4F7FF",
-				"backgroundColorContent": "#F4F7FF"
+				"backgroundColor": "@pageBackground",
+				"backgroundColorContent": "@pageBackground",
+				"navigationBarBackgroundColor": "@pageBackground"
 			}
 		},
 		{
@@ -33,8 +36,9 @@
 			"style": {
 				"navigationStyle": "custom",
 				"disableScroll": true,
-				"backgroundColor": "#F5F8FF",
-				"backgroundColorContent": "#F5F8FF"
+				"backgroundColor": "@pageBackground",
+				"backgroundColorContent": "@pageBackground",
+				"navigationBarBackgroundColor": "@pageBackground"
 			}
 		},
 		{
@@ -45,7 +49,7 @@
 				"backgroundColor": "#F4F7FB",
 				"backgroundColorContent": "#F4F7FB",
 				"navigationBarBackgroundColor": "#F4F7FB",
-				"navigationBarTextStyle": "black",
+				"navigationBarTextStyle": "@navigationText",
 				"swipeBackAsBackPress": true
 			}
 		},
@@ -53,9 +57,10 @@
 			"path": "pages/leave/apply",
 			"style": {
 				"navigationStyle": "custom",
-				"navigationBarBackgroundColor": "#F4F7FB",
-				"navigationBarTextStyle": "black",
-				"backgroundColor": "#F4F7FB"
+				"navigationBarBackgroundColor": "@pageBackground",
+				"navigationBarTextStyle": "@navigationText",
+				"backgroundColor": "@pageBackground",
+				"backgroundColorContent": "@pageBackground"
 			}
 		},
 		{
@@ -64,44 +69,71 @@
 				"navigationStyle": "custom",
 				"disableScroll": true,
 				"navigationBarTitleText": "我的",
-				"navigationBarBackgroundColor": "#F4F7FB",
-				"navigationBarTextStyle": "black",
-				"backgroundColor": "#F4F7FB"
+				"navigationBarBackgroundColor": "@pageBackground",
+				"navigationBarTextStyle": "@navigationText",
+				"backgroundColor": "@pageBackground",
+				"backgroundColorContent": "@pageBackground"
 			}
 		},
 		{
 			"path": "pages/profile/info",
 			"style": {
 				"navigationStyle": "custom",
-				"backgroundColor": "#F4F7FF",
-				"backgroundColorContent": "#F4F7FF",
-				"swipeBackAsBackPress": true
+				"backgroundColor": "@pageBackground",
+				"backgroundColorContent": "@pageBackground",
+				"swipeBackAsBackPress": true,
+				"navigationBarBackgroundColor": "@pageBackground"
 			}
 		},
 		{
 			"path": "pages/profile/edit",
 			"style": {
 				"navigationStyle": "custom",
-				"backgroundColor": "#F4F7FF",
-				"backgroundColorContent": "#F4F7FF",
-				"swipeBackAsBackPress": true
+				"backgroundColor": "@pageBackground",
+				"backgroundColorContent": "@pageBackground",
+				"swipeBackAsBackPress": true,
+				"navigationBarBackgroundColor": "@pageBackground"
 			}
 		},
 		{
 			"path": "pages/profile/password",
 			"style": {
 				"navigationStyle": "custom",
-				"backgroundColor": "#F4F7FF",
-				"backgroundColorContent": "#F4F7FF",
-				"swipeBackAsBackPress": true
+				"backgroundColor": "@pageBackground",
+				"backgroundColorContent": "@pageBackground",
+				"swipeBackAsBackPress": true,
+				"navigationBarBackgroundColor": "@pageBackground"
 			}
 		},
 		{
 			"path": "pages/profile/feedback",
 			"style": {
 				"navigationStyle": "custom",
-				"backgroundColor": "#F4F7FF",
-				"backgroundColorContent": "#F4F7FF",
+				"backgroundColor": "@pageBackground",
+				"backgroundColorContent": "@pageBackground",
+				"swipeBackAsBackPress": true,
+				"navigationBarBackgroundColor": "@pageBackground"
+			}
+		},
+		{
+			"path": "pages/profile/settings",
+			"style": {
+				"navigationStyle": "custom",
+				"disableScroll": true,
+				"backgroundColor": "@pageBackground",
+				"backgroundColorContent": "@pageBackground",
+				"swipeBackAsBackPress": true,
+				"navigationBarBackgroundColor": "@pageBackground"
+			}
+		},
+		{
+			"path": "pages/profile/theme",
+			"style": {
+				"navigationStyle": "custom",
+				"disableScroll": true,
+				"backgroundColor": "@pageBackground",
+				"backgroundColorContent": "@pageBackground",
+				"navigationBarBackgroundColor": "@pageBackground",
 				"swipeBackAsBackPress": true
 			}
 		},
@@ -110,17 +142,29 @@
 			"style": {
 				"navigationStyle": "custom",
 				"disableScroll": true,
-				"backgroundColor": "#F2F2F7",
-				"backgroundColorContent": "#F2F2F7",
-				"swipeBackAsBackPress": true
+				"backgroundColor": "@pageBackground",
+				"backgroundColorContent": "@pageBackground",
+				"swipeBackAsBackPress": true,
+				"navigationBarBackgroundColor": "@pageBackground"
 			}
 		},
 		{
 			"path": "pages/leave/records",
 			"style": {
 				"navigationStyle": "custom",
-				"backgroundColor": "#F4F7FF",
-				"backgroundColorContent": "#F4F7FF",
+				"backgroundColor": "@pageBackground",
+				"backgroundColorContent": "@pageBackground",
+				"swipeBackAsBackPress": true,
+				"navigationBarBackgroundColor": "@pageBackground",
+				"disableScroll": true
+			}
+		},
+		{
+			"path": "pages/profile/about",
+			"style": {
+				"navigationStyle": "custom",
+				"backgroundColor": "@pageBackground",
+				"backgroundColorContent": "@pageBackground",
 				"swipeBackAsBackPress": true
 			}
 		}
@@ -128,11 +172,11 @@
 	"globalStyle": {
 		"animationType": "none",
 		"animationDuration": 200,
-		"navigationBarTextStyle": "black",
+		"navigationBarTextStyle": "@navigationText",
 		"navigationBarTitleText": "请销假申请",
-		"navigationBarBackgroundColor": "#F4F7FB",
-		"backgroundColor": "#F4F7FB",
-		"backgroundColorContent": "#F4F7FB"
+		"navigationBarBackgroundColor": "@pageBackground",
+		"backgroundColor": "@pageBackground",
+		"backgroundColorContent": "@pageBackground"
 	},
 	"uniIdRouter": {}
 }

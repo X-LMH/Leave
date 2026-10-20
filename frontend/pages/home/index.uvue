@@ -1,26 +1,54 @@
 <template>
 	<PageTransition enter-direction="peer">
-		<view class="tab-shell">
-			<view v-show="activeTab == 'home'" class="tab-panel">
-				<HomeTabContent ref="homeContent" />
+		<view :class="themeClass('tab-shell')">
+			<view
+				v-show="activeTab == 'home'"
+				:class="themeClass('tab-panel')"
+			>
+				<HomeTabContent
+					ref="homeContent"
+					@records="showRecords"
+				/>
 			</view>
-			<view v-if="profileVisited" v-show="activeTab == 'profile'" class="tab-panel">
-				<ProfileTabContent ref="profileContent" :active="activeTab == 'profile'" />
+			<view
+				v-if="recordsVisited"
+				v-show="activeTab == 'records'"
+				:class="themeClass('tab-panel')"
+			>
+				<RecordsTabContent ref="recordsContent" />
 			</view>
-			<BottomNavigation ref="bottomNavigation" :active="activeTab" @navigate="handleTabNavigation" />
+			<view
+				v-if="profileVisited"
+				v-show="activeTab == 'profile'"
+				:class="themeClass('tab-panel')"
+			>
+				<ProfileTabContent
+					ref="profileContent"
+					:active="activeTab == 'profile'"
+				/>
+			</view>
+			<BottomNavigation
+				ref="bottomNavigation"
+				:active="activeTab"
+				@navigate="handleTabNavigation"
+				@create="createLeave"
+			/>
 		</view>
 	</PageTransition>
 </template>
-
 <script setup lang="uts">
+import { themeClass as resolveThemeClass } from '@/utils/app-theme.uts'
 import { nextTick, ref } from 'vue'
 import BottomNavigation from '@/components/BottomNavigation.uvue'
 import HomeTabContent from '@/components/HomeTabContent.uvue'
+import RecordsTabContent from '@/components/RecordsTabContent.uvue'
 import ProfileTabContent from '@/components/ProfileTabContent.uvue'
 import PageTransition from '@/components/PageTransition.uvue'
 
 const activeTab = ref('home')
 const profileVisited = ref(false)
+const recordsVisited = ref(false)
+const recordsContent = ref<ComponentPublicInstance | null>(null)
 const homeContent = ref<ComponentPublicInstance | null>(null)
 const profileContent = ref<ComponentPublicInstance | null>(null)
 const bottomNavigation = ref<ComponentPublicInstance | null>(null)
@@ -29,24 +57,39 @@ let pageReady = false
 function refreshActiveTab() {
 	if (activeTab.value == 'profile') {
 		profileContent.value?.$callMethod('refresh')
+	} else if (activeTab.value == 'records') {
+		recordsContent.value?.$callMethod('refresh')
 	} else {
 		homeContent.value?.$callMethod('refresh')
 	}
 }
 
 function handleTabNavigation(url: string) {
-	const nextTab = url == '/pages/profile/index' ? 'profile' : 'home'
+	const nextTab =
+		url == '/pages/profile/index' ? 'profile' : url == '/pages/leave/records' ? 'records' : 'home'
 	if (activeTab.value == nextTab) return
 	if (nextTab == 'profile') profileVisited.value = true
+	if (nextTab == 'records') recordsVisited.value = true
 	activeTab.value = nextTab
 	// 仅切换保留的内容面板，导航和各页滚动容器不销毁。
 	nextTick(() => refreshActiveTab())
+}
+
+function showRecords() {
+	handleTabNavigation('/pages/leave/records')
+}
+function createLeave() {
+	uni.navigateTo({ url: '/pages/leave/apply' })
 }
 
 onLoad((options) => {
 	if (options['tab'] == 'profile') {
 		profileVisited.value = true
 		activeTab.value = 'profile'
+	}
+	if (options['tab'] == 'records') {
+		recordsVisited.value = true
+		activeTab.value = 'records'
 	}
 })
 onReady(() => {
@@ -59,14 +102,21 @@ onShow(() => {
 onResize(() => {
 	bottomNavigation.value?.$callMethod('updateLayout')
 })
+
+// 原生模板通过本地方法调用主题函数，避免导入函数被编译为 unref 后调用。
+function themeClass(classes: string): string {
+	return resolveThemeClass(classes)
+}
 </script>
 
-<style>
+<style lang="scss">
+@import '@/styles/ios-theme.scss';
+
 .tab-shell {
 	position: relative;
 	flex: 1;
 	overflow: hidden;
-	background-color: #f5f5f7;
+	background-color: #f2f2f7;
 }
 .tab-panel {
 	position: absolute;
@@ -74,5 +124,10 @@ onResize(() => {
 	right: 0;
 	bottom: 0;
 	left: 0;
+}
+
+// Dark appearance. Geometry stays shared with the light appearance.
+.dark-tab-shell {
+	background-color: $ios-dark-page;
 }
 </style>
