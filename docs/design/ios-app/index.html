@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+  <meta name="color-scheme" content="light">
+  <title>Leave · iOS 设计预览</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <aside class="studio">
+    <a class="studio-brand" href="?">leave<span>DESIGN STUDY / 01</span></a>
+    <div class="studio-copy"><p class="eyebrow">为校园里的每一天</p><h1>让请假，<br>回归简单。</h1><p>相同的日常，两种轻盈表达。<br>在细节里，找到更舒服的使用方式。</p></div>
+    <div class="design-switch" role="group" aria-label="设计方案">
+      <button data-theme="native" aria-pressed="false"><span>A</span><strong>原生简洁<small>清晰 · 克制 · 熟悉</small></strong></button>
+      <button data-theme="glass" aria-pressed="true"><span>B</span><strong>轻盈玻璃<small>精修版 · 轻盈有序</small></strong></button>
+    </div>
+    <p class="studio-note">交互原型 · 虚构数据<br>未连接任何真实账号或业务服务</p>
+  </aside>
+  <main class="preview-area">
+    <nav class="page-picker" aria-label="预览页面"></nav>
+    <div class="device" data-theme="glass">
+      <div class="status-bar" aria-hidden="true"><span>9:41</span><div class="island"></div><span class="status-icons">▮▮▮ <svg viewBox="0 0 20 16"><path d="M2 5q8-7 16 0M5 8q5-4 10 0M8 11q2-2 4 0"/></svg><span class="battery"></span></span></div>
+      <div id="screen" class="screen"></div>
+      <div class="home-indicator" aria-hidden="true"></div>
+      <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    </div>
+    <p class="preview-caption"><span id="variant-label">B / 轻盈玻璃 · 精修版</span><span>点击页面体验交互</span></p>
+  </main>
+</body>
+</html>
