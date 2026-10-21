@@ -1,5 +1,5 @@
 backend:
-  version: 4
+  version: 5
 
 admin:
   version: 3
@@ -8,5 +8,6 @@ app:
   android:
     apk_directory: deploy/releases
     release_notes:
-      - 优化页面交互体验
-      - 补齐暗色模式下的假条样式
+      - 优化页面布局与交互体验
+      - 新增暗色模式，支持跟随系统切换
+      - 首页新增请假统计和最新假条展示
