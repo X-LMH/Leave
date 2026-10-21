@@ -22,10 +22,17 @@ export function syncThemePreferences() {
 }
 
 export function refreshAppTheme() {
+	// #ifdef WEB
+	themeState.isDark = themeState.mode == 'auto'
+		? uni.getAppBaseInfo().hostTheme == 'dark'
+		: themeState.mode == 'dark'
+	// #endif
+	// #ifdef APP
 	const appTheme = uni.getAppBaseInfo().appTheme
 	themeState.isDark = appTheme == 'auto'
 		? uni.getDeviceInfo().osTheme == 'dark'
 		: appTheme == 'dark'
+	// #endif
 	syncThemePreferences()
 }
 
@@ -36,15 +43,29 @@ export function initializeAppTheme() {
 	const mode = saved == 'light' || saved == 'dark' ? saved as string : 'auto'
 	themeState.mode = mode
 	// 在启动页面创建前先计算颜色，防止暗色启动短暂显示亮色内容。
+	// #ifdef WEB
+	refreshAppTheme()
+	uni.onHostThemeChange((result) => {
+		if (themeState.mode == 'auto') themeState.isDark = result.hostTheme == 'dark'
+	})
+	// #endif
+	// #ifdef APP
 	themeState.isDark = mode == 'auto' ? uni.getDeviceInfo().osTheme == 'dark' : mode == 'dark'
 	syncThemePreferences()
 	uni.onAppThemeChange((result: AppThemeChangeResult) => {
 		themeState.isDark = result.appTheme == 'dark'
 	})
 	uni.setAppTheme({ theme: mode, fail: (_) => refreshAppTheme() })
+	// #endif
 }
 
 export function setAppearanceMode(mode: AppearanceMode) {
+	// #ifdef WEB
+	themeState.mode = mode
+	uni.setStorageSync(STORAGE_KEY, mode)
+	refreshAppTheme()
+	// #endif
+	// #ifdef APP
 	uni.setAppTheme({
 		theme: mode,
 		success: (_) => {
@@ -56,6 +77,7 @@ export function setAppearanceMode(mode: AppearanceMode) {
 			uni.showToast({ title: '外观切换失败，请重试', icon: 'none' })
 		}
 	})
+	// #endif
 }
 
 // 每个元素直接绑定自己的主题类，兼容原生 uvue 的样式隔离与缓存页面。

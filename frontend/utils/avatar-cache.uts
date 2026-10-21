@@ -27,11 +27,13 @@ function readAvatarCache(studentID: string): AvatarFileCache | null {
 }
 
 function deleteAvatarFile(path: string) {
+	// #ifndef WEB
 	if (path == '') return
 	uni.getFileSystemManager().unlink({
 		filePath: path,
 		fail: (error) => { console.warn('清理头像缓存失败: ' + error.errMsg) }
 	})
+	// #endif
 }
 
 export function clearAvatarFileCache(studentID: string) {
@@ -51,6 +53,10 @@ export function getAvatarDisplayURL(url: string): string {
 
 export function getCachedAvatarSource(studentID: string, url: string): string {
 	if (getAvatarDisplayURL(url) == '') return ''
+	// #ifdef WEB
+	return url
+	// #endif
+	// #ifndef WEB
 	if (studentID == '' || url == '') return url
 	const cached = readAvatarCache(studentID)
 	if (cached == null || cached.url != url) return url
@@ -61,10 +67,16 @@ export function getCachedAvatarSource(studentID: string, url: string): string {
 		uni.removeStorageSync(AVATAR_FILE_KEY_PREFIX + studentID)
 		return url
 	}
+	// #endif
 }
 
 export function cacheAvatarFile(studentID: string, url: string): Promise<string> {
 	if (getAvatarDisplayURL(url) == '') return Promise.resolve('')
+	// #ifdef WEB
+	// 浏览器直接展示图片并使用 HTTP 缓存，避免额外 XHR 下载触发跨域校验。
+	return Promise.resolve(url)
+	// #endif
+	// #ifndef WEB
 	if (studentID == '' || url == '') return Promise.resolve(url)
 	const source = getCachedAvatarSource(studentID, url)
 	const cached = readAvatarCache(studentID)
@@ -136,4 +148,5 @@ export function cacheAvatarFile(studentID: string, url: string): Promise<string>
 	})
 	pendingDownload = download
 	return download
+	// #endif
 }
