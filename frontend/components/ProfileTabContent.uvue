@@ -190,7 +190,8 @@ import {
 } from '@/utils/avatar-cache.uts'
 import {
 	getCurrentUser,
-	getProfile,
+	getCachedHomeUser,
+	getHome,
 	getStoredAvatarURL,
 	uploadAvatar,
 	AvatarUploadError,
@@ -306,24 +307,27 @@ function openAvatar() {
 	})
 }
 
-async function loadAvatar() {
+async function loadUser() {
 	if (changingAvatar.value) return
 	const updateVersion = avatarUpdateVersion
 	const currentStudentID = getCurrentUser().student_id
 	try {
-		const profile = await getProfile()
+		let user = getCachedHomeUser()
+		if (user == null) {
+			const home = await getHome()
+			user = home.user
+		}
 		if (
 			!pageActive ||
 			currentStudentID != getCurrentUser().student_id ||
 			updateVersion != avatarUpdateVersion
 		)
 			return
-		if (profile == null) {
-			uni.reLaunch({ url: '/pages/profile/edit?first=1' })
-			return
-		}
+		profileName.value = user.name
+		studentID.value = user.student_id
+		className.value = user.classname
 		const cachedURL = getStoredAvatarURL()
-		const remoteURL = cachedURL == '' ? profile.avatar_url : cachedURL
+		const remoteURL = cachedURL == '' ? user.avatar_url : cachedURL
 		const latestURL = await cacheAvatarFile(currentStudentID, remoteURL)
 		if (
 			!pageActive ||
@@ -349,7 +353,7 @@ async function loadAvatar() {
 			return
 		}
 		uni.showToast({
-			title: message == null || message == '' ? '头像加载失败' : message,
+			title: message == null || message == '' ? '个人信息加载失败' : message,
 			icon: 'none'
 		})
 	}
@@ -404,7 +408,7 @@ function refresh() {
 		avatarLoadFailed.value = false
 		avatarURL.value = cachedSource
 	}
-	loadAvatar()
+	loadUser()
 }
 watch(
 	(): boolean => props.active,

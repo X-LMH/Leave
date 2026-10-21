@@ -21,7 +21,7 @@ func testDependencies(dao *mysql.DAO, settings config.Config) Dependencies {
 	appOptionsService := appservice.NewOptionsService(dao, commonOptionsService)
 	appProfileService := appservice.NewProfileService(dao, settings.Storage)
 	appRecordService := appservice.NewRecordService(dao, appProfileService)
-	appUserService := appservice.NewUserService(dao, tokens)
+	appUserService := appservice.NewUserService(dao, tokens, settings.Storage)
 	adminApartmentService := adminservice.NewApartmentService(dao)
 	adminAppVersionService := adminservice.NewAppVersionService(dao)
 	adminAuthService := adminservice.NewAuthService(dao, tokens)

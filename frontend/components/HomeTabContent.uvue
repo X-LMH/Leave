@@ -59,16 +59,15 @@
 				<view :class="themeClass('overview-section')">
 					<view :class="themeClass('overview-heading')">
 						<text :class="themeClass('section-title')">数据概览</text>
-						<view :class="themeClass('example-badge')"><text :class="themeClass('example-text')">示例</text></view>
 					</view>
 					<view :class="themeClass('overview-card')">
 						<view
-							v-for="(metric, index) in homeOverview.metrics"
+							v-for="(metric, index) in homeMetrics"
 							:key="metric.label"
-							:class="themeClass(index == 2 ? 'overview-item overview-item-last' : 'overview-item')"
+							:class="themeClass(index == homeMetrics.length - 1 ? 'overview-item overview-item-last' : 'overview-item')"
 						>
 							<view :class="themeClass('metric-value-row')">
-								<text :class="themeClass('metric-value')">{{ metric.value }}</text>
+								<text :class="themeClass('metric-value')">{{ loading || loadError != '' ? '—' : metric.value }}</text>
 								<text :class="themeClass('metric-unit')">{{ metric.unit }}</text>
 							</view>
 							<text :class="themeClass('metric-label')">{{ metric.label }}</text>
@@ -89,7 +88,7 @@
 						v-if="loading"
 						:class="themeClass('empty-card')"
 					>
-						<text :class="themeClass('state-text')">正在加载最新假条…</text>
+						<text :class="themeClass('state-text')">正在加载首页数据…</text>
 					</view>
 					<view
 						v-else-if="loadError != ''"
@@ -213,10 +212,8 @@ import { themeClass as resolveThemeClass, themeImage as resolveThemeImage } from
 import { onUnmounted, ref } from 'vue'
 import {
 	getCurrentUser,
-	getRecord,
-	getRecords,
-	getStoredAvatarURL,
-	getProfile
+	getHome,
+	getStoredAvatarURL
 } from '@/utils/api.uts'
 import {
 	cacheAvatarFile,
@@ -226,21 +223,19 @@ import {
 
 type HomeMetric = {
 	label: string
-	value: number
+	value: string
 	unit: string
 }
 type HomeOverview = {
-	metrics: HomeMetric[]
 	reminderTitle: string
 	reminderText: string
 }
-// 独立于真实最新假条；统计区域明确标注示例，后续由后端提供同形数据。
+const homeMetrics = ref<HomeMetric[]>([
+	{ label: '累计请假', value: '—', unit: '次' },
+	{ label: '本月请假', value: '—', unit: '次' }
+])
+
 const homeOverview: HomeOverview = {
-	metrics: [
-		{ label: '累计请假', value: 12, unit: '次' },
-		{ label: '本月请假', value: 2, unit: '次' },
-		{ label: '累计时长', value: 36, unit: '小时' }
-	],
 	reminderTitle: '校园提醒',
 	reminderText: '提交前核对时间、课程与去向，确保联系方式准确'
 }
@@ -253,7 +248,7 @@ function rememberScroll(event: UniScrollEvent) {
 const profileName = ref(getCurrentUser().name)
 const avatarURL = ref(getCachedAvatarSource(getCurrentUser().student_id, getStoredAvatarURL()))
 const avatarFailed = ref(false)
-let avatarRequest = 0
+let requestVersion = 0
 function handleAvatarError() {
 	const remoteURL = getStoredAvatarURL()
 	if (remoteURL != '' && avatarURL.value != remoteURL) {
@@ -263,27 +258,19 @@ function handleAvatarError() {
 	}
 	avatarFailed.value = true
 }
-async function refreshAvatar() {
-	const request = ++avatarRequest
+function showCachedUser() {
 	const user = getCurrentUser()
 	profileName.value = user.name
 	avatarURL.value = getCachedAvatarSource(user.student_id, getStoredAvatarURL())
 	avatarFailed.value = false
+}
+async function loadHomeAvatar(studentID: string, version: number) {
+	const remoteURL = getStoredAvatarURL()
 	try {
-		const profile = await getProfile()
+		const source = await cacheAvatarFile(studentID, remoteURL)
 		if (
-			request != avatarRequest ||
-			user.student_id != getCurrentUser().student_id ||
-			profile == null
-		)
-			return
-		profileName.value = profile.name
-		const storedURL = getStoredAvatarURL()
-		const remoteURL = storedURL == '' ? profile.avatar_url : storedURL
-		const source = await cacheAvatarFile(user.student_id, remoteURL)
-		if (
-			request != avatarRequest ||
-			user.student_id != getCurrentUser().student_id ||
+			version != requestVersion ||
+			studentID != getCurrentUser().student_id ||
 			remoteURL != getStoredAvatarURL()
 		)
 			return
@@ -293,7 +280,7 @@ async function refreshAvatar() {
 		/* 头像失败不阻断首页真实假条。 */
 	}
 }
-const loading = ref(false)
+const loading = ref(true)
 const loadError = ref('')
 const recordID = ref(0)
 const leaveType = ref('')
@@ -301,7 +288,6 @@ const dateText = ref('')
 const timeText = ref('')
 const durationText = ref('')
 const outsideText = ref('')
-let requestVersion = 0
 function createLeave() {
 	uni.navigateTo({ url: '/pages/leave/apply' })
 }
@@ -328,20 +314,26 @@ function day(value: string): string {
 	return date.getMonth() + 1 + '月' + date.getDate() + '日'
 }
 async function refresh() {
-	refreshAvatar()
+	showCachedUser()
 	const version = ++requestVersion
 	const studentID = getCurrentUser().student_id
 	loading.value = true
 	loadError.value = ''
 	outsideText.value = ''
 	try {
-		const records = await getRecords(1, 1)
+		const home = await getHome()
 		if (version != requestVersion || studentID != getCurrentUser().student_id) return
-		if (records.length == 0) {
+		showCachedUser()
+		loadHomeAvatar(studentID, version)
+		homeMetrics.value = [
+			{ label: '累计请假', value: home.statistics.total_count.toFixed(0), unit: '次' },
+			{ label: '本月请假', value: home.statistics.month_count.toFixed(0), unit: '次' }
+		]
+		const item = home.latest_record
+		if (item == null) {
 			recordID.value = 0
 			return
 		}
-		const item = records[0]
 		recordID.value = item.id
 		leaveType.value = item.leave_type.replace('-本科生', '')
 		dateText.value =
@@ -353,23 +345,17 @@ async function refresh() {
 			(item.duration_hours > 0 || item.duration_days == 0
 				? item.duration_hours.toFixed(0) + '小时'
 				: '')
-		// 列表不含离校字段；详情失败不影响已加载的假条入口。
-		try {
-			const detail = await getRecord(item.id)
-			if (version == requestVersion && studentID == getCurrentUser().student_id)
-				outsideText.value = detail.is_leave_school ? '离校' : '不离校'
-		} catch (_) {}
+		outsideText.value = item.is_leave_school ? '离校' : '不离校'
 	} catch (error) {
 		if (version != requestVersion || studentID != getCurrentUser().student_id) return
 		const message = (error as Error).message
-		loadError.value = message == null || message == '' ? '最新假条加载失败' : message
+		loadError.value = message == null || message == '' ? '首页数据加载失败' : message
 	} finally {
 		if (version == requestVersion) loading.value = false
 	}
 }
 onUnmounted(() => {
 	requestVersion++
-	avatarRequest++
 })
 defineExpose({ refresh })
 
@@ -663,17 +649,6 @@ function themeImage(source: string): string {
 	margin-bottom: 8px;
 	flex-shrink: 0;
 }
-.example-badge {
-	margin-left: 8px;
-	padding: 2px 6px;
-	border-radius: 5px;
-	background-color: #e6e9ef;
-}
-.example-text {
-	font-size: 10px;
-	line-height: 14px;
-	color: $ios-secondary;
-}
 .overview-card {
 	padding: 17px 0;
 	border-radius: 20px;
@@ -836,12 +811,6 @@ function themeImage(source: string): string {
 .dark-meta-text {
 	color: $ios-dark-secondary;
 }
-.dark-example-badge {
-	background-color: $ios-dark-panel;
-}
-.dark-example-text {
-	color: $ios-dark-secondary;
-}
 .dark-overview-card {
 	background-color: $ios-dark-surface;
 }
@@ -894,9 +863,6 @@ function themeImage(source: string): string {
 	color: #d2d3dc;
 }
 .contrast-meta-text {
-	color: #d2d3dc;
-}
-.contrast-example-text {
 	color: #d2d3dc;
 }
 .contrast-overview-item {

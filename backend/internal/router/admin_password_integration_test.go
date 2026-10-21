@@ -206,7 +206,7 @@ func TestAdminPasswordIntegration(t *testing.T) {
 	if firstErr != nil || secondErr != nil || first == second || user.Role != models.RoleAdmin || user.Status != models.UserStatusActive {
 		t.Fatal("unexpected persisted account state")
 	}
-	userService := appservice.NewUserService(dao, jwt.NewManager(settings.JWT.Secret, settings.JWT.ExpirationDays))
+	userService := appservice.NewUserService(dao, jwt.NewManager(settings.JWT.Secret, settings.JWT.ExpirationDays), settings.Storage)
 	t.Run("student password reset", func(t *testing.T) {
 		definition, err := os.ReadFile(filepath.Join("..", "..", "database", "tables", "profiles.sql"))
 		if err != nil {

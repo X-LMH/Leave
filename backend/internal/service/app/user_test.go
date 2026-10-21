@@ -1,6 +1,7 @@
 package app
 
 import (
+	"backend/internal/config"
 	"backend/internal/dto"
 	"backend/internal/models"
 	"backend/internal/utils/jwt"
@@ -9,12 +10,13 @@ import (
 
 func TestNewLoginResponse(t *testing.T) {
 	tokens := jwt.NewManager("test-registration-session", 1)
-	users := NewUserService(nil, tokens)
+	users := NewUserService(nil, tokens, config.StorageConfig{BaseURL: "https://example.com/uploads"})
 	for _, completed := range []bool{false, true} {
 		user := dto.User{StudentID: "202410201016"}
 		if completed {
 			user.Name = "张三"
 			user.ClassName = "软件工程1班"
+			user.AvatarURL = "avatars/student.jpg"
 		}
 		data, err := users.newLoginResponse(user, models.RoleStudent, completed)
 		if err != nil {
@@ -27,7 +29,12 @@ func TestNewLoginResponse(t *testing.T) {
 		if claims.StudentID != user.StudentID || claims.Role != models.RoleStudent {
 			t.Fatalf("wrong session identity: %#v", claims)
 		}
-		if data.User != user || data.ProfileCompleted != completed {
+		expected := user
+		expected.AvatarURL = "https://example.com/uploads/avatars/default.png"
+		if completed {
+			expected.AvatarURL = "https://example.com/uploads/avatars/student.jpg"
+		}
+		if data.User != expected || data.ProfileCompleted != completed {
 			t.Fatalf("incorrect session data: %#v", data)
 		}
 	}

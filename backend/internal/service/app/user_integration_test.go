@@ -104,7 +104,7 @@ func TestRegisterIntegration(t *testing.T) {
 		DeviceName: " Android 测试机 ",
 		AppVersion: " 1.0.0 ",
 	}
-	userService := NewUserService(dao, jwt.NewManager(settings.JWT.Secret, settings.JWT.ExpirationDays))
+	userService := NewUserService(dao, jwt.NewManager(settings.JWT.Secret, settings.JWT.ExpirationDays), settings.Storage)
 	data, err := userService.Register(req)
 	if err != nil {
 		t.Fatal(err)

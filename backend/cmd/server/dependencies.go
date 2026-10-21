@@ -23,7 +23,7 @@ func buildDependencies(cfg config.Config, dao *mysql.DAO) router.Dependencies {
 	appOptionsService := appservice.NewOptionsService(dao, commonOptionsService)
 	appProfileService := appservice.NewProfileService(dao, cfg.Storage)
 	appRecordService := appservice.NewRecordService(dao, appProfileService)
-	appUserService := appservice.NewUserService(dao, tokens)
+	appUserService := appservice.NewUserService(dao, tokens, cfg.Storage)
 	adminApartmentService := adminservice.NewApartmentService(dao)
 	adminAppVersionService := adminservice.NewAppVersionService(dao)
 	adminAuthService := adminservice.NewAuthService(dao, tokens)

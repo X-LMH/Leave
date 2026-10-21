@@ -1,9 +1,12 @@
 package app
 
 import (
+	"backend/internal/config"
 	"backend/internal/dao/mysql"
 	"backend/internal/dto"
 	"backend/internal/models"
+	"backend/internal/service"
+	"backend/internal/utils/file"
 	"backend/internal/utils/jwt"
 	passwordutil "backend/internal/utils/password"
 	"strings"
@@ -13,14 +16,16 @@ import (
 )
 
 type UserService struct {
-	dao    *mysql.DAO
-	tokens *jwt.Manager
+	dao     *mysql.DAO
+	tokens  *jwt.Manager
+	storage config.StorageConfig
 }
 
-func NewUserService(dao *mysql.DAO, tokens *jwt.Manager) *UserService {
+func NewUserService(dao *mysql.DAO, tokens *jwt.Manager, storage config.StorageConfig) *UserService {
 	return &UserService{
-		dao:    dao,
-		tokens: tokens,
+		dao:     dao,
+		tokens:  tokens,
+		storage: storage,
 	}
 }
 
@@ -87,6 +92,16 @@ func (u *UserService) Login(req *dto.LoginRequest) (*dto.LoginResponse, error) {
 }
 
 func (u *UserService) newLoginResponse(user dto.User, role string, profileCompleted bool) (*dto.LoginResponse, error) {
+	// 登录与注册沿用资料接口的头像地址规则。
+	avatarPath := user.AvatarURL
+	if avatarPath == "" {
+		avatarPath = service.DefaultAvatarPath
+	}
+	avatarURL, err := file.AccessURL(u.storage.BaseURL, avatarPath)
+	if err != nil {
+		return nil, err
+	}
+	user.AvatarURL = avatarURL
 	token, err := u.tokens.GenerateToken(user.StudentID, role)
 	if err != nil {
 		return nil, err
@@ -112,6 +127,7 @@ func (u *UserService) buildLoginUser(studentID string) (dto.User, bool, error) {
 	}
 
 	loginUser.Name = profile.Name
+	loginUser.AvatarURL = profile.AvatarURL
 
 	class, err := u.dao.GetClassByID(profile.ClassID)
 	if err != nil {

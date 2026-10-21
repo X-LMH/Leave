@@ -19,6 +19,10 @@ export const STORAGE_DEVICE_NAME_KEY = 'leave_device_name'
 export const STORAGE_UPDATE_INFO_KEY = 'leave_update_info'
 const STORAGE_AVATAR_KEY_PREFIX = 'leave_avatar_'
 let avatarCacheVersion = 0
+let homeRequestVersion = 0
+let homeCache: HomeData | null = null
+let pendingHome: Promise<HomeData> | null = null
+let homeSessionKey = ''
 export const APP_PLATFORM = 'android'
 
 export type ApiResponse<T> = {
@@ -52,12 +56,20 @@ let isRedirectingToUpdate = false
 
 export class LoginData {
 	token: string = ''
-	user: CurrentUser = {
+	user: LoginUser = {
+		avatar_url: '',
 		student_id: '',
 		name: '',
 		class_name: ''
 	}
 	profile_completed: boolean = false
+}
+
+export type LoginUser = {
+	student_id: string
+	name: string
+	class_name: string
+	avatar_url: string
 }
 
 export type CurrentUser = {
@@ -174,6 +186,34 @@ export type RecordListItem = {
 	duration_hours: number
 }
 
+export type HomeStatistics = {
+	total_count: number
+	month_count: number
+}
+
+export type HomeRecord = {
+	id: number
+	leave_type: string
+	start_time: string
+	end_time: string
+	duration_days: number
+	duration_hours: number
+	is_leave_school: boolean
+}
+
+export type HomeUser = {
+	student_id: string
+	name: string
+	classname: string
+	avatar_url: string
+}
+
+export type HomeData = {
+	user: HomeUser
+	statistics: HomeStatistics
+	latest_record: HomeRecord | null
+}
+
 export type FeedbackPayload = {
 	content: string
 	is_anonymous: boolean
@@ -187,6 +227,7 @@ export type FeedbackResponse = {
 }
 
 function clearSession() {
+	invalidateHomeCache()
 	const studentID = getCurrentUser().student_id
 	if (studentID != '') {
 		clearAvatarFileCache(studentID)
@@ -205,6 +246,23 @@ export function getStoredAvatarURL(): string {
 	if (studentID == '') return ''
 	const storedURL = uni.getStorageSync(STORAGE_AVATAR_KEY_PREFIX + studentID)
 	return typeof storedURL == 'string' ? storedURL : ''
+}
+
+export function getCachedHomeUser(): HomeUser | null {
+	const user = getCurrentUser()
+	const name = uni.getStorageSync(STORAGE_NAME_KEY)
+	const className = uni.getStorageSync(STORAGE_CLASS_NAME_KEY)
+	const avatarURL = getStoredAvatarURL()
+	// 空姓名、空班级也是有效响应；仅缺少缓存字段时补请求。
+	if (user.student_id == '' || typeof name != 'string' || typeof className != 'string' || avatarURL == '') {
+		return null
+	}
+	return {
+		student_id: user.student_id,
+		name: name,
+		classname: className,
+		avatar_url: avatarURL
+	}
 }
 
 function cacheAvatarURL(studentID: string, avatarURL: string) {
@@ -230,6 +288,7 @@ export function getCurrentUser(): CurrentUser {
 }
 
 export function updateCurrentUser(user: CurrentUser) {
+	invalidateHomeCache()
 	uni.setStorageSync(STORAGE_STUDENT_ID_KEY, user.student_id)
 	uni.setStorageSync(STORAGE_NAME_KEY, user.name)
 	uni.setStorageSync(STORAGE_CLASS_NAME_KEY, user.class_name)
@@ -241,6 +300,7 @@ export function getStoredDeviceName(): string {
 }
 
 export function saveSession(studentID: string, data: LoginData, deviceName: string = '') {
+	invalidateHomeCache()
 	const previousStudentID = getCurrentUser().student_id
 	if (previousStudentID != '' && previousStudentID != data.user.student_id) {
 		clearAvatarFileCache(previousStudentID)
@@ -252,6 +312,12 @@ export function saveSession(studentID: string, data: LoginData, deviceName: stri
 	uni.setStorageSync(STORAGE_NAME_KEY, data.user.name)
 	uni.setStorageSync(STORAGE_CLASS_NAME_KEY, data.user.class_name)
 	uni.setStorageSync(STORAGE_DEVICE_NAME_KEY, deviceName)
+	if (data.user.avatar_url != '') {
+		cacheAvatarURL(data.user.student_id, data.user.avatar_url)
+	} else {
+		clearAvatarFileCache(data.user.student_id)
+		uni.removeStorageSync(STORAGE_AVATAR_KEY_PREFIX + data.user.student_id)
+	}
 }
 
 export function logout() {
@@ -443,6 +509,7 @@ function loginDataFromJSON(data: UTSJSONObject): LoginData {
 	loginData.token = data['token'] as string
 	const userData = data['user'] as UTSJSONObject
 	loginData.user = {
+		avatar_url: (userData['avatar_url'] as string | null) ?? '',
 		student_id: userData['student_id'] as string,
 		name: userData['name'] as string,
 		class_name: userData['class_name'] as string
@@ -492,8 +559,9 @@ export async function getProfile(): Promise<ProfileData | null> {
 	return profile
 }
 
-export function saveProfile(payload: ProfilePayload): Promise<void> {
-	return request<void>('/profile', 'POST', payload, true)
+export async function saveProfile(payload: ProfilePayload): Promise<void> {
+	await request<void>('/profile', 'POST', payload, true)
+	invalidateHomeCache()
 }
 
 // 页面遇到登录或版本跳转时，不再弹出重试对话框覆盖目标页面。
@@ -574,6 +642,7 @@ export async function uploadAvatar(filePath: string): Promise<string> {
 	if (uni.getStorageSync(STORAGE_TOKEN_KEY) == token && getCurrentUser().student_id == studentID) {
 		avatarCacheVersion++
 		cacheAvatarURL(studentID, avatarURL)
+		invalidateHomeCache()
 	}
 	return avatarURL
 }
@@ -614,7 +683,9 @@ export async function getLeaveTypes(): Promise<LeaveTypeOption[]> {
 }
 
 export async function createRecord(payload: RecordCreatePayload): Promise<RecordDetail> {
-	return recordDetailFromJSON(await request<UTSJSONObject>('/record', 'POST', payload, true))
+	const record = recordDetailFromJSON(await request<UTSJSONObject>('/record', 'POST', payload, true))
+	invalidateHomeCache()
+	return record
 }
 
 export async function submitFeedback(content: string, isAnonymous: boolean, imagePaths: string[] = []): Promise<FeedbackResponse> {
@@ -641,6 +712,83 @@ export async function submitFeedback(content: string, isAnonymous: boolean, imag
 	return request<FeedbackResponse>('/feedback', 'POST', payload, true)
 }
 
+function invalidateHomeCache() {
+	homeRequestVersion++
+	homeCache = null
+	pendingHome = null
+	homeSessionKey = ''
+}
+
+export async function getHome(): Promise<HomeData> {
+	const token = uni.getStorageSync(STORAGE_TOKEN_KEY)
+	const sessionKey = getCurrentUser().student_id + '|' + (typeof token == 'string' ? token : '')
+	if (sessionKey != homeSessionKey) {
+		invalidateHomeCache()
+		homeSessionKey = sessionKey
+	}
+	const cached = homeCache
+	if (cached != null) return cached
+	const pending = pendingHome
+	if (pending != null) return pending
+	// 首页与“我的”共用请求，切换 Tab 时不会再次访问接口。
+	const version = ++homeRequestVersion
+	const task = fetchHome(version)
+	pendingHome = task
+	try {
+		const home = await task
+		if (version == homeRequestVersion && sessionKey == homeSessionKey) homeCache = home
+		return home
+	} finally {
+		if (version == homeRequestVersion) pendingHome = null
+	}
+}
+
+async function fetchHome(version: number): Promise<HomeData> {
+	const studentID = getCurrentUser().student_id
+	const token = uni.getStorageSync(STORAGE_TOKEN_KEY)
+	const cacheVersion = avatarCacheVersion
+	const data = await request<UTSJSONObject>('/home', 'GET', null, true)
+	const userData = data['user'] as UTSJSONObject
+	const user: HomeUser = {
+		student_id: userData['student_id'] as string,
+		name: userData['name'] as string,
+		classname: userData['classname'] as string,
+		avatar_url: userData['avatar_url'] as string
+	}
+	if (
+		version == homeRequestVersion &&
+		studentID == getCurrentUser().student_id &&
+		token == uni.getStorageSync(STORAGE_TOKEN_KEY)
+	) {
+		uni.setStorageSync(STORAGE_NAME_KEY, user.name)
+		uni.setStorageSync(STORAGE_CLASS_NAME_KEY, user.classname)
+		// 上传成功后，旧首页响应不能把头像缓存改回上传前的地址。
+		if (cacheVersion == avatarCacheVersion) cacheAvatarURL(studentID, user.avatar_url)
+	}
+	const statistics = data['statistics'] as UTSJSONObject
+	const record = data['latest_record'] as UTSJSONObject | null
+	let latestRecord: HomeRecord | null = null
+	if (record != null) {
+		latestRecord = {
+			id: record['id'] as number,
+			leave_type: record['leave_type'] as string,
+			start_time: record['start_time'] as string,
+			end_time: record['end_time'] as string,
+			duration_days: record['duration_days'] as number,
+			duration_hours: record['duration_hours'] as number,
+			is_leave_school: record['is_leave_school'] as boolean
+		}
+	}
+	return {
+		user: user,
+		statistics: {
+			total_count: statistics['total_count'] as number,
+			month_count: statistics['month_count'] as number
+		},
+		latest_record: latestRecord
+	}
+}
+
 export async function getRecord(id: number): Promise<RecordDetail> {
 	return recordDetailFromJSON(await request<UTSJSONObject>('/record/' + id, 'GET', null, true))
 }
@@ -661,8 +809,9 @@ export async function getRecords(page: number, pageSize: number): Promise<Record
 	})
 }
 
-export function deleteRecord(id: number): Promise<void> {
-	return request<void>('/record/' + id, 'DELETE', null, true)
+export async function deleteRecord(id: number): Promise<void> {
+	await request<void>('/record/' + id, 'DELETE', null, true)
+	invalidateHomeCache()
 }
 
 function recordDetailFromJSON(data: UTSJSONObject): RecordDetail {

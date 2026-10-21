@@ -20,6 +20,7 @@ type LoginRequest struct {
 
 // User contains the basic user data needed by authenticated pages.
 type User struct {
+	AvatarURL string `json:"avatar_url"`
 	StudentID string `json:"student_id"`
 	Name      string `json:"name"`
 	ClassName string `json:"class_name"`

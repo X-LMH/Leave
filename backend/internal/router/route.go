@@ -69,6 +69,7 @@ func SetupRouter(deps Dependencies) *gin.Engine {
 		user.POST("/profile/avatar", deps.AppAvatar.UploadAvatarHandler)
 		user.POST("/password", deps.AppUser.ChangePasswordHandler)
 		user.GET("/profile", deps.AppProfile.GetProfileHandler)
+		user.GET("/home", deps.AppRecord.GetHomeHandler)
 
 		user.GET("/class-options", deps.AppOptions.GetClassOptionsHandler)
 		user.GET("/apartments", deps.AppOptions.GetApartmentOptionsHandler)
