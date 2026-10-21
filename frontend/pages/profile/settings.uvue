@@ -88,13 +88,13 @@ function appearanceLabel(mode: string): string {
 
 .settings-group {
 	box-sizing: border-box;
-	padding: 0 14px;
+	padding: 0 16px;
 	background-color: $ios-surface;
 	border-radius: $ios-radius;
 }
 .settings-row {
 	box-sizing: border-box;
-	min-height: 58px;
+	min-height: 51px;
 	flex-direction: row;
 	align-items: center;
 	border-bottom: 0.5px solid $ios-separator;
@@ -131,7 +131,7 @@ function appearanceLabel(mode: string): string {
 .row-title {
 	flex: 1;
 	min-width: 0;
-	font-size: 16px;
+	font-size: 14px;
 	color: $ios-ink;
 }
 .row-arrow {

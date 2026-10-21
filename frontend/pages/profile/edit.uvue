@@ -1,9 +1,8 @@
 <template>
 	<ProfilePageShell
 		:title="firstProfile ? '完善资料' : '编辑资料'"
-		:subtitle="firstProfile ? '完善必填信息，即可开始请假。' : '更新个人信息，保存后返回我的。'"
+		:subtitle="firstProfile ? '完善必填信息，即可开始请假。' : ''"
 		:scrollable="true"
-		:show-close="true"
 		:scroll-target="scrollTarget"
 		:intercept-back="true"
 		@back="requestLeave"
@@ -793,7 +792,7 @@ function themeImage(source: string): string {
 }
 .field-label {
 	color: $ios-ink;
-	font-size: 15px;
+	font-size: 14px;
 }
 .required {
 	color: $ios-red;

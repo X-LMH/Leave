@@ -1,137 +1,110 @@
 <template>
-	<view :class="themeClass('appearance-page')">
-		<view :class="themeClass('safe-top')"></view>
-		<view :class="themeClass('appearance-header')">
+	<ProfilePageShell
+		title="显示与触感"
+		subtitle=""
+		:scrollable="true"
+		:intercept-back="true"
+		@back="goBack"
+	>
+		<view :class="themeClass('appearance-group')">
 			<view
-				id="appearance-back"
-				:class="themeClass('round-control')"
-				role="button"
-				aria-label="返回设置"
-				@click="goBack"
+				id="preference-motion"
+				:class="themeClass('appearance-row')"
+				role="switch"
+				aria-label="减少动态效果"
+				:aria-checked="reduceMotion"
+				@click="toggleReduceMotion"
 			>
-				<image
-					:class="themeClass('control-icon')"
-					:src="themeImage('/static/ios/back-ink.svg')"
-					mode="aspectFit"
-				></image>
+				<view :class="themeClass('appearance-copy')">
+					<text :class="themeClass('appearance-label')">减少动态效果</text>
+					<text :class="themeClass('appearance-detail')">关闭位移与弹性过渡</text>
+				</view>
+				<view
+					:style="switchMotionStyle"
+					:class="themeClass(reduceMotion ? 'preference-switch preference-switch-on' : 'preference-switch')"
+				>
+					<view
+						:style="switchMotionStyle"
+						:class="themeClass(reduceMotion ? 'preference-knob preference-knob-on' : 'preference-knob')"
+					></view>
+				</view>
 			</view>
-			<text :class="themeClass('appearance-title')">显示与触感</text>
-			<view :class="themeClass('header-spacer')"></view>
+			<view
+				id="preference-transparency"
+				:class="themeClass('appearance-row')"
+				role="switch"
+				aria-label="减少透明度"
+				:aria-checked="reduceTransparency"
+				@click="toggleReduceTransparency"
+			>
+				<view :class="themeClass('appearance-copy')">
+					<text :class="themeClass('appearance-label')">减少透明度</text>
+					<text :class="themeClass('appearance-detail')">使用实色导航与面板</text>
+				</view>
+				<view
+					:style="switchMotionStyle"
+					:class="themeClass(reduceTransparency ? 'preference-switch preference-switch-on' : 'preference-switch')"
+				>
+					<view
+						:style="switchMotionStyle"
+						:class="themeClass(reduceTransparency ? 'preference-knob preference-knob-on' : 'preference-knob')"
+					></view>
+				</view>
+			</view>
+			<view
+				id="preference-contrast"
+				:class="themeClass('appearance-row')"
+				role="switch"
+				aria-label="增强对比度"
+				:aria-checked="highContrast"
+				@click="toggleHighContrast"
+			>
+				<view :class="themeClass('appearance-copy')">
+					<text :class="themeClass('appearance-label')">增强对比度</text>
+					<text :class="themeClass('appearance-detail')">加深文字和边界</text>
+				</view>
+				<view
+					:style="switchMotionStyle"
+					:class="themeClass(highContrast ? 'preference-switch preference-switch-on' : 'preference-switch')"
+				>
+					<view
+						:style="switchMotionStyle"
+						:class="themeClass(highContrast ? 'preference-knob preference-knob-on' : 'preference-knob')"
+					></view>
+				</view>
+			</view>
+			<view
+				id="preference-haptics"
+				:class="themeClass('appearance-row')"
+				role="switch"
+				aria-label="切换轻触反馈"
+				:aria-checked="haptics"
+				@click="toggleHaptics"
+			>
+				<view :class="themeClass('appearance-copy')">
+					<text :class="themeClass('appearance-label')">切换轻触反馈</text>
+					<text :class="themeClass('appearance-detail')">切换标签页时轻微振动</text>
+				</view>
+				<view
+					:style="switchMotionStyle"
+					:class="themeClass(haptics ? 'preference-switch preference-switch-on' : 'preference-switch')"
+				>
+					<view
+						:style="switchMotionStyle"
+						:class="themeClass(haptics ? 'preference-knob preference-knob-on' : 'preference-knob')"
+					></view>
+				</view>
+			</view>
 		</view>
-		<scroll-view
-			:class="themeClass('appearance-scroll')"
-			scroll-y="true"
-			:show-scrollbar="false"
-		>
-			<view :class="themeClass('appearance-content')">
-				<view :class="themeClass('utility-intro')">
-					<text :class="themeClass('utility-title')">选择舒服的体验</text>
-					<text :class="themeClass('utility-description')">让界面适应你的使用习惯。</text>
-				</view>
-				<view :class="themeClass('appearance-group')">
-					<view
-						id="preference-motion"
-						:class="themeClass('appearance-row')"
-						role="switch"
-						aria-label="减少动态效果"
-						:aria-checked="reduceMotion"
-						@click="toggleReduceMotion"
-					>
-						<view :class="themeClass('appearance-copy')">
-							<text :class="themeClass('appearance-label')">减少动态效果</text>
-							<text :class="themeClass('appearance-detail')">关闭位移与弹性过渡</text>
-						</view>
-						<view
-							:style="switchMotionStyle"
-							:class="themeClass(reduceMotion ? 'preference-switch preference-switch-on' : 'preference-switch')"
-						>
-							<view
-								:style="switchMotionStyle"
-								:class="themeClass(reduceMotion ? 'preference-knob preference-knob-on' : 'preference-knob')"
-							></view>
-						</view>
-					</view>
-					<view
-						id="preference-transparency"
-						:class="themeClass('appearance-row')"
-						role="switch"
-						aria-label="减少透明度"
-						:aria-checked="reduceTransparency"
-						@click="toggleReduceTransparency"
-					>
-						<view :class="themeClass('appearance-copy')">
-							<text :class="themeClass('appearance-label')">减少透明度</text>
-							<text :class="themeClass('appearance-detail')">使用实色导航与面板</text>
-						</view>
-						<view
-							:style="switchMotionStyle"
-							:class="themeClass(reduceTransparency ? 'preference-switch preference-switch-on' : 'preference-switch')"
-						>
-							<view
-								:style="switchMotionStyle"
-								:class="themeClass(reduceTransparency ? 'preference-knob preference-knob-on' : 'preference-knob')"
-							></view>
-						</view>
-					</view>
-					<view
-						id="preference-contrast"
-						:class="themeClass('appearance-row')"
-						role="switch"
-						aria-label="增强对比度"
-						:aria-checked="highContrast"
-						@click="toggleHighContrast"
-					>
-						<view :class="themeClass('appearance-copy')">
-							<text :class="themeClass('appearance-label')">增强对比度</text>
-							<text :class="themeClass('appearance-detail')">加深文字和边界</text>
-						</view>
-						<view
-							:style="switchMotionStyle"
-							:class="themeClass(highContrast ? 'preference-switch preference-switch-on' : 'preference-switch')"
-						>
-							<view
-								:style="switchMotionStyle"
-								:class="themeClass(highContrast ? 'preference-knob preference-knob-on' : 'preference-knob')"
-							></view>
-						</view>
-					</view>
-					<view
-						id="preference-haptics"
-						:class="themeClass('appearance-row')"
-						role="switch"
-						aria-label="切换轻触反馈"
-						:aria-checked="haptics"
-						@click="toggleHaptics"
-					>
-						<view :class="themeClass('appearance-copy')">
-							<text :class="themeClass('appearance-label')">切换轻触反馈</text>
-							<text :class="themeClass('appearance-detail')">切换标签页时尝试轻微振动</text>
-						</view>
-						<view
-							:style="switchMotionStyle"
-							:class="themeClass(haptics ? 'preference-switch preference-switch-on' : 'preference-switch')"
-						>
-							<view
-								:style="switchMotionStyle"
-								:class="themeClass(haptics ? 'preference-knob preference-knob-on' : 'preference-knob')"
-							></view>
-						</view>
-					</view>
-				</view>
-				<text :class="themeClass('field-help')">
-					系统辅助设置同样生效。触觉反馈遵循设备系统设置，更改会自动保存到此设备。
-				</text>
-			</view>
-		</scroll-view>
-	</view>
+	</ProfilePageShell>
 </template>
 <script setup lang="uts">
-import { themeClass as resolveThemeClass, themeImage as resolveThemeImage } from '@/utils/app-theme.uts'
+import { themeClass as resolveThemeClass } from '@/utils/app-theme.uts'
 import { computed, nextTick, ref, watch } from 'vue'
+import ProfilePageShell from '@/components/ProfilePageShell.uvue'
 import { syncThemePreferences } from '@/utils/app-theme.uts'
 import {
 	configureNavigationSwitch,
-	labelNavigationPreference,
 	readNavigationPreferences,
 	saveNavigationPreferences,
 	systemReducesMotion
@@ -184,7 +157,6 @@ function goBack() {
 	})
 }
 function updateAccessibility() {
-	labelNavigationPreference(uni.getElementById('appearance-back'), '返回设置', () => goBack())
 	configureNavigationSwitch(
 		uni.getElementById('preference-motion'),
 		'减少动态效果',
@@ -224,56 +196,9 @@ function themeClass(classes: string): string {
 	return resolveThemeClass(classes)
 }
 
-function themeImage(source: string): string {
-	return resolveThemeImage(source)
-}
 </script>
 <style lang="scss">
-@import '@/styles/ios-controls.scss';
-.appearance-page {
-	flex: 1;
-	background-color: $ios-page;
-}
-.safe-top {
-	height: var(--status-bar-height);
-}
-.appearance-header {
-	box-sizing: border-box;
-	height: 53px;
-	padding: 0 15px;
-	flex-direction: row;
-	align-items: center;
-}
-.round-control {
-	box-sizing: border-box;
-	width: 44px;
-	height: 44px;
-	border-radius: 22px;
-	background-color: #eaeaef;
-	align-items: center;
-	justify-content: center;
-}
-.control-icon {
-	width: 21px;
-	height: 21px;
-}
-.appearance-title {
-	flex: 1;
-	font-size: 17px;
-	font-weight: 600;
-	color: $ios-ink;
-	text-align: center;
-}
-.header-spacer {
-	width: 44px;
-}
-.appearance-scroll {
-	flex: 1;
-}
-.appearance-content {
-	box-sizing: border-box;
-	padding: 13px 21px 38px;
-}
+@import '@/styles/ios-theme.scss';
 .appearance-group {
 	box-sizing: border-box;
 	padding: 0 16px;
@@ -282,7 +207,7 @@ function themeImage(source: string): string {
 }
 .appearance-row {
 	box-sizing: border-box;
-	min-height: 68px;
+	min-height: 44px;
 	padding: 12px 0;
 	flex-direction: row;
 	align-items: center;
@@ -294,7 +219,7 @@ function themeImage(source: string): string {
 	margin-right: 14px;
 }
 .appearance-label {
-	font-size: 16px;
+	font-size: 14px;
 	line-height: 23px;
 	color: $ios-ink;
 }
@@ -316,7 +241,7 @@ function themeImage(source: string): string {
 	transition-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 .preference-switch-on {
-	background-color: $ios-blue;
+	background-color: $ios-switch-on;
 }
 .preference-knob {
 	box-sizing: border-box;
@@ -335,15 +260,6 @@ function themeImage(source: string): string {
 }
 
 // Dark appearance. Geometry stays shared with the light appearance.
-.dark-appearance-page {
-	background-color: $ios-dark-page;
-}
-.dark-round-control {
-	background-color: $ios-dark-panel;
-}
-.dark-appearance-title {
-	color: $ios-dark-ink;
-}
 .dark-appearance-group {
 	background-color: $ios-dark-surface;
 }
@@ -360,13 +276,10 @@ function themeImage(source: string): string {
 	background-color: #444650;
 }
 .dark-preference-switch-on {
-	background-color: $ios-dark-button;
+	background-color: $ios-dark-switch-on;
 }
 .dark-preference-knob {
 	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
-}
-.contrast-appearance-title {
-	color: #ffffff;
 }
 .contrast-appearance-row {
 	border-bottom: 0.5px solid #737580;

@@ -1,14 +1,10 @@
 <template>
 	<ProfilePageShell
-		title="用户反馈"
+		title="反馈与建议"
 		subtitle=""
 		:scrollable="true"
 		:scroll-target="scrollTarget"
 	>
-		<view :class="themeClass('utility-intro')">
-			<text :class="themeClass('utility-title')">我们想听听你的想法</text>
-			<text :class="themeClass('utility-description')">描述遇到的问题，或分享改进建议。</text>
-		</view>
 		<view :class="themeClass('field-label-row')">
 			<text :class="themeClass('feedback-label')">反馈内容</text>
 			<text :class="themeClass('required')">*</text>
@@ -254,7 +250,7 @@ function themeImage(source: string): string {
 	margin: 19px 1px 5px;
 }
 .section-title {
-	font-size: 15px;
+	font-size: 14px;
 	font-weight: 600;
 	color: $ios-ink;
 }
@@ -317,9 +313,9 @@ function themeImage(source: string): string {
 }
 .anonymous-card {
 	box-sizing: border-box;
-	height: 82px;
+	min-height: 44px;
 	margin-top: 2px;
-	padding: 16px;
+	padding: 12px 16px;
 	border-radius: 23px;
 	background-color: $ios-surface;
 	flex-direction: row;
@@ -329,7 +325,7 @@ function themeImage(source: string): string {
 	flex: 1;
 }
 .anonymous-title {
-	font-size: 16px;
+	font-size: 14px;
 	color: $ios-ink;
 }
 .anonymous-detail {
@@ -347,7 +343,7 @@ function themeImage(source: string): string {
 	background-color: #d5d6de;
 }
 .toggle-active {
-	background-color: #34c759;
+	background-color: $ios-switch-on;
 }
 .toggle-dot {
 	box-sizing: border-box;
@@ -409,7 +405,7 @@ function themeImage(source: string): string {
 	background-color: #444650;
 }
 .dark-toggle-active {
-	background-color: #267a4c;
+	background-color: $ios-dark-switch-on;
 }
 .dark-toggle-dot {
 	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);

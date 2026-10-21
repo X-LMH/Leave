@@ -51,11 +51,6 @@
 			>
 				<view :class="themeClass('theme-copy')">
 					<text :class="themeClass('theme-label')">{{ item.label }}</text>
-					<text
-						v-if="item.value == 'auto'"
-						:class="themeClass('theme-detail')"
-						>随手机系统自动切换亮色与暗色</text
-					>
 				</view>
 				<view
 					:class="
@@ -75,7 +70,6 @@
 				</view>
 			</view>
 		</view>
-		<text :class="themeClass('theme-help')">选择后立即生效，并保存到此设备。</text>
 	</ProfilePageShell>
 </template>
 <script setup lang="uts">
@@ -194,7 +188,8 @@ function themeImage(source: string): string {
 .theme-row {
 	flex-direction: row;
 	align-items: center;
-	min-height: 64px;
+	min-height: 51px;
+	border-bottom: 0.5px solid $ios-separator;
 }
 .theme-copy {
 	flex: 1;
@@ -203,14 +198,8 @@ function themeImage(source: string): string {
 }
 .theme-label {
 	color: $ios-ink;
-	font-size: 16px;
+	font-size: 14px;
 	line-height: 24px;
-}
-.theme-detail {
-	color: $ios-secondary;
-	font-size: 12px;
-	line-height: 19px;
-	margin-top: 3px;
 }
 .choice-circle {
 	width: 23px;
@@ -229,12 +218,6 @@ function themeImage(source: string): string {
 	width: 16px;
 	height: 16px;
 }
-.theme-help {
-	color: $ios-secondary;
-	font-size: 12px;
-	line-height: 20px;
-	margin: 12px 14px;
-}
 
 // Dark appearance. Geometry stays shared with the light appearance.
 .dark-preview-label {
@@ -243,11 +226,11 @@ function themeImage(source: string): string {
 .dark-theme-group {
 	background-color: $ios-dark-surface;
 }
+.dark-theme-row {
+	border-bottom-color: $ios-dark-separator;
+}
 .dark-theme-label {
 	color: $ios-dark-ink;
-}
-.dark-theme-detail {
-	color: $ios-dark-secondary;
 }
 .dark-choice-circle {
 	border: 1px solid $ios-dark-separator;
@@ -256,22 +239,16 @@ function themeImage(source: string): string {
 	background-color: $ios-dark-button;
 	border-color: $ios-dark-blue;
 }
-.dark-theme-help {
-	color: $ios-dark-secondary;
-}
 .contrast-preview-label {
 	color: #ffffff;
+}
+.contrast-theme-row {
+	border-bottom-color: #737580;
 }
 .contrast-theme-label {
 	color: #ffffff;
 }
-.contrast-theme-detail {
-	color: #d2d3dc;
-}
 .contrast-choice-circle {
 	border: 1px solid #737580;
-}
-.contrast-theme-help {
-	color: #d2d3dc;
 }
 </style>

@@ -5,7 +5,7 @@
 		:scrollable="true"
 	>
 		<view :class="themeClass('about-hero')">
-			<AppBrand :app-icon="true" subtitle="让每次请假，清楚而简单。" />
+			<AppBrand :app-icon="true" />
 			<text :class="themeClass('app-version')">版本 {{ version }}</text>
 		</view>
 		<view :class="themeClass('about-group')">
@@ -21,7 +21,7 @@
 					></image>
 				</view>
 				<text :class="themeClass('row-title')">版本更新</text>
-				<text :class="themeClass('row-detail')">{{ checking ? '检查中…' : '查看' }}</text>
+				<text :class="themeClass('row-detail')">{{ checking ? '检查中…' : '' }}</text>
 				<image
 					:class="themeClass('row-arrow')"
 					:src="themeImage('/static/ios/arrow-secondary.svg')"
@@ -116,7 +116,7 @@ function themeImage(source: string): string {
 @import '@/styles/ios-controls.scss';
 .about-hero {
 	box-sizing: border-box;
-	padding: 22px 0 37px;
+	padding: 12px 0 26px;
 	align-items: center;
 }
 .app-version {
@@ -132,7 +132,7 @@ function themeImage(source: string): string {
 }
 .about-row {
 	box-sizing: border-box;
-	min-height: 61px;
+	min-height: 51px;
 	flex-direction: row;
 	align-items: center;
 	border-bottom: 0.5px solid $ios-separator;
@@ -160,7 +160,7 @@ function themeImage(source: string): string {
 	flex: 1;
 	min-width: 0;
 	color: $ios-ink;
-	font-size: 16px;
+	font-size: 14px;
 }
 .row-detail {
 	font-size: 12px;
