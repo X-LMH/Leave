@@ -8,6 +8,14 @@ storage:
   root_dir: /www/wwwroot/Leave/uploads
   base_url: http://leave.mhspace.dpdns.org/api/v1/uploads
 
+redis:
+  host: 127.0.0.1
+  port: 6379
+  username: ""
+  # 生产环境建议通过 REDIS_PASSWORD 环境变量注入。
+  password: ""
+  db: 0
+
 mysql:
   host: 127.0.0.1
   port: 3306

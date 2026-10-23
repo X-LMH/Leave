@@ -11,6 +11,15 @@ storage:
   # 替换为实际文件访问前缀；后端拼接数据库中的相对路径生成访问地址。
   base_url: "https://example.com/api/v1/uploads"
 
+redis:
+  host: 127.0.0.1
+  port: 6379
+  # 默认用户可留空；使用 ACL 时填写用户名。
+  username: ""
+  # 可通过 REDIS_PASSWORD 环境变量覆盖。
+  password: ""
+  db: 0
+
 mysql:
   host: localhost
   port: 3306

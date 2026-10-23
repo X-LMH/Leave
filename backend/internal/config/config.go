@@ -21,6 +21,13 @@ type MySQLConfig struct {
 	User     string `yaml:"user"`
 	Password string `yaml:"password"`
 }
+type RedisConfig struct {
+	Host     string `yaml:"host"`
+	Port     int    `yaml:"port"`
+	Username string `yaml:"username"`
+	Password string `yaml:"password"`
+	DB       int    `yaml:"db"`
+}
 type AppConfig struct {
 	PackageDir string `yaml:"package_dir"`
 	Port       int    `yaml:"port"`
@@ -30,6 +37,7 @@ type StorageConfig struct {
 	BaseURL string `yaml:"base_url"`
 }
 type Config struct {
+	Redis   RedisConfig   `yaml:"redis"`
 	JWT     JWTConfig     `yaml:"jwt"`
 	Mysql   MySQLConfig   `yaml:"mysql"`
 	App     AppConfig     `yaml:"app"`
@@ -51,6 +59,9 @@ func Load() (Config, error) {
 	v.SetConfigFile(configPath)
 	v.AllowEmptyEnv(true)
 	v.SetDefault("app.port", 10000)
+	v.SetDefault("redis.host", "127.0.0.1")
+	v.SetDefault("redis.port", 6379)
+	v.BindEnv("redis.password", "REDIS_PASSWORD")
 	v.BindEnv("mysql.password", "MYSQL_PASSWORD")
 	v.BindEnv("jwt.secret", "JWT_SECRET")
 
@@ -66,11 +77,22 @@ func Load() (Config, error) {
 	cfg.JWT.Secret = strings.TrimSpace(v.GetString("jwt.secret"))
 	cfg.JWT.ExpirationDays = v.GetInt("jwt.expiration_days")
 	cfg.Mysql.Password = v.GetString("mysql.password")
+	cfg.Redis.Host = strings.TrimSpace(cfg.Redis.Host)
+	cfg.Redis.Password = v.GetString("redis.password")
 	cfg.App.PackageDir = strings.TrimSpace(v.GetString("app.package_dir"))
 	cfg.App.Port = v.GetInt("app.port")
 	cfg.Storage.RootDir = strings.TrimSpace(v.GetString("storage.root_dir"))
 	cfg.Storage.BaseURL = strings.TrimSpace(v.GetString("storage.base_url"))
 
+	if cfg.Redis.Host == "" {
+		return Config{}, fmt.Errorf("redis.host cannot be empty")
+	}
+	if cfg.Redis.Port <= 0 || cfg.Redis.Port > 65535 {
+		return Config{}, fmt.Errorf("redis.port must be between 1 and 65535")
+	}
+	if cfg.Redis.DB < 0 {
+		return Config{}, fmt.Errorf("redis.db cannot be negative")
+	}
 	if cfg.Mysql.Password == "" {
 		return Config{}, fmt.Errorf("MySQL password cannot be empty; configure MYSQL_PASSWORD")
 	}
