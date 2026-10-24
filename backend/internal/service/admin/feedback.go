@@ -11,16 +11,19 @@ import (
 	"os"
 	"regexp"
 
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
 type FeedbackService struct {
+	logger  *zap.Logger
 	dao     *mysql.DAO
 	storage config.StorageConfig
 }
 
-func NewFeedbackService(dao *mysql.DAO, storage config.StorageConfig) *FeedbackService {
+func NewFeedbackService(dao *mysql.DAO, storage config.StorageConfig, logger *zap.Logger) *FeedbackService {
 	return &FeedbackService{
+		logger:  logger,
 		dao:     dao,
 		storage: storage,
 	}

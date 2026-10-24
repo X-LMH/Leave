@@ -11,14 +11,17 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 type ProfileHandler struct {
+	logger  *zap.Logger
 	profile *appservice.ProfileService
 }
 
-func NewProfileHandler(profile *appservice.ProfileService) *ProfileHandler {
+func NewProfileHandler(profile *appservice.ProfileService, logger *zap.Logger) *ProfileHandler {
 	return &ProfileHandler{
+		logger:  logger,
 		profile: profile,
 	}
 }

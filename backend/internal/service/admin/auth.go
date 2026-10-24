@@ -8,16 +8,19 @@ import (
 	passwordutil "backend/internal/utils/password"
 	"strings"
 
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
 type AuthService struct {
+	logger *zap.Logger
 	dao    *mysql.DAO
 	tokens *jwt.Manager
 }
 
-func NewAuthService(dao *mysql.DAO, tokens *jwt.Manager) *AuthService {
+func NewAuthService(dao *mysql.DAO, tokens *jwt.Manager, logger *zap.Logger) *AuthService {
 	return &AuthService{
+		logger: logger,
 		dao:    dao,
 		tokens: tokens,
 	}

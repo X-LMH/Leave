@@ -12,16 +12,19 @@ import (
 	"log"
 	"strings"
 
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
 type AvatarService struct {
+	logger  *zap.Logger
 	dao     *mysql.DAO
 	storage config.StorageConfig
 }
 
-func NewAvatarService(dao *mysql.DAO, storage config.StorageConfig) *AvatarService {
+func NewAvatarService(dao *mysql.DAO, storage config.StorageConfig, logger *zap.Logger) *AvatarService {
 	return &AvatarService{
+		logger:  logger,
 		dao:     dao,
 		storage: storage,
 	}

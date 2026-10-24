@@ -14,6 +14,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"go.uber.org/zap"
 )
 
 // The integration suite creates and drops its own schema on a loopback MySQL server.
@@ -63,7 +65,7 @@ func TestAdminManagementIntegration(t *testing.T) {
 	}
 	defer connection.Close()
 	db := testDB
-	dao := NewDAO(db)
+	dao := NewDAO(db, zap.NewNop())
 	for _, name := range []string{"leave_types", "classes", "profiles", "users", "apartments", "app_versions"} {
 		sql, err := os.ReadFile(filepath.Join("..", "..", "..", "database", "tables", name+".sql"))
 		if err != nil {

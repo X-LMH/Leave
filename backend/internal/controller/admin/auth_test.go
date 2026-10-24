@@ -15,11 +15,12 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 func TestChangePasswordValidationAndRole(t *testing.T) {
 	settings := config.Config{}
-	dao := mysql.NewDAO(nil)
+	dao := mysql.NewDAO(nil, zap.NewNop())
 	gin.SetMode(gin.TestMode)
 	for _, tc := range []struct {
 		name string
@@ -40,7 +41,7 @@ func TestChangePasswordValidationAndRole(t *testing.T) {
 				c.Set(request.CtxStuID, "test-admin")
 				c.Set(request.CtxRole, tc.role)
 			})
-			r.POST("/password", middleware.AdminAuthMiddleware(), NewAuthHandler(adminservice.NewAuthService(dao, jwt.NewManager(settings.JWT.Secret, settings.JWT.ExpirationDays))).ChangePasswordHandler)
+			r.POST("/password", middleware.AdminAuthMiddleware(), NewAuthHandler(adminservice.NewAuthService(dao, jwt.NewManager(settings.JWT.Secret, settings.JWT.ExpirationDays), zap.NewNop()), zap.NewNop()).ChangePasswordHandler)
 			req := httptest.NewRequest("POST", "/password", strings.NewReader(tc.body))
 			req.Header.Set("Content-Type", "application/json")
 			w := httptest.NewRecorder()

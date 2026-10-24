@@ -6,15 +6,19 @@ import (
 	"backend/internal/models"
 	"math"
 	"strings"
+
+	"go.uber.org/zap"
 )
 
 type LeaveTypeService struct {
-	dao *mysql.DAO
+	logger *zap.Logger
+	dao    *mysql.DAO
 }
 
-func NewLeaveTypeService(dao *mysql.DAO) *LeaveTypeService {
+func NewLeaveTypeService(dao *mysql.DAO, logger *zap.Logger) *LeaveTypeService {
 	return &LeaveTypeService{
-		dao: dao,
+		logger: logger,
+		dao:    dao,
 	}
 }
 

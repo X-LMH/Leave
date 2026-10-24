@@ -7,14 +7,18 @@ import (
 	adminservice "backend/internal/service/admin"
 	"github.com/gin-gonic/gin"
 	"strings"
+
+	"go.uber.org/zap"
 )
 
 type ApartmentHandler struct {
+	logger    *zap.Logger
 	apartment *adminservice.ApartmentService
 }
 
-func NewApartmentHandler(apartment *adminservice.ApartmentService) *ApartmentHandler {
+func NewApartmentHandler(apartment *adminservice.ApartmentService, logger *zap.Logger) *ApartmentHandler {
 	return &ApartmentHandler{
+		logger:    logger,
 		apartment: apartment,
 	}
 }

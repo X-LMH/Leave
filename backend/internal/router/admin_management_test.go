@@ -6,11 +6,13 @@ import (
 	"github.com/gin-gonic/gin"
 	"net/http/httptest"
 	"testing"
+
+	"go.uber.org/zap"
 )
 
 func TestManagementRoutesRequireLogin(t *testing.T) {
 	settings := config.Config{}
-	dao := mysql.NewDAO(nil)
+	dao := mysql.NewDAO(nil, zap.NewNop())
 	gin.SetMode(gin.TestMode)
 	r := SetupRouter(testDependencies(dao, settings))
 	for _, path := range []string{"/api/v1/admin/classes", "/api/v1/admin/leave-types", "/api/v1/admin/apartments"} {
@@ -30,7 +32,7 @@ func TestManagementRoutesRequireLogin(t *testing.T) {
 
 func TestStudentRoutesRequireLogin(t *testing.T) {
 	settings := config.Config{}
-	dao := mysql.NewDAO(nil)
+	dao := mysql.NewDAO(nil, zap.NewNop())
 	r := SetupRouter(testDependencies(dao, settings))
 	for _, route := range []struct{ method, path string }{
 		{"GET", "/api/v1/admin/overview"},

@@ -10,14 +10,17 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 type RecordHandler struct {
+	logger *zap.Logger
 	record *appservice.RecordService
 }
 
-func NewRecordHandler(record *appservice.RecordService) *RecordHandler {
+func NewRecordHandler(record *appservice.RecordService, logger *zap.Logger) *RecordHandler {
 	return &RecordHandler{
+		logger: logger,
 		record: record,
 	}
 }

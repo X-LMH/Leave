@@ -10,6 +10,7 @@ import (
 	"time"
 
 	driver "github.com/go-sql-driver/mysql"
+	"go.uber.org/zap"
 	gormmysql "gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
@@ -44,7 +45,7 @@ func testDAOIsolation(t *testing.T, first *DAO, server *gorm.DB, cfg *driver.Con
 	if err := db.Exec(string(definition)).Error; err != nil {
 		t.Fatal(err)
 	}
-	second := NewDAO(db)
+	second := NewDAO(db, zap.NewNop())
 	for _, tc := range []struct {
 		dao      *DAO
 		password string

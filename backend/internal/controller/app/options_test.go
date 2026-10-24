@@ -9,13 +9,14 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 func TestApartmentOptionsRejectInvalidGender(t *testing.T) {
-	dao := mysql.NewDAO(nil)
+	dao := mysql.NewDAO(nil, zap.NewNop())
 	r := gin.New()
 	r.Use(func(c *gin.Context) { c.Set(request.CtxStuID, "test") })
-	r.GET("/apartments", NewOptionsHandler(appservice.NewOptionsService(dao, commonservice.NewOptionsService(dao)), commonservice.NewOptionsService(dao)).GetApartmentOptionsHandler)
+	r.GET("/apartments", NewOptionsHandler(appservice.NewOptionsService(dao, commonservice.NewOptionsService(dao, zap.NewNop()), zap.NewNop()), commonservice.NewOptionsService(dao, zap.NewNop()), zap.NewNop()).GetApartmentOptionsHandler)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, httptest.NewRequest("GET", "/apartments?gender=unknown", nil))
 	if w.Code != 400 {
@@ -24,8 +25,8 @@ func TestApartmentOptionsRejectInvalidGender(t *testing.T) {
 }
 
 func TestProfileOptionsRequireStudentIdentity(t *testing.T) {
-	dao := mysql.NewDAO(nil)
-	optionsHandler := NewOptionsHandler(appservice.NewOptionsService(dao, commonservice.NewOptionsService(dao)), commonservice.NewOptionsService(dao))
+	dao := mysql.NewDAO(nil, zap.NewNop())
+	optionsHandler := NewOptionsHandler(appservice.NewOptionsService(dao, commonservice.NewOptionsService(dao, zap.NewNop()), zap.NewNop()), commonservice.NewOptionsService(dao, zap.NewNop()), zap.NewNop())
 	for _, handler := range []gin.HandlerFunc{optionsHandler.GetClassOptionsHandler, optionsHandler.GetApartmentOptionsHandler} {
 		r := gin.New()
 		r.GET("/", handler)

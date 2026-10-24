@@ -8,16 +8,19 @@ import (
 	"strings"
 	"time"
 
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
 type OverviewService struct {
-	dao *mysql.DAO
+	logger *zap.Logger
+	dao    *mysql.DAO
 }
 
-func NewOverviewService(dao *mysql.DAO) *OverviewService {
+func NewOverviewService(dao *mysql.DAO, logger *zap.Logger) *OverviewService {
 	return &OverviewService{
-		dao: dao,
+		logger: logger,
+		dao:    dao,
 	}
 }
 

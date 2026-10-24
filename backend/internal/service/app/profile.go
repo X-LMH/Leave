@@ -9,16 +9,19 @@ import (
 	"backend/internal/utils/file"
 	"errors"
 
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
 type ProfileService struct {
+	logger  *zap.Logger
 	dao     *mysql.DAO
 	storage config.StorageConfig
 }
 
-func NewProfileService(dao *mysql.DAO, storage config.StorageConfig) *ProfileService {
+func NewProfileService(dao *mysql.DAO, storage config.StorageConfig, logger *zap.Logger) *ProfileService {
 	return &ProfileService{
+		logger:  logger,
 		dao:     dao,
 		storage: storage,
 	}

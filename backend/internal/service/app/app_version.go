@@ -7,15 +7,19 @@ import (
 	"encoding/json"
 	"errors"
 	"strings"
+
+	"go.uber.org/zap"
 )
 
 type AppVersionService struct {
-	dao *mysql.DAO
+	logger *zap.Logger
+	dao    *mysql.DAO
 }
 
-func NewAppVersionService(dao *mysql.DAO) *AppVersionService {
+func NewAppVersionService(dao *mysql.DAO, logger *zap.Logger) *AppVersionService {
 	return &AppVersionService{
-		dao: dao,
+		logger: logger,
+		dao:    dao,
 	}
 }
 

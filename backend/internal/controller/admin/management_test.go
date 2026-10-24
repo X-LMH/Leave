@@ -14,17 +14,19 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"go.uber.org/zap"
 )
 
 func TestManagementRejectsInvalidRequests(t *testing.T) {
 	settings := config.Config{}
-	dao := mysql.NewDAO(nil)
+	dao := mysql.NewDAO(nil, zap.NewNop())
 	gin.SetMode(gin.TestMode)
-	studentHandler := NewStudentHandler(adminservice.NewStudentService(dao, settings.Storage))
-	appVersionHandler := NewAppVersionHandler(adminservice.NewAppVersionService(dao))
-	leaveTypeHandler := NewLeaveTypeHandler(adminservice.NewLeaveTypeService(dao))
-	recordHandler := NewRecordHandler(adminservice.NewRecordService(dao))
-	classHandler := NewClassHandler(adminservice.NewClassService(dao))
+	studentHandler := NewStudentHandler(adminservice.NewStudentService(dao, settings.Storage, zap.NewNop()), zap.NewNop())
+	appVersionHandler := NewAppVersionHandler(adminservice.NewAppVersionService(dao, zap.NewNop()), zap.NewNop())
+	leaveTypeHandler := NewLeaveTypeHandler(adminservice.NewLeaveTypeService(dao, zap.NewNop()), zap.NewNop())
+	recordHandler := NewRecordHandler(adminservice.NewRecordService(dao, zap.NewNop()), zap.NewNop())
+	classHandler := NewClassHandler(adminservice.NewClassService(dao, zap.NewNop()), zap.NewNop())
 	for _, tc := range []struct {
 		handler            gin.HandlerFunc
 		method, path, body string
@@ -37,7 +39,7 @@ func TestManagementRejectsInvalidRequests(t *testing.T) {
 		{appVersionHandler.GetAppVersionHandler, "GET", "/items/-1", ""},
 		{appVersionHandler.GetAppVersionHandler, "GET", "/items/bad", ""},
 		{appVersionHandler.GetAppVersionHandler, "GET", "/items/18446744073709551616", ""},
-		{NewOptionsHandler(commonservice.NewOptionsService(dao)).GetApartmentOptionsHandler, "GET", "/items?gender=unknown", ""},
+		{NewOptionsHandler(commonservice.NewOptionsService(dao, zap.NewNop()), zap.NewNop()).GetApartmentOptionsHandler, "GET", "/items?gender=unknown", ""},
 		{studentHandler.GetStudentsHandler, "GET", "/items?page=0", ""},
 		{recordHandler.GetRecordsHandler, "GET", "/items?page=0", ""},
 		{recordHandler.GetRecordsHandler, "GET", "/items?page_size=101", ""},

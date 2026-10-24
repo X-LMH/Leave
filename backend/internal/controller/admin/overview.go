@@ -5,14 +5,17 @@ import (
 	adminservice "backend/internal/service/admin"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 type OverviewHandler struct {
+	logger   *zap.Logger
 	overview *adminservice.OverviewService
 }
 
-func NewOverviewHandler(overview *adminservice.OverviewService) *OverviewHandler {
+func NewOverviewHandler(overview *adminservice.OverviewService, logger *zap.Logger) *OverviewHandler {
 	return &OverviewHandler{
+		logger:   logger,
 		overview: overview,
 	}
 }

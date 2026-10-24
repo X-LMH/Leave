@@ -10,15 +10,18 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 type AuthHandler struct {
-	auth *adminservice.AuthService
+	logger *zap.Logger
+	auth   *adminservice.AuthService
 }
 
-func NewAuthHandler(auth *adminservice.AuthService) *AuthHandler {
+func NewAuthHandler(auth *adminservice.AuthService, logger *zap.Logger) *AuthHandler {
 	return &AuthHandler{
-		auth: auth,
+		logger: logger,
+		auth:   auth,
 	}
 }
 

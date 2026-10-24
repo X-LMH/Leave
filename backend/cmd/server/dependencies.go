@@ -11,45 +11,47 @@ import (
 	appservice "backend/internal/service/app"
 	commonservice "backend/internal/service/common"
 	"backend/internal/utils/jwt"
+
+	"go.uber.org/zap"
 )
 
 // buildDependencies 组装当前应用实例的服务、Handler 和中间件。
-func buildDependencies(cfg config.Config, dao *mysql.DAO) router.Dependencies {
+func buildDependencies(cfg config.Config, dao *mysql.DAO, logger *zap.Logger) router.Dependencies {
 	tokens := jwt.NewManager(cfg.JWT.Secret, cfg.JWT.ExpirationDays)
-	commonOptionsService := commonservice.NewOptionsService(dao)
-	appVersionService := appservice.NewAppVersionService(dao)
-	appAvatarService := appservice.NewAvatarService(dao, cfg.Storage)
-	appFeedbackService := appservice.NewFeedbackService(dao, cfg.Storage)
-	appOptionsService := appservice.NewOptionsService(dao, commonOptionsService)
-	appProfileService := appservice.NewProfileService(dao, cfg.Storage)
-	appRecordService := appservice.NewRecordService(dao, appProfileService)
-	appUserService := appservice.NewUserService(dao, tokens, cfg.Storage)
-	adminApartmentService := adminservice.NewApartmentService(dao)
-	adminAppVersionService := adminservice.NewAppVersionService(dao)
-	adminAuthService := adminservice.NewAuthService(dao, tokens)
-	adminClassService := adminservice.NewClassService(dao)
-	adminFeedbackService := adminservice.NewFeedbackService(dao, cfg.Storage)
-	adminLeaveTypeService := adminservice.NewLeaveTypeService(dao)
-	adminOverviewService := adminservice.NewOverviewService(dao)
-	adminRecordService := adminservice.NewRecordService(dao)
-	adminStudentService := adminservice.NewStudentService(dao, cfg.Storage)
-	appVersionHandler := appcontroller.NewAppVersionHandler(appVersionService, cfg.App.PackageDir)
-	appAvatarHandler := appcontroller.NewAvatarHandler(appAvatarService)
-	appFeedbackHandler := appcontroller.NewFeedbackHandler(appFeedbackService)
-	appOptionsHandler := appcontroller.NewOptionsHandler(appOptionsService, commonOptionsService)
-	appProfileHandler := appcontroller.NewProfileHandler(appProfileService)
-	appRecordHandler := appcontroller.NewRecordHandler(appRecordService)
-	appUserHandler := appcontroller.NewUserHandler(appUserService)
-	adminApartmentHandler := admincontroller.NewApartmentHandler(adminApartmentService)
-	adminAppVersionHandler := admincontroller.NewAppVersionHandler(adminAppVersionService)
-	adminAuthHandler := admincontroller.NewAuthHandler(adminAuthService)
-	adminClassHandler := admincontroller.NewClassHandler(adminClassService)
-	adminFeedbackHandler := admincontroller.NewFeedbackHandler(adminFeedbackService)
-	adminLeaveTypeHandler := admincontroller.NewLeaveTypeHandler(adminLeaveTypeService)
-	adminOptionsHandler := admincontroller.NewOptionsHandler(commonOptionsService)
-	adminOverviewHandler := admincontroller.NewOverviewHandler(adminOverviewService)
-	adminRecordHandler := admincontroller.NewRecordHandler(adminRecordService)
-	adminStudentHandler := admincontroller.NewStudentHandler(adminStudentService)
+	commonOptionsService := commonservice.NewOptionsService(dao, logger)
+	appVersionService := appservice.NewAppVersionService(dao, logger)
+	appAvatarService := appservice.NewAvatarService(dao, cfg.Storage, logger)
+	appFeedbackService := appservice.NewFeedbackService(dao, cfg.Storage, logger)
+	appOptionsService := appservice.NewOptionsService(dao, commonOptionsService, logger)
+	appProfileService := appservice.NewProfileService(dao, cfg.Storage, logger)
+	appRecordService := appservice.NewRecordService(dao, appProfileService, logger)
+	appUserService := appservice.NewUserService(dao, tokens, cfg.Storage, logger)
+	adminApartmentService := adminservice.NewApartmentService(dao, logger)
+	adminAppVersionService := adminservice.NewAppVersionService(dao, logger)
+	adminAuthService := adminservice.NewAuthService(dao, tokens, logger)
+	adminClassService := adminservice.NewClassService(dao, logger)
+	adminFeedbackService := adminservice.NewFeedbackService(dao, cfg.Storage, logger)
+	adminLeaveTypeService := adminservice.NewLeaveTypeService(dao, logger)
+	adminOverviewService := adminservice.NewOverviewService(dao, logger)
+	adminRecordService := adminservice.NewRecordService(dao, logger)
+	adminStudentService := adminservice.NewStudentService(dao, cfg.Storage, logger)
+	appVersionHandler := appcontroller.NewAppVersionHandler(appVersionService, cfg.App.PackageDir, logger)
+	appAvatarHandler := appcontroller.NewAvatarHandler(appAvatarService, logger)
+	appFeedbackHandler := appcontroller.NewFeedbackHandler(appFeedbackService, logger)
+	appOptionsHandler := appcontroller.NewOptionsHandler(appOptionsService, commonOptionsService, logger)
+	appProfileHandler := appcontroller.NewProfileHandler(appProfileService, logger)
+	appRecordHandler := appcontroller.NewRecordHandler(appRecordService, logger)
+	appUserHandler := appcontroller.NewUserHandler(appUserService, logger)
+	adminApartmentHandler := admincontroller.NewApartmentHandler(adminApartmentService, logger)
+	adminAppVersionHandler := admincontroller.NewAppVersionHandler(adminAppVersionService, logger)
+	adminAuthHandler := admincontroller.NewAuthHandler(adminAuthService, logger)
+	adminClassHandler := admincontroller.NewClassHandler(adminClassService, logger)
+	adminFeedbackHandler := admincontroller.NewFeedbackHandler(adminFeedbackService, logger)
+	adminLeaveTypeHandler := admincontroller.NewLeaveTypeHandler(adminLeaveTypeService, logger)
+	adminOptionsHandler := admincontroller.NewOptionsHandler(commonOptionsService, logger)
+	adminOverviewHandler := admincontroller.NewOverviewHandler(adminOverviewService, logger)
+	adminRecordHandler := admincontroller.NewRecordHandler(adminRecordService, logger)
+	adminStudentHandler := admincontroller.NewStudentHandler(adminStudentService, logger)
 	return router.Dependencies{
 		AppVersions:          appVersionHandler,
 		AppAvatar:            appAvatarHandler,
@@ -68,7 +70,7 @@ func buildDependencies(cfg config.Config, dao *mysql.DAO) router.Dependencies {
 		AdminOverview:        adminOverviewHandler,
 		AdminRecord:          adminRecordHandler,
 		AdminStudent:         adminStudentHandler,
-		AuthMiddleware:       middleware.JWTAuthMiddleware(tokens, dao),
-		AppVersionMiddleware: middleware.AppVersionMiddleware(appVersionService),
+		AuthMiddleware:       middleware.JWTAuthMiddleware(tokens, dao, logger),
+		AppVersionMiddleware: middleware.AppVersionMiddleware(appVersionService, logger),
 	}
 }

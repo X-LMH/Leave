@@ -13,15 +13,18 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 type AppVersionHandler struct {
+	logger     *zap.Logger
 	appVersion *appservice.AppVersionService
 	packageDir string
 }
 
-func NewAppVersionHandler(appVersion *appservice.AppVersionService, packageDir string) *AppVersionHandler {
+func NewAppVersionHandler(appVersion *appservice.AppVersionService, packageDir string, logger *zap.Logger) *AppVersionHandler {
 	return &AppVersionHandler{
+		logger:     logger,
 		appVersion: appVersion,
 		packageDir: packageDir,
 	}

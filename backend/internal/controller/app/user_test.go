@@ -15,11 +15,12 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 func TestRegisterRejectsInvalidRequests(t *testing.T) {
 	settings := config.Config{}
-	dao := mysql.NewDAO(nil)
+	dao := mysql.NewDAO(nil, zap.NewNop())
 	gin.SetMode(gin.TestMode)
 	for _, tc := range []struct {
 		name string
@@ -45,7 +46,7 @@ func TestRegisterRejectsInvalidRequests(t *testing.T) {
 			c, _ := gin.CreateTestContext(w)
 			c.Request = httptest.NewRequest(http.MethodPost, "/api/v1/auth/register", bytes.NewReader(body))
 			c.Request.Header.Set("Content-Type", "application/json")
-			NewUserHandler(appservice.NewUserService(dao, jwt.NewManager(settings.JWT.Secret, settings.JWT.ExpirationDays), settings.Storage)).RegisterHandler(c)
+			NewUserHandler(appservice.NewUserService(dao, jwt.NewManager(settings.JWT.Secret, settings.JWT.ExpirationDays), settings.Storage, zap.NewNop()), zap.NewNop()).RegisterHandler(c)
 			var result response.Response
 			if err := json.Unmarshal(w.Body.Bytes(), &result); err != nil {
 				t.Fatal(err)

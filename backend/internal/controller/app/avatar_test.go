@@ -14,11 +14,12 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 func TestUploadAvatarRejectsInvalidRequests(t *testing.T) {
 	settings := config.Config{}
-	dao := mysql.NewDAO(nil)
+	dao := mysql.NewDAO(nil, zap.NewNop())
 	gin.SetMode(gin.TestMode)
 	tests := []struct {
 		name     string
@@ -60,7 +61,7 @@ func TestUploadAvatarRejectsInvalidRequests(t *testing.T) {
 			if tt.loggedIn {
 				c.Set(request.CtxStuID, "student")
 			}
-			NewAvatarHandler(appservice.NewAvatarService(dao, settings.Storage)).UploadAvatarHandler(c)
+			NewAvatarHandler(appservice.NewAvatarService(dao, settings.Storage, zap.NewNop()), zap.NewNop()).UploadAvatarHandler(c)
 			var result response.Response
 			if err := json.Unmarshal(recorder.Body.Bytes(), &result); err != nil {
 				t.Fatal(err)
@@ -74,13 +75,13 @@ func TestUploadAvatarRejectsInvalidRequests(t *testing.T) {
 
 func TestUploadAvatarRejectsNonMultipartBody(t *testing.T) {
 	settings := config.Config{}
-	dao := mysql.NewDAO(nil)
+	dao := mysql.NewDAO(nil, zap.NewNop())
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
 	c.Set(request.CtxStuID, "student")
 	c.Request = httptest.NewRequest(http.MethodPost, "/api/v1/profile/avatar", bytes.NewBufferString("{}"))
 	c.Request.Header.Set("Content-Type", "application/json")
-	NewAvatarHandler(appservice.NewAvatarService(dao, settings.Storage)).UploadAvatarHandler(c)
+	NewAvatarHandler(appservice.NewAvatarService(dao, settings.Storage, zap.NewNop()), zap.NewNop()).UploadAvatarHandler(c)
 	if recorder.Code != http.StatusBadRequest {
 		t.Fatalf("expected bad request, got %d", recorder.Code)
 	}

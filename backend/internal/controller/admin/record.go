@@ -9,14 +9,18 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"go.uber.org/zap"
 )
 
 type RecordHandler struct {
+	logger *zap.Logger
 	record *adminservice.RecordService
 }
 
-func NewRecordHandler(record *adminservice.RecordService) *RecordHandler {
+func NewRecordHandler(record *adminservice.RecordService, logger *zap.Logger) *RecordHandler {
 	return &RecordHandler{
+		logger: logger,
 		record: record,
 	}
 }

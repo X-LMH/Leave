@@ -10,14 +10,18 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+
+	"go.uber.org/zap"
 )
 
 type FeedbackHandler struct {
+	logger   *zap.Logger
 	feedback *adminservice.FeedbackService
 }
 
-func NewFeedbackHandler(feedback *adminservice.FeedbackService) *FeedbackHandler {
+func NewFeedbackHandler(feedback *adminservice.FeedbackService, logger *zap.Logger) *FeedbackHandler {
 	return &FeedbackHandler{
+		logger:   logger,
 		feedback: feedback,
 	}
 }

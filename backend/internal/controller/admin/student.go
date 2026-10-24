@@ -9,14 +9,17 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 type StudentHandler struct {
+	logger  *zap.Logger
 	student *adminservice.StudentService
 }
 
-func NewStudentHandler(student *adminservice.StudentService) *StudentHandler {
+func NewStudentHandler(student *adminservice.StudentService, logger *zap.Logger) *StudentHandler {
 	return &StudentHandler{
+		logger:  logger,
 		student: student,
 	}
 }

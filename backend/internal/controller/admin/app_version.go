@@ -8,14 +8,17 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 type AppVersionHandler struct {
+	logger     *zap.Logger
 	appVersion *adminservice.AppVersionService
 }
 
-func NewAppVersionHandler(appVersion *adminservice.AppVersionService) *AppVersionHandler {
+func NewAppVersionHandler(appVersion *adminservice.AppVersionService, logger *zap.Logger) *AppVersionHandler {
 	return &AppVersionHandler{
+		logger:     logger,
 		appVersion: appVersion,
 	}
 }

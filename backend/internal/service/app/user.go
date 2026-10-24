@@ -12,17 +12,20 @@ import (
 	"strings"
 	"time"
 
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
 type UserService struct {
+	logger  *zap.Logger
 	dao     *mysql.DAO
 	tokens  *jwt.Manager
 	storage config.StorageConfig
 }
 
-func NewUserService(dao *mysql.DAO, tokens *jwt.Manager, storage config.StorageConfig) *UserService {
+func NewUserService(dao *mysql.DAO, tokens *jwt.Manager, storage config.StorageConfig, logger *zap.Logger) *UserService {
 	return &UserService{
+		logger:  logger,
 		dao:     dao,
 		tokens:  tokens,
 		storage: storage,

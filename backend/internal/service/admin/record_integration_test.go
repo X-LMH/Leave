@@ -13,13 +13,14 @@ import (
 	"time"
 
 	driver "github.com/go-sql-driver/mysql"
+	"go.uber.org/zap"
 	gormmysql "gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
 
 // This suite creates its own loopback schema and never loads application config.
 func TestAdminRecordsIntegration(t *testing.T) {
-	dao := mysql.NewDAO(nil)
+	dao := mysql.NewDAO(nil, zap.NewNop())
 	dsn := os.Getenv("ADMIN_TEST_MYSQL_DSN")
 	if dsn == "" {
 		t.Skip("set ADMIN_TEST_MYSQL_DSN for isolated loopback MySQL coverage")
@@ -73,7 +74,7 @@ func TestAdminRecordsIntegration(t *testing.T) {
 		}
 	}
 
-	dao = mysql.NewDAO(testDB)
+	dao = mysql.NewDAO(testDB, zap.NewNop())
 
 	class := models.Class{
 		College:   "原学院",
@@ -186,7 +187,7 @@ func TestAdminRecordsIntegration(t *testing.T) {
 	if err := testDB.Delete(&class).Error; err != nil {
 		t.Fatal(err)
 	}
-	recordService := NewRecordService(dao)
+	recordService := NewRecordService(dao, zap.NewNop())
 	list, err := recordService.GetAdminRecords(query)
 	if err != nil {
 		t.Fatal(err)

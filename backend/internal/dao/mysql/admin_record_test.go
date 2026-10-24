@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"go.uber.org/zap"
 	gormmysql "gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
@@ -37,7 +38,7 @@ func TestUpdateAdminRecordContentPreservesSnapshotsAndWritesFalse(t *testing.T) 
 		TravelWay:     "",
 		Destination:   "",
 	}
-	dao := NewDAO(tx)
+	dao := NewDAO(tx, zap.NewNop())
 	if err := dao.UpdateAdminRecordContent(tx, row); err != nil {
 		t.Fatal(err)
 	}

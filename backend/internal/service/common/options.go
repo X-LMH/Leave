@@ -5,15 +5,19 @@ import (
 	"backend/internal/dto"
 	"backend/internal/models"
 	"errors"
+
+	"go.uber.org/zap"
 )
 
 type OptionsService struct {
-	dao *mysql.DAO
+	logger *zap.Logger
+	dao    *mysql.DAO
 }
 
-func NewOptionsService(dao *mysql.DAO) *OptionsService {
+func NewOptionsService(dao *mysql.DAO, logger *zap.Logger) *OptionsService {
 	return &OptionsService{
-		dao: dao,
+		logger: logger,
+		dao:    dao,
 	}
 }
 

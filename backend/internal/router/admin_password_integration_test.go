@@ -24,6 +24,7 @@ import (
 	"time"
 
 	driver "github.com/go-sql-driver/mysql"
+	"go.uber.org/zap"
 	gormmysql "gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -31,7 +32,7 @@ import (
 
 func TestAdminPasswordIntegration(t *testing.T) {
 	settings := config.Config{}
-	dao := mysql.NewDAO(nil)
+	dao := mysql.NewDAO(nil, zap.NewNop())
 	dsn := os.Getenv("ADMIN_TEST_MYSQL_DSN")
 	if dsn == "" {
 		t.Skip("set ADMIN_TEST_MYSQL_DSN for isolated loopback MySQL coverage")
@@ -85,7 +86,7 @@ func TestAdminPasswordIntegration(t *testing.T) {
 
 	settings.JWT.Secret = "isolated-password-test"
 	settings.JWT.ExpirationDays = 1
-	dao = mysql.NewDAO(testDB)
+	dao = mysql.NewDAO(testDB, zap.NewNop())
 	initialHash, err := passwordutil.Hash("old-pass")
 	if err != nil {
 		t.Fatal(err)
@@ -162,7 +163,7 @@ func TestAdminPasswordIntegration(t *testing.T) {
 	if got := call(token, validBody); got.Code != response.CodeSuccess {
 		t.Fatalf("change failed: %d", got.Code)
 	}
-	authService := adminservice.NewAuthService(dao, jwt.NewManager(settings.JWT.Secret, settings.JWT.ExpirationDays))
+	authService := adminservice.NewAuthService(dao, jwt.NewManager(settings.JWT.Secret, settings.JWT.ExpirationDays), zap.NewNop())
 	if _, err := authService.AdminLogin(&dto.AdminLoginRequest{UserName: "admin", Password: "old-pass"}); !errors.Is(err, mysql.ErrorInvalidPassword) {
 		t.Fatal("old password still accepted for login")
 	}
@@ -206,7 +207,7 @@ func TestAdminPasswordIntegration(t *testing.T) {
 	if firstErr != nil || secondErr != nil || first == second || user.Role != models.RoleAdmin || user.Status != models.UserStatusActive {
 		t.Fatal("unexpected persisted account state")
 	}
-	userService := appservice.NewUserService(dao, jwt.NewManager(settings.JWT.Secret, settings.JWT.ExpirationDays), settings.Storage)
+	userService := appservice.NewUserService(dao, jwt.NewManager(settings.JWT.Secret, settings.JWT.ExpirationDays), settings.Storage, zap.NewNop())
 	t.Run("student password reset", func(t *testing.T) {
 		definition, err := os.ReadFile(filepath.Join("..", "..", "database", "tables", "profiles.sql"))
 		if err != nil {

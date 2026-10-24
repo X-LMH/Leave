@@ -7,14 +7,18 @@ import (
 	adminservice "backend/internal/service/admin"
 	"github.com/gin-gonic/gin"
 	"strings"
+
+	"go.uber.org/zap"
 )
 
 type LeaveTypeHandler struct {
+	logger    *zap.Logger
 	leaveType *adminservice.LeaveTypeService
 }
 
-func NewLeaveTypeHandler(leaveType *adminservice.LeaveTypeService) *LeaveTypeHandler {
+func NewLeaveTypeHandler(leaveType *adminservice.LeaveTypeService, logger *zap.Logger) *LeaveTypeHandler {
 	return &LeaveTypeHandler{
+		logger:    logger,
 		leaveType: leaveType,
 	}
 }

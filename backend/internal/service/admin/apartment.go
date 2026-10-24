@@ -7,16 +7,19 @@ import (
 	"errors"
 	"strings"
 
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
 type ApartmentService struct {
-	dao *mysql.DAO
+	logger *zap.Logger
+	dao    *mysql.DAO
 }
 
-func NewApartmentService(dao *mysql.DAO) *ApartmentService {
+func NewApartmentService(dao *mysql.DAO, logger *zap.Logger) *ApartmentService {
 	return &ApartmentService{
-		dao: dao,
+		logger: logger,
+		dao:    dao,
 	}
 }
 

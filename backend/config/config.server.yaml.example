@@ -1,5 +1,11 @@
 # 生产服务器模板；复制为 /www/wwwroot/Leave/config/config.server.yaml。
 # MYSQL_PASSWORD 和 JWT_SECRET 从服务器 .env 注入，不随发布包上传。
+log:
+  # debug、info、warn、error、dpanic、panic、fatal；缺省为 info。
+  level: info
+  # 服务器采用结构化 JSON 输出；省略此项时为 console。
+  encoding: json
+
 app:
   port: 8000
   package_dir: /www/wwwroot/Leave/packages/android

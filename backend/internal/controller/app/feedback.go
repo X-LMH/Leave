@@ -13,14 +13,17 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 type FeedbackHandler struct {
+	logger   *zap.Logger
 	feedback *appservice.FeedbackService
 }
 
-func NewFeedbackHandler(feedback *appservice.FeedbackService) *FeedbackHandler {
+func NewFeedbackHandler(feedback *appservice.FeedbackService, logger *zap.Logger) *FeedbackHandler {
 	return &FeedbackHandler{
+		logger:   logger,
 		feedback: feedback,
 	}
 }

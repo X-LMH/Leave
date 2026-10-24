@@ -5,15 +5,19 @@ import (
 	"backend/internal/dto"
 	"backend/internal/models"
 	"strings"
+
+	"go.uber.org/zap"
 )
 
 type ClassService struct {
-	dao *mysql.DAO
+	logger *zap.Logger
+	dao    *mysql.DAO
 }
 
-func NewClassService(dao *mysql.DAO) *ClassService {
+func NewClassService(dao *mysql.DAO, logger *zap.Logger) *ClassService {
 	return &ClassService{
-		dao: dao,
+		logger: logger,
+		dao:    dao,
 	}
 }
 

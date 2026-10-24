@@ -9,14 +9,17 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 type AvatarHandler struct {
+	logger *zap.Logger
 	avatar *appservice.AvatarService
 }
 
-func NewAvatarHandler(avatar *appservice.AvatarService) *AvatarHandler {
+func NewAvatarHandler(avatar *appservice.AvatarService, logger *zap.Logger) *AvatarHandler {
 	return &AvatarHandler{
+		logger: logger,
 		avatar: avatar,
 	}
 }

@@ -16,6 +16,7 @@ import (
 	"time"
 
 	driver "github.com/go-sql-driver/mysql"
+	"go.uber.org/zap"
 	gormmysql "gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
@@ -23,7 +24,7 @@ import (
 // This suite creates its own loopback schema and never loads application config.
 func TestFeedbackApartmentIntegration(t *testing.T) {
 	settings := config.Config{}
-	dao := mysql.NewDAO(nil)
+	dao := mysql.NewDAO(nil, zap.NewNop())
 	dsn := os.Getenv("ADMIN_TEST_MYSQL_DSN")
 	if dsn == "" {
 		t.Skip("set ADMIN_TEST_MYSQL_DSN for isolated loopback MySQL coverage")
@@ -77,7 +78,7 @@ func TestFeedbackApartmentIntegration(t *testing.T) {
 		}
 	}
 
-	dao = mysql.NewDAO(testDB)
+	dao = mysql.NewDAO(testDB, zap.NewNop())
 
 	t.Run("feedback migration", func(t *testing.T) { testFeedbackMigration(t, testDB) })
 	t.Run("feedback attachments and handling", func(t *testing.T) { testFeedbackAttachmentsIntegration(t, testDB) })
@@ -85,7 +86,7 @@ func TestFeedbackApartmentIntegration(t *testing.T) {
 	order := uint32(0)
 	enabled := true
 	input := dto.ApartmentRequest{Name: "测试楼", Gender: models.GenderMale, SortOrder: &order, IsEnabled: &enabled}
-	apartmentService := NewApartmentService(dao)
+	apartmentService := NewApartmentService(dao, zap.NewNop())
 	row, err := apartmentService.CreateAdminApartment(&input)
 	if err != nil {
 		t.Fatal(err)
@@ -107,11 +108,11 @@ func TestFeedbackApartmentIntegration(t *testing.T) {
 	if err != nil || list.Total != 1 || len(list.Items) != 1 {
 		t.Fatalf("filter: %+v %v", list, err)
 	}
-	appOptions, err := commonservice.NewOptionsService(dao).GetApartmentOptions(models.GenderMale, true)
+	appOptions, err := commonservice.NewOptionsService(dao, zap.NewNop()).GetApartmentOptions(models.GenderMale, true)
 	if err != nil || len(appOptions) != 0 {
 		t.Fatalf("disabled App options: %+v %v", appOptions, err)
 	}
-	adminOptions, err := commonservice.NewOptionsService(dao).GetApartmentOptions(models.GenderMale, false)
+	adminOptions, err := commonservice.NewOptionsService(dao, zap.NewNop()).GetApartmentOptions(models.GenderMale, false)
 	if err != nil || len(adminOptions) != 1 || adminOptions[0].IsEnabled {
 		t.Fatalf("admin options: %+v %v", adminOptions, err)
 	}
@@ -120,7 +121,7 @@ func TestFeedbackApartmentIntegration(t *testing.T) {
 		t.Fatal(err)
 	}
 	profileInput := dto.ProfileRequest{ClassID: class.ID, ApartmentID: row.ID, Gender: models.GenderMale}
-	profileService := appservice.NewProfileService(dao, settings.Storage)
+	profileService := appservice.NewProfileService(dao, settings.Storage, zap.NewNop())
 	if err := profileService.Profile(&profileInput, "new-disabled"); !errors.Is(err, appservice.ErrorInvalidProfileReference) {
 		t.Fatalf("new disabled: %v", err)
 	}
@@ -138,7 +139,7 @@ func TestFeedbackApartmentIntegration(t *testing.T) {
 	if err := profileService.Profile(&profileInput, "resident"); err != nil {
 		t.Fatalf("retain disabled: %v", err)
 	}
-	optionsService := appservice.NewOptionsService(dao, commonservice.NewOptionsService(dao))
+	optionsService := appservice.NewOptionsService(dao, commonservice.NewOptionsService(dao, zap.NewNop()), zap.NewNop())
 	residentApartments, err := optionsService.GetProfileApartmentOptions("resident", models.GenderMale)
 	if err != nil || len(residentApartments) != 1 || residentApartments[0].ID != row.ID || residentApartments[0].IsEnabled {
 		t.Fatalf("retain disabled apartment option: %+v %v", residentApartments, err)
@@ -221,7 +222,7 @@ func TestFeedbackApartmentIntegration(t *testing.T) {
 		}
 	}
 	query := dto.FeedbackListQuery{Page: 1, PageSize: 1, Keyword: "建议"}
-	feedbackService := NewFeedbackService(dao, settings.Storage)
+	feedbackService := NewFeedbackService(dao, settings.Storage, zap.NewNop())
 	feedbackList, err := feedbackService.GetAdminFeedbacks(query)
 	if err != nil || feedbackList.Total != 3 || len(feedbackList.Items) != 1 || feedbackList.Items[0].ID != feedbacks[2].ID || feedbackList.Items[0].StudentID != nil {
 		t.Fatalf("order/privacy: %+v %v", feedbackList, err)

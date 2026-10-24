@@ -4,16 +4,21 @@ import (
 	"backend/internal/config"
 	"fmt"
 
+	"go.uber.org/zap"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
 
 type DAO struct {
-	db *gorm.DB
+	logger *zap.Logger
+	db     *gorm.DB
 }
 
-func NewDAO(db *gorm.DB) *DAO {
-	return &DAO{db: db}
+func NewDAO(db *gorm.DB, logger *zap.Logger) *DAO {
+	return &DAO{
+		logger: logger,
+		db:     db,
+	}
 }
 
 func Open(cfg config.MySQLConfig) (*gorm.DB, error) {

@@ -44,6 +44,38 @@ func TestFindConfigFile(t *testing.T) {
 	}
 }
 
+func TestLoadLogConfig(t *testing.T) {
+	for _, tt := range []struct {
+		name    string
+		logYAML string
+		want    LogConfig
+	}{
+		{name: "defaults", want: LogConfig{Level: "info", Encoding: "console"}},
+		{name: "override", logYAML: "log:\n  level: debug\n  encoding: json\n", want: LogConfig{Level: "debug", Encoding: "json"}},
+		{name: "partial", logYAML: "log:\n  encoding: json\n", want: LogConfig{Level: "info", Encoding: "json"}},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Chdir(t.TempDir())
+			t.Setenv("MYSQL_PASSWORD", "test-password")
+			t.Setenv("JWT_SECRET", "test-secret")
+			if err := os.Mkdir("config", 0755); err != nil {
+				t.Fatal(err)
+			}
+			content := "jwt:\n  expiration_days: 30\nstorage:\n  root_dir: ./uploads\n  base_url: /uploads\n" + tt.logYAML
+			if err := os.WriteFile("config/config.local.yaml", []byte(content), 0600); err != nil {
+				t.Fatal(err)
+			}
+			cfg, err := Load()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if cfg.Log != tt.want {
+				t.Fatalf("got %+v, want %+v", cfg.Log, tt.want)
+			}
+		})
+	}
+}
+
 func TestInitReadsTestConfig(t *testing.T) {
 
 	t.Chdir(t.TempDir())

@@ -18,11 +18,13 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"go.uber.org/zap"
 )
 
 func TestFeedbackAttachmentPaths(t *testing.T) {
 	settings := config.Config{}
-	dao := mysql.NewDAO(nil)
+	dao := mysql.NewDAO(nil, zap.NewNop())
 	for _, value := range []string{`["../secret.png"]`, `["avatars/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.png"]`, `["feedbacks/../../secret.png"]`, `["feedbacks/bad.jpg"]`, `not json`} {
 		row := &models.Feedback{Attachments: &value}
 		if _, err := feedbackDetail(row); err == nil {
@@ -40,7 +42,7 @@ func TestFeedbackAttachmentPaths(t *testing.T) {
 	if err != nil || len(detail.Attachments) != 1 || detail.Attachments[0].Index != 0 || detail.Attachments[0].URL != "/admin/feedbacks/5/attachments/0" {
 		t.Fatalf("detail=%v err=%v", detail, err)
 	}
-	if _, err := NewFeedbackService(dao, settings.Storage).UpdateAdminFeedbackHandling(1, &dto.FeedbackHandlingRequest{}); !errors.Is(err, ErrorInvalidAdminInput) {
+	if _, err := NewFeedbackService(dao, settings.Storage, zap.NewNop()).UpdateAdminFeedbackHandling(1, &dto.FeedbackHandlingRequest{}); !errors.Is(err, ErrorInvalidAdminInput) {
 		t.Fatalf("missing handling value: %v", err)
 	}
 }
@@ -48,15 +50,15 @@ func TestFeedbackAttachmentPaths(t *testing.T) {
 // 由已有的隔离 loopback 数据库套件调用，不读取开发业务库配置。
 func testFeedbackAttachmentsIntegration(t *testing.T, db *gorm.DB) {
 	settings := config.Config{}
-	dao := mysql.NewDAO(db)
+	dao := mysql.NewDAO(db, zap.NewNop())
 	t.Helper()
 	settings.Storage.RootDir = t.TempDir()
 	var data bytes.Buffer
 	if err := png.Encode(&data, image.NewRGBA(image.Rect(0, 0, 2, 2))); err != nil {
 		t.Fatal(err)
 	}
-	feedbackService := NewFeedbackService(dao, settings.Storage)
-	appFeedbackService := appservice.NewFeedbackService(dao, settings.Storage)
+	feedbackService := NewFeedbackService(dao, settings.Storage, zap.NewNop())
+	appFeedbackService := appservice.NewFeedbackService(dao, settings.Storage, zap.NewNop())
 	for _, count := range []int{0, 1, 3} {
 		t.Run(fmt.Sprintf("submit %d images", count), func(t *testing.T) {
 			var body bytes.Buffer

@@ -4,6 +4,7 @@ import (
 	"backend/internal/models"
 	"testing"
 
+	"go.uber.org/zap"
 	gormmysql "gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
@@ -36,7 +37,7 @@ func TestDAOsUseTheirOwnConnections(t *testing.T) {
 		}); err != nil {
 			t.Fatal(err)
 		}
-		return NewDAO(db)
+		return NewDAO(db, zap.NewNop())
 	}
 	var firstCalls, secondCalls int
 	first := newDAO(&firstCalls)

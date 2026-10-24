@@ -9,11 +9,13 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"go.uber.org/zap"
 )
 
 func TestStudentResponse(t *testing.T) {
 	settings := config.Config{}
-	dao := mysql.NewDAO(nil)
+	dao := mysql.NewDAO(nil, zap.NewNop())
 
 	settings.Storage.BaseURL = "/uploads"
 
@@ -29,7 +31,7 @@ func TestStudentResponse(t *testing.T) {
 		LastSeenDevice: "Android",
 		AppVersion:     "1.0.0",
 	}
-	studentService := NewStudentService(dao, settings.Storage)
+	studentService := NewStudentService(dao, settings.Storage, zap.NewNop())
 	t.Run("without profile", func(t *testing.T) {
 		row, err := studentService.studentResponse(user, nil)
 		if err != nil {

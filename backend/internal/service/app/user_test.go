@@ -6,11 +6,13 @@ import (
 	"backend/internal/models"
 	"backend/internal/utils/jwt"
 	"testing"
+
+	"go.uber.org/zap"
 )
 
 func TestNewLoginResponse(t *testing.T) {
 	tokens := jwt.NewManager("test-registration-session", 1)
-	users := NewUserService(nil, tokens, config.StorageConfig{BaseURL: "https://example.com/uploads"})
+	users := NewUserService(nil, tokens, config.StorageConfig{BaseURL: "https://example.com/uploads"}, zap.NewNop())
 	for _, completed := range []bool{false, true} {
 		user := dto.User{StudentID: "202410201016"}
 		if completed {

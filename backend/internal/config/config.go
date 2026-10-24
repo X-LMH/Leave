@@ -36,8 +36,13 @@ type StorageConfig struct {
 	RootDir string `yaml:"root_dir"`
 	BaseURL string `yaml:"base_url"`
 }
+type LogConfig struct {
+	Level    string `yaml:"level"`
+	Encoding string `yaml:"encoding"`
+}
 type Config struct {
 	Redis   RedisConfig   `yaml:"redis"`
+	Log     LogConfig     `yaml:"log"`
 	JWT     JWTConfig     `yaml:"jwt"`
 	Mysql   MySQLConfig   `yaml:"mysql"`
 	App     AppConfig     `yaml:"app"`
@@ -62,6 +67,8 @@ func Load() (Config, error) {
 	v.SetDefault("redis.host", "127.0.0.1")
 	v.SetDefault("redis.port", 6379)
 	v.BindEnv("redis.password", "REDIS_PASSWORD")
+	v.SetDefault("log.level", "info")
+	v.SetDefault("log.encoding", "console")
 	v.BindEnv("mysql.password", "MYSQL_PASSWORD")
 	v.BindEnv("jwt.secret", "JWT_SECRET")
 

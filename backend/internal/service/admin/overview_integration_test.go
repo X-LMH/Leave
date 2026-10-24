@@ -12,13 +12,14 @@ import (
 	"time"
 
 	driver "github.com/go-sql-driver/mysql"
+	"go.uber.org/zap"
 	gormmysql "gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
 
 // This suite creates its own schema; it never connects through business config.
 func TestAdminOverviewIntegration(t *testing.T) {
-	dao := mysql.NewDAO(nil)
+	dao := mysql.NewDAO(nil, zap.NewNop())
 	dsn := os.Getenv("ADMIN_TEST_MYSQL_DSN")
 	if dsn == "" {
 		t.Skip("set ADMIN_TEST_MYSQL_DSN for isolated loopback MySQL coverage")
@@ -72,9 +73,9 @@ func TestAdminOverviewIntegration(t *testing.T) {
 		}
 	}
 
-	dao = mysql.NewDAO(testDB)
+	dao = mysql.NewDAO(testDB, zap.NewNop())
 	now := time.Date(2026, 10, 11, 12, 0, 0, 0, overviewBeijing)
-	overviewService := NewOverviewService(dao)
+	overviewService := NewOverviewService(dao, zap.NewNop())
 	empty, err := overviewService.getAdminOverviewAt(now)
 	if err != nil {
 		t.Fatal(err)

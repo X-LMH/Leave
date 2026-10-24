@@ -6,14 +6,17 @@ import (
 	"errors"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 type OptionsHandler struct {
+	logger  *zap.Logger
 	options *common.OptionsService
 }
 
-func NewOptionsHandler(options *common.OptionsService) *OptionsHandler {
+func NewOptionsHandler(options *common.OptionsService, logger *zap.Logger) *OptionsHandler {
 	return &OptionsHandler{
+		logger:  logger,
 		options: options,
 	}
 }

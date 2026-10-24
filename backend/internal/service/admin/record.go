@@ -8,16 +8,19 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
 type RecordService struct {
-	dao *mysql.DAO
+	logger *zap.Logger
+	dao    *mysql.DAO
 }
 
-func NewRecordService(dao *mysql.DAO) *RecordService {
+func NewRecordService(dao *mysql.DAO, logger *zap.Logger) *RecordService {
 	return &RecordService{
-		dao: dao,
+		logger: logger,
+		dao:    dao,
 	}
 }
 

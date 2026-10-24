@@ -7,15 +7,19 @@ import (
 	"errors"
 	"strings"
 	"time"
+
+	"go.uber.org/zap"
 )
 
 type RecordService struct {
+	logger  *zap.Logger
 	dao     *mysql.DAO
 	profile *ProfileService
 }
 
-func NewRecordService(dao *mysql.DAO, profile *ProfileService) *RecordService {
+func NewRecordService(dao *mysql.DAO, profile *ProfileService, logger *zap.Logger) *RecordService {
 	return &RecordService{
+		logger:  logger,
 		dao:     dao,
 		profile: profile,
 	}

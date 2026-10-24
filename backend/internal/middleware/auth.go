@@ -9,10 +9,11 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 // JWTAuthMiddleware jwt认证中间件
-func JWTAuthMiddleware(tokens *jwt.Manager, dao *mysql.DAO) gin.HandlerFunc {
+func JWTAuthMiddleware(tokens *jwt.Manager, dao *mysql.DAO, logger *zap.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// 获取请求头中的Authorization
 		authHeader := c.GetHeader("Authorization")

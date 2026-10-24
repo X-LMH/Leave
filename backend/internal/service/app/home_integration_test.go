@@ -7,6 +7,7 @@ import (
 	"backend/internal/models"
 	"encoding/json"
 	"fmt"
+	"go.uber.org/zap"
 	"net"
 	"os"
 	"path/filepath"
@@ -71,8 +72,8 @@ func TestHomeIntegration(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	dao := mysql.NewDAO(db)
-	service := NewRecordService(dao, NewProfileService(dao, config.StorageConfig{BaseURL: "https://example.com/api/v1/uploads"}))
+	dao := mysql.NewDAO(db, zap.NewNop())
+	service := NewRecordService(dao, NewProfileService(dao, config.StorageConfig{BaseURL: "https://example.com/api/v1/uploads"}, zap.NewNop()), zap.NewNop())
 	// 与运行环境一致，使用本地北京时间覆盖年初的月份边界。
 	now := time.Date(2026, 1, 1, 0, 30, 0, 0, time.Local)
 	monthStart := time.Date(2026, 1, 1, 0, 0, 0, 0, time.Local)

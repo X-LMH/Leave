@@ -13,16 +13,19 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
 type StudentService struct {
+	logger  *zap.Logger
 	storage config.StorageConfig
 	dao     *mysql.DAO
 }
 
-func NewStudentService(dao *mysql.DAO, storage config.StorageConfig) *StudentService {
+func NewStudentService(dao *mysql.DAO, storage config.StorageConfig, logger *zap.Logger) *StudentService {
 	return &StudentService{
+		logger:  logger,
 		storage: storage,
 		dao:     dao,
 	}

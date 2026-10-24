@@ -14,6 +14,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"go.uber.org/zap"
 )
 
 func feedbackUpload(t *testing.T, data []byte) *multipart.FileHeader {
@@ -75,14 +77,14 @@ func TestReadFeedbackImages(t *testing.T) {
 
 func TestSaveFeedbackImagesAndCleanup(t *testing.T) {
 	settings := config.Config{}
-	dao := mysql.NewDAO(nil)
+	dao := mysql.NewDAO(nil, zap.NewNop())
 
 	root := t.TempDir()
 	settings.Storage.RootDir = root
 	valid := feedbackImage{data: []byte("validated image bytes"), extension: ".png"}
 	for _, count := range []int{0, 1, 3} {
 		row := &models.Feedback{}
-		err := NewFeedbackService(dao, settings.Storage).saveFeedbackWithAttachments(row, makeImages(valid, count), func(row *models.Feedback) error {
+		err := NewFeedbackService(dao, settings.Storage, zap.NewNop()).saveFeedbackWithAttachments(row, makeImages(valid, count), func(row *models.Feedback) error {
 			if count == 0 {
 				if row.Attachments != nil {
 					t.Fatal("no images should be SQL NULL")
@@ -106,7 +108,7 @@ func TestSaveFeedbackImagesAndCleanup(t *testing.T) {
 	}
 	settings.Storage.RootDir = t.TempDir()
 	failure := errors.New("insert failed")
-	if err := NewFeedbackService(dao, settings.Storage).saveFeedbackWithAttachments(&models.Feedback{}, []feedbackImage{valid, valid}, func(*models.Feedback) error { return failure }); !errors.Is(err, failure) {
+	if err := NewFeedbackService(dao, settings.Storage, zap.NewNop()).saveFeedbackWithAttachments(&models.Feedback{}, []feedbackImage{valid, valid}, func(*models.Feedback) error { return failure }); !errors.Is(err, failure) {
 		t.Fatal(err)
 	}
 	entries, err := os.ReadDir(filepath.Join(settings.Storage.RootDir, "feedbacks"))
@@ -115,7 +117,7 @@ func TestSaveFeedbackImagesAndCleanup(t *testing.T) {
 	}
 	invalid := feedbackImage{data: []byte("x"), extension: ".invalid/extension"}
 	inserted := false
-	if err := NewFeedbackService(dao, settings.Storage).saveFeedbackWithAttachments(&models.Feedback{}, []feedbackImage{valid, invalid}, func(*models.Feedback) error { inserted = true; return nil }); err == nil || inserted {
+	if err := NewFeedbackService(dao, settings.Storage, zap.NewNop()).saveFeedbackWithAttachments(&models.Feedback{}, []feedbackImage{valid, invalid}, func(*models.Feedback) error { inserted = true; return nil }); err == nil || inserted {
 		t.Fatal("saved invalid image or inserted partial feedback")
 	}
 	entries, err = os.ReadDir(filepath.Join(settings.Storage.RootDir, "feedbacks"))
@@ -135,9 +137,9 @@ func TestFeedbackServicesKeepIndependentStorage(t *testing.T) {
 	firstRoot := t.TempDir()
 	secondRoot := t.TempDir()
 	settings := config.StorageConfig{RootDir: firstRoot}
-	first := NewFeedbackService(nil, settings)
+	first := NewFeedbackService(nil, settings, zap.NewNop())
 	settings.RootDir = secondRoot
-	second := NewFeedbackService(nil, settings)
+	second := NewFeedbackService(nil, settings, zap.NewNop())
 	image := feedbackImage{data: []byte("validated bytes"), extension: ".png"}
 	for _, tc := range []struct {
 		service *FeedbackService

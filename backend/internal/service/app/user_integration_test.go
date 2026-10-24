@@ -18,13 +18,14 @@ import (
 	"time"
 
 	driver "github.com/go-sql-driver/mysql"
+	"go.uber.org/zap"
 	gormmysql "gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
 
 func TestRegisterIntegration(t *testing.T) {
 	settings := config.Config{}
-	dao := mysql.NewDAO(nil)
+	dao := mysql.NewDAO(nil, zap.NewNop())
 	dsn := os.Getenv("MYSQL_TEST_DSN")
 	if dsn == "" {
 		t.Skip("set MYSQL_TEST_DSN for isolated loopback MySQL registration coverage")
@@ -96,7 +97,7 @@ func TestRegisterIntegration(t *testing.T) {
 			t.Error(err)
 		}
 	})
-	dao = mysql.NewDAO(db)
+	dao = mysql.NewDAO(db, zap.NewNop())
 	req := &dto.RegisterRequest{
 		StudentID:  " 202410201016 ",
 		Password:   "123456",
@@ -104,7 +105,7 @@ func TestRegisterIntegration(t *testing.T) {
 		DeviceName: " Android 测试机 ",
 		AppVersion: " 1.0.0 ",
 	}
-	userService := NewUserService(dao, jwt.NewManager(settings.JWT.Secret, settings.JWT.ExpirationDays), settings.Storage)
+	userService := NewUserService(dao, jwt.NewManager(settings.JWT.Secret, settings.JWT.ExpirationDays), settings.Storage, zap.NewNop())
 	data, err := userService.Register(req)
 	if err != nil {
 		t.Fatal(err)

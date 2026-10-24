@@ -12,6 +12,8 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"go.uber.org/zap"
 )
 
 func TestFeedbackQueryValidation(t *testing.T) {
@@ -40,10 +42,10 @@ func TestFeedbackQueryValidation(t *testing.T) {
 	}
 }
 func TestApartmentRequestRejectsInvalidWireValues(t *testing.T) {
-	dao := mysql.NewDAO(nil)
+	dao := mysql.NewDAO(nil, zap.NewNop())
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
-	r.POST("/", NewApartmentHandler(adminservice.NewApartmentService(dao)).CreateApartmentHandler)
+	r.POST("/", NewApartmentHandler(adminservice.NewApartmentService(dao, zap.NewNop()), zap.NewNop()).CreateApartmentHandler)
 	for _, body := range []string{
 		`{"name":"楼","gender":"male","sort_order":-1,"is_enabled":true}`,
 		`{"name":"楼","gender":"male","sort_order":4294967296,"is_enabled":true}`,
@@ -63,10 +65,10 @@ func TestApartmentRequestRejectsInvalidWireValues(t *testing.T) {
 
 func TestFeedbackApartmentRoutesRejectStudentRole(t *testing.T) {
 	settings := config.Config{}
-	dao := mysql.NewDAO(nil)
+	dao := mysql.NewDAO(nil, zap.NewNop())
 	gin.SetMode(gin.TestMode)
-	feedbackHandler := NewFeedbackHandler(adminservice.NewFeedbackService(dao, settings.Storage))
-	apartmentHandler := NewApartmentHandler(adminservice.NewApartmentService(dao))
+	feedbackHandler := NewFeedbackHandler(adminservice.NewFeedbackService(dao, settings.Storage, zap.NewNop()), zap.NewNop())
+	apartmentHandler := NewApartmentHandler(adminservice.NewApartmentService(dao, zap.NewNop()), zap.NewNop())
 	for _, route := range []struct {
 		method, path string
 		handler      gin.HandlerFunc

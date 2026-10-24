@@ -11,15 +11,18 @@ import (
 	"unicode/utf8"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 type UserHandler struct {
-	user *appservice.UserService
+	logger *zap.Logger
+	user   *appservice.UserService
 }
 
-func NewUserHandler(user *appservice.UserService) *UserHandler {
+func NewUserHandler(user *appservice.UserService, logger *zap.Logger) *UserHandler {
 	return &UserHandler{
-		user: user,
+		logger: logger,
+		user:   user,
 	}
 }
 

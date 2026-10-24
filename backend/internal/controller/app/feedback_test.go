@@ -12,6 +12,8 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"go.uber.org/zap"
 )
 
 func TestParseFeedbackSubmission(t *testing.T) {
@@ -70,12 +72,12 @@ func TestParseFeedbackSubmission(t *testing.T) {
 
 func TestFeedbackRequestBodyLimit(t *testing.T) {
 	settings := config.Config{}
-	dao := mysql.NewDAO(nil)
+	dao := mysql.NewDAO(nil, zap.NewNop())
 	c, _ := gin.CreateTestContext(httptest.NewRecorder())
 	c.Set(request.CtxStuID, "student")
 	c.Request = httptest.NewRequest("POST", "/feedback", strings.NewReader(`{"content":"`+strings.Repeat("x", appservice.MaxFeedbackAttachments*appservice.MaxFeedbackAttachmentSize+(128<<10))+`"}`))
 	c.Request.Header.Set("Content-Type", "application/json")
-	NewFeedbackHandler(appservice.NewFeedbackService(dao, settings.Storage)).CreateFeedbackHandler(c)
+	NewFeedbackHandler(appservice.NewFeedbackService(dao, settings.Storage, zap.NewNop()), zap.NewNop()).CreateFeedbackHandler(c)
 	// Handler must reject before reaching the database.
 	recorder := c.Writer
 	if recorder.Status() != 400 {

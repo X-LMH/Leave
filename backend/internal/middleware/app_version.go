@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 const (
@@ -15,7 +16,7 @@ const (
 )
 
 // AppVersionMiddleware only permits clients at or above the current published version.
-func AppVersionMiddleware(versions *appservice.AppVersionService) gin.HandlerFunc {
+func AppVersionMiddleware(versions *appservice.AppVersionService, logger *zap.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		platform := strings.TrimSpace(c.GetHeader(appPlatformHeader))
 		versionCode, err := strconv.Atoi(strings.TrimSpace(c.GetHeader(appVersionCodeHeader)))
