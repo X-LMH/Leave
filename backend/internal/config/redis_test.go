@@ -14,13 +14,15 @@ func TestLoadRedisConfig(t *testing.T) {
 		want      RedisConfig
 		wantError string
 	}{
-		{name: "defaults", want: RedisConfig{Host: "127.0.0.1", Port: 6379}},
+		{name: "missing redis", wantError: "redis.host"},
+		{name: "missing host", yaml: "redis:\n  port: 6379\n", wantError: "redis.host"},
+		{name: "missing port", yaml: "redis:\n  host: localhost\n", wantError: "redis.port"},
 		{name: "yaml", yaml: "redis:\n  host: localhost\n  port: 6380\n  username: app\n  password: yaml-secret\n  db: 2\n", want: RedisConfig{Host: "localhost", Port: 6380, Username: "app", Password: "yaml-secret", DB: 2}},
-		{name: "environment", yaml: "redis:\n  password: yaml-secret\n", password: "env-secret", want: RedisConfig{Host: "127.0.0.1", Port: 6379, Password: "env-secret"}},
+		{name: "environment", yaml: "redis:\n  host: localhost\n  port: 6379\n  password: yaml-secret\n", password: "env-secret", want: RedisConfig{Host: "localhost", Port: 6379, Password: "env-secret"}},
 		{name: "empty host", yaml: "redis:\n  host: ' '\n", wantError: "redis.host"},
-		{name: "invalid port", yaml: "redis:\n  port: 65536\n", wantError: "redis.port"},
-		{name: "zero port", yaml: "redis:\n  port: 0\n", wantError: "redis.port"},
-		{name: "negative db", yaml: "redis:\n  db: -1\n", wantError: "redis.db"},
+		{name: "invalid port", yaml: "redis:\n  host: localhost\n  port: 65536\n", wantError: "redis.port"},
+		{name: "zero port", yaml: "redis:\n  host: localhost\n  port: 0\n", wantError: "redis.port"},
+		{name: "negative db", yaml: "redis:\n  host: localhost\n  port: 6379\n  db: -1\n", wantError: "redis.db"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Chdir(t.TempDir())

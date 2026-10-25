@@ -64,8 +64,6 @@ func Load() (Config, error) {
 	v.SetConfigFile(configPath)
 	v.AllowEmptyEnv(true)
 	v.SetDefault("app.port", 10000)
-	v.SetDefault("redis.host", "127.0.0.1")
-	v.SetDefault("redis.port", 6379)
 	v.BindEnv("redis.password", "REDIS_PASSWORD")
 	v.SetDefault("log.level", "info")
 	v.SetDefault("log.encoding", "console")

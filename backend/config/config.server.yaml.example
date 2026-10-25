@@ -1,5 +1,5 @@
 # 生产服务器模板；复制为 /www/wwwroot/Leave/config/config.server.yaml。
-# MYSQL_PASSWORD 和 JWT_SECRET 从服务器 .env 注入，不随发布包上传。
+# MYSQL_PASSWORD、REDIS_PASSWORD 和 JWT_SECRET 从服务器 .env 注入，不随发布包上传。
 log:
   # debug、info、warn、error、dpanic、panic、fatal；缺省为 info。
   level: info
