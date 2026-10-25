@@ -1,5 +1,20 @@
 # Leave 测试与生产环境 CI/CD
 
+## Windows 本地开发
+
+如果本地开发需要连接远端 MySQL、Redis，可以在项目根目录运行 `make air`，自动建立连接并启动 Air；按 `Ctrl+C` 退出时自动清理连接。直接运行 Air 的方式仍可照常使用。
+
+此命令需要 OpenSSH、Air 和 Make，并在 Git 忽略的 `.private/dev-ssh.json` 中提供连接设置：
+
+```json
+{
+  "host": "user@your-server",
+  "identityFile": ".private/ssh/your-key"
+}
+```
+
+密钥路径相对于项目根目录，首次连接前需核验服务器指纹；带口令的密钥需先加入 ssh-agent。本地 YAML 中 MySQL 使用 `127.0.0.1:13306`，Redis 使用 `127.0.0.1:16379`，账号密码和数据库按开发环境填写。端口已占用时不会启动；直接强杀终端可能无法清理连接。
+
 测试与生产共用构建和发布流程，通过标签选择环境。App 继续由 HBuilderX 本地打包，后端和 admin 在 GitHub Runner 从标签对应的提交构建。日常发布保留服务器维护的配置、Nginx 和宝塔项目；首次生产 admin 建站见下文。
 
 ## 发布入口与版本

@@ -1,4 +1,7 @@
-.PHONY: migrate phone
+.PHONY: air migrate phone
+
+air:
+	powershell.exe -NoProfile -ExecutionPolicy Bypass -File deploy/dev.ps1
 
 migrate:
 	cd backend && go run ./cmd/migrate -config ./config/config.local.yaml
