@@ -26,7 +26,7 @@ func run() (err error) {
 	if err != nil {
 		return fmt.Errorf("初始化配置失败: %w", err)
 	}
-	appLogger, err := logger.New(cfg.Log)
+	appLogger, err := logger.NewLogger(cfg.Log)
 	if err != nil {
 		return fmt.Errorf("日志初始化失败: %w", err)
 	}
