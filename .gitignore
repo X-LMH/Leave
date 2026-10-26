@@ -86,3 +86,7 @@ admin/.vscode/*
 
 # 本地上传文件
 /uploads/
+
+# 后端运行日志
+/logs/
+/backend/logs/

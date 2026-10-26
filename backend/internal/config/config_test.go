@@ -51,7 +51,7 @@ func TestLoadLogConfig(t *testing.T) {
 		want    LogConfig
 	}{
 		{name: "defaults", want: LogConfig{Level: "info", Encoding: "console"}},
-		{name: "override", logYAML: "log:\n  level: debug\n  encoding: json\n", want: LogConfig{Level: "debug", Encoding: "json"}},
+		{name: "override", logYAML: "log:\n  level: debug\n  encoding: json\n  dir: ./logs\n", want: LogConfig{Level: "debug", Encoding: "json", Dir: "./logs"}},
 		{name: "partial", logYAML: "log:\n  encoding: json\n", want: LogConfig{Level: "info", Encoding: "json"}},
 	} {
 		t.Run(tt.name, func(t *testing.T) {

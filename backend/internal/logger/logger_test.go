@@ -4,6 +4,7 @@ import (
 	"backend/internal/config"
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -87,6 +88,41 @@ func TestOutputAndLevelFiltering(t *testing.T) {
 			}
 			if !strings.Contains(text, "backend/internal/logger/logger_test.go:") {
 				t.Fatalf("missing relative caller: %s", text)
+			}
+		})
+	}
+}
+
+func TestFileOutputIsJSONForBothTerminalFormats(t *testing.T) {
+	for _, encoding := range []string{encodingConsole, encodingJSON} {
+		t.Run(encoding, func(t *testing.T) {
+			dir := t.TempDir()
+			log, err := NewLogger(config.LogConfig{Level: "info", Encoding: encoding, Dir: dir})
+			if err != nil {
+				t.Fatal(err)
+			}
+			log.Debug("hidden")
+			log.Info("登录成功", zap.Duration("elapsed", time.Millisecond))
+			files, err := filepath.Glob(filepath.Join(dir, "*.jsonl"))
+			if err != nil || len(files) != 1 {
+				t.Fatalf("files=%v, err=%v", files, err)
+			}
+			content, err := os.ReadFile(files[0])
+			if err != nil {
+				t.Fatal(err)
+			}
+			var entry map[string]any
+			if err := json.Unmarshal(content, &entry); err != nil {
+				t.Fatal(err)
+			}
+			if entry["level"] != "info" || entry["msg"] != "登录成功" || entry["elapsed"] != "1ms" {
+				t.Fatalf("unexpected JSON: %s", content)
+			}
+			if strings.Contains(string(content), `\u001b`) || !strings.Contains(entry["caller"].(string), "backend/internal/logger/logger_test.go:") {
+				t.Fatalf("unexpected file style: %s", content)
+			}
+			if _, err := time.Parse("2006-01-02 15:04:05", entry["time"].(string)); err != nil {
+				t.Fatal(err)
 			}
 		})
 	}

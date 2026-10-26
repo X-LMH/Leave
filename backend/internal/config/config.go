@@ -39,6 +39,7 @@ type StorageConfig struct {
 type LogConfig struct {
 	Level    string `yaml:"level"`
 	Encoding string `yaml:"encoding"`
+	Dir      string `yaml:"dir"`
 }
 type Config struct {
 	Redis   RedisConfig   `yaml:"redis"`

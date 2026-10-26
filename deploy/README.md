@@ -59,6 +59,7 @@ admin/current -> releases/vN/
 admin/releases/vN/                  # index.html、assets 等
 packages/android/                   # 保留历史 APK
 uploads/                            # 持久上传文件
+logs/                               # 按日期保存的后端 JSON Lines 日志，不随版本发布覆盖
 database/migrations/                # 累积历史，不修改同名文件
 scripts/migrate                     # 最新迁移工具
 backups/mysql/                      # 数据库备份
@@ -72,6 +73,14 @@ backups/deploy/                     # 历史备份及运行记录目录
 ```
 
 后端每个新版本目录包含 Leave、release.json。迁移工具仅放在 scripts/migrate，不随 backend/releases/vN 保存副本。旧生产版本保留在 Leave_old 中；新生产目录使用整数版本，不将历史目录自动补齐为新版本。
+
+### 后端日志
+
+`log.encoding` 继续控制 stderr 的 `console` 或 `json` 格式。配置 `log.dir` 后，应用同时写入无颜色的 JSON Lines 文件；留空则仅输出 stderr，旧配置仍可启动。生产模板使用 `/www/wwwroot/Leave/logs`，测试环境应使用 `/www/wwwroot/Leave_test/logs`。使用绝对路径，避免日志落入 `backend/releases/vN`；日志目录需由宝塔运行用户 `www` 创建或具备写权限。部署脚本不会自动修改现有服务器 YAML、目录权限或宝塔启动脚本，启用前需单独准备。
+
+文件名如 `2026-10-26.jsonl`，按运行环境本地日期追加，同日重启继续追加。不限制大小、不自动清理。每条日志写入后同步并关闭文件，适用于当前低频日志。目录创建失败会阻止启动，文件打开或写入失败由 zap 报到 stderr，终端日志仍正常输出。一个目录供一个后端进程使用。
+
+日志时间保持 `2006-01-02 15:04:05`，源码位置保持 `backend/...:行号`。
 
 从旧发布布局升级时，先确认 scripts/migrate 存在且可执行；核对 backend/releases/vN/migrate 与其内容一致后，清理版本目录中的重复副本。新版校验要求后端版本目录仅包含 Leave 和 release.json，保留旧副本会阻止同版本复用发布。
 

@@ -2,8 +2,10 @@
 log:
   # debug、info、warn、error、dpanic、panic、fatal；缺省为 info。
   level: info
-  # console 或 json；仅输出到 stderr，缺省为 console。
+  # stderr 的输出格式 console 或 json，缺省为 console；文件固定为 JSON Lines。
   encoding: console
+  # 留空只输出 stderr；相对路径基于进程工作目录。
+  dir: ""
 
 app:
   # HTTP 服务监听端口，未配置时默认为 10000。

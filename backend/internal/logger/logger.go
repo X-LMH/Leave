@@ -15,7 +15,7 @@ const (
 	encodingJSON    = "json"
 )
 
-// NewLogger 创建应用实例使用的控制台日志，由入口负责注入和同步。
+// NewLogger 创建终端日志及可选的按日 JSON 文件日志。
 func NewLogger(cfg config.LogConfig) (*zap.Logger, error) {
 	level, err := zapcore.ParseLevel(cfg.Level)
 	if err != nil {
@@ -40,7 +40,25 @@ func NewLogger(cfg config.LogConfig) (*zap.Logger, error) {
 	}
 	// 暂不采样，避免以后排查业务问题时丢失重复事件。
 	settings.Sampling = nil
-	return settings.Build()
+	if strings.TrimSpace(cfg.Dir) == "" {
+		return settings.Build()
+	}
+	writer, err := newDailyWriter(strings.TrimSpace(cfg.Dir))
+	if err != nil {
+		return nil, err
+	}
+	fileEncoder := settings.EncoderConfig
+	fileEncoder.EncodeLevel = zapcore.LowercaseLevelEncoder
+	return settings.Build(zap.WrapCore(func(console zapcore.Core) zapcore.Core {
+		return zapcore.NewTee(
+			console,
+			zapcore.NewCore(
+				zapcore.NewJSONEncoder(fileEncoder),
+				zapcore.AddSync(writer),
+				settings.Level,
+			),
+		)
+	}))
 }
 
 // relativeCallerEncoder 保留 Leave 根目录下的相对路径，方便定位源码。

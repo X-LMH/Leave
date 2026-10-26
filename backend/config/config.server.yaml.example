@@ -5,6 +5,8 @@ log:
   level: info
   # 服务器采用结构化 JSON 输出；省略此项时为 console。
   encoding: json
+  # 持久目录独立于 backend/releases；需让宝塔运行用户 www 可写。
+  dir: /www/wwwroot/Leave/logs
 
 app:
   port: 8000
