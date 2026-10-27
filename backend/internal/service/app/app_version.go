@@ -39,9 +39,6 @@ func (a *AppVersionService) GetCurrentAppVersion(platform string, currentVersion
 		Platform:          version.Platform,
 		LatestVersionCode: version.VersionCode,
 		LatestVersionName: version.VersionName,
-		VersionCode:       version.VersionCode,
-		VersionName:       version.VersionName,
-		ReleaseNotes:      releaseNotes(version.ReleaseNotes),
 		Updates:           make([]dto.AppVersionUpdate, 0, len(updates)),
 	}
 	for _, update := range updates {
