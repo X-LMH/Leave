@@ -63,9 +63,9 @@ func TestGinAccessLoggingCorrelationAndPrivacy(t *testing.T) {
 			t.Fatalf("want route template: %s", output)
 		}
 		if recorder.Code == http.StatusOK {
-			var body response.Response
-			if err := json.Unmarshal(recorder.Body.Bytes(), &body); err != nil || body.RequestID != id {
-				t.Fatalf("JSON response must share request ID: %s, err=%v", recorder.Body.String(), err)
+			var body map[string]any
+			if err := json.Unmarshal(recorder.Body.Bytes(), &body); err != nil || body["request_id"] != nil {
+				t.Fatalf("JSON response must omit request ID: %s, err=%v", recorder.Body.String(), err)
 			}
 		}
 		access.Reset()
@@ -106,11 +106,12 @@ func TestRecoveryLogsStackWithoutPanicValue(t *testing.T) {
 	if len(panics) != 1 || panics[0].ContextMap()["stack"] == "" || panics[0].ContextMap()["stack"] == nil {
 		t.Fatalf("want one panic with stack: %#v", panics)
 	}
-	var body response.Response
-	if err := json.Unmarshal(recorder.Body.Bytes(), &body); err != nil || body.RequestID == "" || body.RequestID != recorder.Header().Get("X-Request-ID") {
-		t.Fatalf("panic response must carry request ID: %s, err=%v", recorder.Body.String(), err)
+	var body map[string]any
+	if err := json.Unmarshal(recorder.Body.Bytes(), &body); err != nil || body["request_id"] != nil {
+		t.Fatalf("panic JSON response must omit request ID: %s, err=%v", recorder.Body.String(), err)
 	}
-	if panics[0].ContextMap()["request_id"] != body.RequestID {
+	id := recorder.Header().Get("X-Request-ID")
+	if id == "" || panics[0].ContextMap()["request_id"] != id {
 		t.Fatal("panic log and response must share request ID")
 	}
 	for _, entry := range entries.All() {

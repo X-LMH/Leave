@@ -10,7 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func TestResponsesIncludeExistingRequestID(t *testing.T) {
+func TestResponsesKeepRequestIDInHeaderOnly(t *testing.T) {
 	for _, test := range []struct {
 		name  string
 		write func(*gin.Context)
@@ -30,7 +30,8 @@ func TestResponsesIncludeExistingRequestID(t *testing.T) {
 			if err := json.Unmarshal(recorder.Body.Bytes(), &body); err != nil {
 				t.Fatal(err)
 			}
-			if len(body) != 4 || body["request_id"] != recorder.Header().Get("X-Request-ID") {
+			_, hasRequestID := body["request_id"]
+			if len(body) != 3 || hasRequestID || recorder.Header().Get("X-Request-ID") != "existing-request-id" {
 				t.Fatalf("unexpected response: %v", body)
 			}
 		})

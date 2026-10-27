@@ -4,13 +4,13 @@
 
 ## 排查请求
 
-每次请求由独立的 `RequestID` 中间件生成 `request_id`，通过 `X-Request-ID` 响应头返回。统一 JSON 响应在原有 `code`、`message`、`data` 之外增加顶层 `request_id`，直接取用同一个 ID；下载等非 JSON 响应仅使用响应头。不接受客户端提供的请求 ID。
+每次请求由独立的 `RequestID` 中间件生成 `request_id`，通过 `X-Request-ID` 响应头返回。统一 JSON 响应只包含 `code`、`message`、`data`；JSON 和下载等非 JSON 响应均通过响应头提供请求 ID。不接受客户端提供的请求 ID。
 
-请求 ID 的上下文 Key、响应头名称及 `GetRequestID` 读取方法归属 `request` 包。`logger` 和 `response` 只读取，不生成 ID；读取不到时返回空字符串，不自行补发另一个 ID。`RequestID` 中间件不承担访问日志格式或路由字段处理。
+请求 ID 的上下文 Key、响应头名称及 `GetRequestID` 读取方法归属 `request` 包。`logger` 只读取，不生成 ID；读取不到时返回空字符串，不自行补发另一个 ID。`RequestID` 中间件不承担访问日志格式或路由字段处理。
 
 访问日志保留 Gin 的时间、彩色状态码、耗时、客户端 IP 和请求方法等显示风格，末尾追加 `request_id`。路径使用路由模板，未匹配路径记为 `unmatched`，不记录原始 URL、查询参数、请求头和请求体。用该 ID 关联 Gin 请求日志与 Zap 业务、错误日志。
 
-panic 由 Zap Recovery 记录堆栈，不输出可能携带业务数据的 panic 值；尚未开始响应时返回携带 `request_id` 的统一 JSON 错误。连接已断开或响应已经开始时不追加 JSON，避免破坏文件下载等响应。
+panic 由 Zap Recovery 记录堆栈，不输出可能携带业务数据的 panic 值；尚未开始响应时返回统一 JSON 错误，请求 ID 通过响应头返回。连接已断开或响应已经开始时不追加 JSON，避免破坏文件下载等响应。
 
 业务日志使用 `operation` 表示具体动作，数值实体 ID 用于定位操作目标。`actor_id` 直接记录操作者学号，暂不进行哈希或加密处理。反馈提交日志不附提交者标识。
 
