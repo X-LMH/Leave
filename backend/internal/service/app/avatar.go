@@ -4,12 +4,12 @@ import (
 	"backend/internal/config"
 	"backend/internal/dao/mysql"
 	"backend/internal/dto"
+	logutil "backend/internal/logger"
 	"backend/internal/service"
 	"backend/internal/utils/file"
 	"bytes"
 	"errors"
 	"io"
-	"log"
 	"strings"
 
 	"go.uber.org/zap"
@@ -67,7 +67,10 @@ func (a *AvatarService) UploadAvatar(studentID string, content io.Reader) (*dto.
 	}
 	// 更新已成功，旧文件清理失败只记录日志，避免客户端重复上传。
 	if err := deleteOldAvatar(root, profile.AvatarURL); err != nil {
-		log.Printf("清理旧头像失败 student_id=%s: %v", studentID, err)
+		a.logger.Warn("清理旧头像失败",
+			zap.String("operation", "app.avatar.cleanup_old"),
+			logutil.Error(err),
+		)
 	}
 	return &dto.AvatarUploadResponse{AvatarURL: avatarURL}, nil
 }

@@ -2,6 +2,7 @@ package app
 
 import (
 	"backend/internal/dto"
+	logutil "backend/internal/logger"
 	"backend/internal/models"
 	"backend/internal/request"
 	"backend/internal/response"
@@ -28,6 +29,8 @@ func NewProfileHandler(profile *appservice.ProfileService, logger *zap.Logger) *
 
 // ProfileHandler 完善个人信息
 func (p *ProfileHandler) ProfileHandler(c *gin.Context) {
+	log := p.logger.With(logutil.OperationFields(c, "app.profile.update")...)
+
 	// 参数绑定
 	input := new(dto.ProfileRequest)
 	if err := c.ShouldBindJSON(input); err != nil {
@@ -50,14 +53,20 @@ func (p *ProfileHandler) ProfileHandler(c *gin.Context) {
 			response.Error(c, response.CodeInvalidParam)
 			return
 		}
+		log.Error("更新个人资料失败", logutil.Error(err))
 		response.Error(c, response.CodeServerBusy)
 		return
 	}
 
+	log.Info("更新个人资料成功",
+		zap.String("actor_id", studentID),
+	)
 	response.Success(c, nil)
 }
 
 func (p *ProfileHandler) GetProfileHandler(c *gin.Context) {
+	log := p.logger.With(logutil.OperationFields(c, "app.profile.get")...)
+
 	studentID, err := request.GetCurrentStuID(c)
 	if err != nil {
 		response.Error(c, response.CodeNeedLogin)
@@ -69,6 +78,7 @@ func (p *ProfileHandler) GetProfileHandler(c *gin.Context) {
 			response.Error(c, response.CodeProfileIncomplete)
 			return
 		}
+		log.Error("查询个人资料失败", logutil.Error(err))
 		response.Error(c, response.CodeServerBusy)
 		return
 	}

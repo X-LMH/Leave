@@ -7,9 +7,16 @@ import (
 )
 
 const (
-	CtxStuID = "student_id"
-	CtxRole  = "role"
+	CtxStuID        = "student_id"
+	CtxRole         = "role"
+	CtxRequestID    = "request_id"
+	HeaderRequestID = "X-Request-ID"
 )
+
+// GetRequestID 读取中间件设置的请求 ID；缺失时返回空字符串，不重新生成。
+func GetRequestID(c *gin.Context) string {
+	return c.GetString(CtxRequestID)
+}
 
 var (
 	ErrorUserNotLogin         = errors.New("用户未登录")

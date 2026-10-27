@@ -7,6 +7,7 @@ import (
 	"go.uber.org/zap"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
+	gormlogger "gorm.io/gorm/logger"
 )
 
 type DAO struct {
@@ -31,7 +32,11 @@ func Open(cfg config.MySQLConfig) (*gorm.DB, error) {
 			cfg.Port,
 			cfg.Database,
 		),
-	), &gorm.Config{TranslateError: true})
+	), &gorm.Config{
+		TranslateError: true,
+		// 业务边界已记录错误，关闭包含完整 SQL 和参数的默认输出。
+		Logger: gormlogger.Default.LogMode(gormlogger.Silent),
+	})
 	if err != nil {
 		return nil, fmt.Errorf("mysql open failed: %w", err)
 	}

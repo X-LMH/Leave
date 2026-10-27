@@ -7,10 +7,12 @@ import (
 	"backend/internal/middleware"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 // Dependencies 显式列出路由所需的已组装组件。
 type Dependencies struct {
+	Logger               *zap.Logger
 	AppVersions          *appcontroller.AppVersionHandler
 	AppAvatar            *appcontroller.AvatarHandler
 	AppFeedback          *appcontroller.FeedbackHandler
@@ -33,10 +35,10 @@ type Dependencies struct {
 }
 
 func SetupRouter(deps Dependencies) *gin.Engine {
-	r := gin.Default()
+	r := gin.New()
 
 	// 全局中间件
-	r.Use(middleware.CORSMiddleware())
+	r.Use(middleware.RequestID(), middleware.AccessLogger(), middleware.Recovery(deps.Logger), middleware.CORSMiddleware())
 
 	// API v1
 	api := r.Group("/api/v1")

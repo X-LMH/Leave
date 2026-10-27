@@ -2,12 +2,12 @@ package app
 
 import (
 	"backend/internal/dto"
+	logutil "backend/internal/logger"
 	"backend/internal/request"
 	"backend/internal/response"
 	appservice "backend/internal/service/app"
 	"errors"
 	"fmt"
-	"log"
 	"mime/multipart"
 	"net/http"
 	"strconv"
@@ -30,13 +30,15 @@ func NewFeedbackHandler(feedback *appservice.FeedbackService, logger *zap.Logger
 
 // CreateFeedbackHandler 接收文字反馈及可选图片，兼容旧版 JSON 请求。
 func (f *FeedbackHandler) CreateFeedbackHandler(c *gin.Context) {
+	log := f.logger.With(logutil.OperationFields(c, "app.feedback.create")...)
+
 	// 解析前限制请求总大小，三张图片之外预留 multipart 表单开销。
 	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body,
 		appservice.MaxFeedbackAttachments*appservice.MaxFeedbackAttachmentSize+(64<<10))
 	defer func() {
 		if c.Request.MultipartForm != nil {
 			if err := c.Request.MultipartForm.RemoveAll(); err != nil {
-				log.Printf("清理反馈上传临时文件失败: %v", err)
+				log.Warn("清理反馈上传临时文件失败", logutil.Error(err))
 			}
 		}
 	}()
@@ -58,9 +60,14 @@ func (f *FeedbackHandler) CreateFeedbackHandler(c *gin.Context) {
 			response.Error(c, response.CodeInvalidParam)
 			return
 		}
+		log.Error("提交反馈失败", logutil.Error(err))
 		response.Error(c, response.CodeServerBusy)
 		return
 	}
+	log.Info("提交反馈成功",
+		zap.Uint("feedback_id", feedback.ID),
+		zap.Bool("anonymous", req.IsAnonymous),
+	)
 	response.Success(c, feedback)
 }
 

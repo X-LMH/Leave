@@ -1,11 +1,11 @@
 package app
 
 import (
+	logutil "backend/internal/logger"
 	"backend/internal/request"
 	"backend/internal/response"
 	appservice "backend/internal/service/app"
 	"errors"
-	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -27,6 +27,8 @@ func NewAvatarHandler(avatar *appservice.AvatarService, logger *zap.Logger) *Ava
 const maxAvatarSize = 5 << 20
 
 func (a *AvatarHandler) UploadAvatarHandler(c *gin.Context) {
+	log := a.logger.With(logutil.OperationFields(c, "app.avatar.upload")...)
+
 	studentID, err := request.GetCurrentStuID(c)
 	if err != nil {
 		response.Error(c, response.CodeNeedLogin)
@@ -39,7 +41,7 @@ func (a *AvatarHandler) UploadAvatarHandler(c *gin.Context) {
 	if c.Request.MultipartForm != nil {
 		defer func() {
 			if err := c.Request.MultipartForm.RemoveAll(); err != nil {
-				log.Printf("清理头像上传临时文件失败: %v", err)
+				log.Warn("清理头像上传临时文件失败", logutil.Error(err))
 			}
 		}()
 	}
@@ -54,12 +56,13 @@ func (a *AvatarHandler) UploadAvatarHandler(c *gin.Context) {
 
 	content, err := upload.Open()
 	if err != nil {
+		log.Error("上传头像失败", logutil.Error(err))
 		response.Error(c, response.CodeServerBusy)
 		return
 	}
 	defer func() {
 		if err := content.Close(); err != nil {
-			log.Printf("关闭头像上传文件失败: %v", err)
+			log.Warn("关闭头像上传文件失败", logutil.Error(err))
 		}
 	}()
 
@@ -71,10 +74,11 @@ func (a *AvatarHandler) UploadAvatarHandler(c *gin.Context) {
 		case errors.Is(err, appservice.ErrorProfileIncomplete):
 			response.Error(c, response.CodeProfileIncomplete)
 		default:
-			log.Printf("上传头像失败 student_id=%s: %v", studentID, err)
+			log.Error("上传头像失败", logutil.Error(err))
 			response.Error(c, response.CodeServerBusy)
 		}
 		return
 	}
+	log.Info("更新头像成功", zap.String("actor_id", studentID))
 	response.Success(c, data)
 }

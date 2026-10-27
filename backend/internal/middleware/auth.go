@@ -2,10 +2,12 @@ package middleware
 
 import (
 	"backend/internal/dao/mysql"
+	requestlog "backend/internal/logger"
 	"backend/internal/models"
 	"backend/internal/request"
 	"backend/internal/response"
 	"backend/internal/utils/jwt"
+	"errors"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -42,6 +44,12 @@ func JWTAuthMiddleware(tokens *jwt.Manager, dao *mysql.DAO, logger *zap.Logger) 
 			return
 		}
 		if err := dao.EnsureUserActive(claims.StudentID); err != nil {
+			if !errors.Is(err, mysql.ErrorUserNotExist) && !errors.Is(err, mysql.ErrorUserDisabled) {
+				logger.With(requestlog.RequestFields(c)...).Error("查询认证用户状态失败",
+					zap.String("operation", "auth.ensure_user_active"),
+					requestlog.Error(err),
+				)
+			}
 			response.Error(c, response.CodeNeedLogin)
 			c.Abort()
 			return
@@ -49,6 +57,12 @@ func JWTAuthMiddleware(tokens *jwt.Manager, dao *mysql.DAO, logger *zap.Logger) 
 		if claims.Role == models.RoleAdmin {
 			// 角色可能在令牌签发后变更，管理员声明须与数据库当前角色一致。
 			user, err := dao.FindUserByStudentID(claims.StudentID)
+			if err != nil && !errors.Is(err, mysql.ErrorUserNotExist) {
+				logger.With(requestlog.RequestFields(c)...).Error("查询管理员身份失败",
+					zap.String("operation", "auth.find_admin"),
+					requestlog.Error(err),
+				)
+			}
 			if err != nil || user.Role != models.RoleAdmin || user.Status != models.UserStatusActive {
 				response.Error(c, response.CodeNeedLogin)
 				c.Abort()

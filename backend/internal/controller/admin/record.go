@@ -2,6 +2,7 @@ package admin
 
 import (
 	"backend/internal/dto"
+	logutil "backend/internal/logger"
 	"backend/internal/request"
 	"backend/internal/response"
 	adminservice "backend/internal/service/admin"
@@ -81,6 +82,11 @@ func parseAdminRecordQuery(c *gin.Context) (dto.AdminRecordQuery, bool) {
 }
 
 func (r *RecordHandler) GetRecordsHandler(c *gin.Context) {
+	log := r.logger.With(logutil.OperationFields(c, "admin.record.get_records")...)
+	if actorID, err := request.GetCurrentStuID(c); err == nil {
+		log = log.With(zap.String("actor_id", actorID))
+	}
+
 	query, ok := parseAdminRecordQuery(c)
 	if !ok {
 		response.Error(c, response.CodeInvalidParam)
@@ -88,30 +94,42 @@ func (r *RecordHandler) GetRecordsHandler(c *gin.Context) {
 	}
 	data, err := r.record.GetAdminRecords(query)
 	if err != nil {
-		managementError(c, err)
+		managementError(c, err, log)
 		return
 	}
 	response.Success(c, data)
 }
 
 func (r *RecordHandler) GetRecordHandler(c *gin.Context) {
+	log := r.logger.With(logutil.OperationFields(c, "admin.record.get_record")...)
+	if actorID, err := request.GetCurrentStuID(c); err == nil {
+		log = log.With(zap.String("actor_id", actorID))
+	}
+
 	id, ok := managementID(c)
 	if !ok {
 		return
 	}
+	log = log.With(zap.Uint("target_id", id))
 	data, err := r.record.GetAdminRecord(id)
 	if err != nil {
-		managementError(c, err)
+		managementError(c, err, log)
 		return
 	}
 	response.Success(c, data)
 }
 
 func (r *RecordHandler) UpdateRecordHandler(c *gin.Context) {
+	log := r.logger.With(logutil.OperationFields(c, "admin.record.update_record")...)
+	if actorID, err := request.GetCurrentStuID(c); err == nil {
+		log = log.With(zap.String("actor_id", actorID))
+	}
+
 	id, ok := managementID(c)
 	if !ok {
 		return
 	}
+	log = log.With(zap.Uint("target_id", id))
 	input := new(dto.AdminRecordUpdateRequest)
 	if err := c.ShouldBindJSON(input); err != nil {
 		response.Error(c, response.CodeInvalidParam)
@@ -119,8 +137,9 @@ func (r *RecordHandler) UpdateRecordHandler(c *gin.Context) {
 	}
 	data, err := r.record.UpdateAdminRecord(id, input)
 	if err != nil {
-		managementError(c, err)
+		managementError(c, err, log)
 		return
 	}
+	log.Info("请假记录更新成功")
 	response.Success(c, data)
 }

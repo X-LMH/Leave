@@ -1,6 +1,8 @@
 package admin
 
 import (
+	logutil "backend/internal/logger"
+	"backend/internal/request"
 	"backend/internal/response"
 	adminservice "backend/internal/service/admin"
 
@@ -21,9 +23,14 @@ func NewOverviewHandler(overview *adminservice.OverviewService, logger *zap.Logg
 }
 
 func (o *OverviewHandler) GetOverviewHandler(c *gin.Context) {
+	log := o.logger.With(logutil.OperationFields(c, "admin.overview.get_overview")...)
+	if actorID, err := request.GetCurrentStuID(c); err == nil {
+		log = log.With(zap.String("actor_id", actorID))
+	}
+
 	data, err := o.overview.GetAdminOverview()
 	if err != nil {
-		managementError(c, err)
+		managementError(c, err, log)
 		return
 	}
 	response.Success(c, data)

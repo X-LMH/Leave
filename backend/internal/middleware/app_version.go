@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	requestlog "backend/internal/logger"
 	"backend/internal/response"
 	appservice "backend/internal/service/app"
 	"strconv"
@@ -28,6 +29,10 @@ func AppVersionMiddleware(versions *appservice.AppVersionService, logger *zap.Lo
 
 		current, isCurrent, err := versions.IsCurrentAppVersion(platform, versionCode)
 		if err != nil {
+			logger.With(requestlog.RequestFields(c)...).Error("校验客户端版本失败",
+				zap.String("operation", "app.check_version"),
+				requestlog.Error(err),
+			)
 			response.Error(c, response.CodeServerBusy)
 			c.Abort()
 			return

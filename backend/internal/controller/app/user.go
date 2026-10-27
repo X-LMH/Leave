@@ -3,6 +3,7 @@ package app
 import (
 	"backend/internal/dao/mysql"
 	"backend/internal/dto"
+	logutil "backend/internal/logger"
 	"backend/internal/request"
 	"backend/internal/response"
 	appservice "backend/internal/service/app"
@@ -28,6 +29,8 @@ func NewUserHandler(user *appservice.UserService, logger *zap.Logger) *UserHandl
 
 // RegisterHandler 用户注册
 func (u *UserHandler) RegisterHandler(c *gin.Context) {
+	log := u.logger.With(logutil.OperationFields(c, "app.register")...)
+
 	// 参数绑定
 	//response.Error(c, response.CodeServiceFix)
 	//return
@@ -54,16 +57,22 @@ func (u *UserHandler) RegisterHandler(c *gin.Context) {
 			response.Error(c, response.CodeUserExist)
 			return
 		default:
+			log.Error("注册失败", logutil.Error(err))
 			response.Error(c, response.CodeServerBusy)
 			return
 		}
 	}
 	// 返回响应
+	log.Info("注册成功",
+		zap.String("actor_id", strings.TrimSpace(p.StudentID)),
+	)
 	response.Success(c, data)
 }
 
 // LoginHandler 用户登录
 func (u *UserHandler) LoginHandler(c *gin.Context) {
+	log := u.logger.With(logutil.OperationFields(c, "app.login")...)
+
 	// 参数绑定
 	p := new(dto.LoginRequest)
 	if err := c.ShouldBindJSON(p); err != nil {
@@ -86,14 +95,21 @@ func (u *UserHandler) LoginHandler(c *gin.Context) {
 		switch {
 		case errors.Is(err, mysql.ErrorUserNotExist), errors.Is(err, mysql.ErrorInvalidPassword):
 			// 不暴露账号是否存在，避免被用于枚举注册用户。
+			log.Info("登录被拒绝",
+				zap.String("reason", "invalid_credentials"),
+			)
 			response.Error(c, response.CodeInvalidPassword)
 			return
 		default:
+			log.Error("登录失败", logutil.Error(err))
 			response.Error(c, response.CodeServerBusy)
 			return
 		}
 	}
 
+	log.Info("登录成功",
+		zap.String("actor_id", strings.TrimSpace(p.StudentID)),
+	)
 	response.Success(c, data)
 }
 
@@ -104,6 +120,8 @@ func (u *UserHandler) LogoutHandler(c *gin.Context) {
 }
 
 func (u *UserHandler) UpdateAppInfoHandler(c *gin.Context) {
+	log := u.logger.With(logutil.OperationFields(c, "app.client_info.update")...)
+
 	p := new(dto.ClientInfoRequest)
 	if err := c.ShouldBindJSON(p); err != nil || strings.TrimSpace(p.AppVersion) == "" || utf8.RuneCountInString(strings.TrimSpace(p.DeviceName)) > 255 {
 		response.Error(c, response.CodeInvalidParam)
@@ -115,6 +133,7 @@ func (u *UserHandler) UpdateAppInfoHandler(c *gin.Context) {
 		return
 	}
 	if err := u.user.UpdateAppInfo(p, studentID); err != nil {
+		log.Error("更新客户端信息失败", logutil.Error(err))
 		response.Error(c, response.CodeServerBusy)
 		return
 	}
@@ -123,6 +142,8 @@ func (u *UserHandler) UpdateAppInfoHandler(c *gin.Context) {
 
 // ChangePasswordHandler 修改密码
 func (u *UserHandler) ChangePasswordHandler(c *gin.Context) {
+	log := u.logger.With(logutil.OperationFields(c, "app.password.change")...)
+
 	// 参数校验
 	p := new(dto.PasswordChangeRequest)
 	if err := c.ShouldBindJSON(p); err != nil {
@@ -146,10 +167,14 @@ func (u *UserHandler) ChangePasswordHandler(c *gin.Context) {
 			response.Error(c, response.CodeNotRightPassword)
 			return
 		default:
+			log.Error("修改密码失败", logutil.Error(err))
 			response.Error(c, response.CodeServerBusy)
 			return
 		}
 	}
+	log.Info("修改密码成功",
+		zap.String("actor_id", studentID),
+	)
 	response.Success(c, nil)
 }
 

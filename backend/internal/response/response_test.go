@@ -1,6 +1,7 @@
 package response
 
 import (
+	"backend/internal/request"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -8,6 +9,33 @@ import (
 
 	"github.com/gin-gonic/gin"
 )
+
+func TestResponsesIncludeExistingRequestID(t *testing.T) {
+	for _, test := range []struct {
+		name  string
+		write func(*gin.Context)
+	}{
+		{"success", func(c *gin.Context) { Success(c, gin.H{"ok": true}) }},
+		{"error", func(c *gin.Context) { Error(c, CodeNeedLogin) }},
+		{"error with data", func(c *gin.Context) { ErrorWithData(c, CodeForceUpdate, gin.H{"version": 2}) }},
+		{"unknown error", func(c *gin.Context) { Error(c, Code(-1)) }},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			recorder := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(recorder)
+			c.Set(request.CtxRequestID, "existing-request-id")
+			c.Header("X-Request-ID", "existing-request-id")
+			test.write(c)
+			var body map[string]any
+			if err := json.Unmarshal(recorder.Body.Bytes(), &body); err != nil {
+				t.Fatal(err)
+			}
+			if len(body) != 4 || body["request_id"] != recorder.Header().Get("X-Request-ID") {
+				t.Fatalf("unexpected response: %v", body)
+			}
+		})
+	}
+}
 
 func TestSuccessResponse(t *testing.T) {
 	gin.SetMode(gin.TestMode)

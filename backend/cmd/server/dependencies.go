@@ -53,6 +53,7 @@ func buildDependencies(cfg config.Config, dao *mysql.DAO, logger *zap.Logger) ro
 	adminRecordHandler := admincontroller.NewRecordHandler(adminRecordService, logger)
 	adminStudentHandler := admincontroller.NewStudentHandler(adminStudentService, logger)
 	return router.Dependencies{
+		Logger:               logger,
 		AppVersions:          appVersionHandler,
 		AppAvatar:            appAvatarHandler,
 		AppFeedback:          appFeedbackHandler,

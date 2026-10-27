@@ -2,6 +2,7 @@ package admin
 
 import (
 	"backend/internal/dto"
+	logutil "backend/internal/logger"
 	"backend/internal/request"
 	"backend/internal/response"
 	adminservice "backend/internal/service/admin"
@@ -25,6 +26,11 @@ func NewStudentHandler(student *adminservice.StudentService, logger *zap.Logger)
 }
 
 func (s *StudentHandler) GetStudentsHandler(c *gin.Context) {
+	log := s.logger.With(logutil.OperationFields(c, "admin.student.get_students")...)
+	if actorID, err := request.GetCurrentStuID(c); err == nil {
+		log = log.With(zap.String("actor_id", actorID))
+	}
+
 	pagination, ok := request.ParsePagination(c)
 	if !ok {
 		response.Error(c, response.CodeInvalidParam)
@@ -55,30 +61,42 @@ func (s *StudentHandler) GetStudentsHandler(c *gin.Context) {
 	}
 	data, err := s.student.GetAdminStudents(query)
 	if err != nil {
-		managementError(c, err)
+		managementError(c, err, log)
 		return
 	}
 	response.Success(c, data)
 }
 
 func (s *StudentHandler) GetStudentHandler(c *gin.Context) {
+	log := s.logger.With(logutil.OperationFields(c, "admin.student.get_student")...)
+	if actorID, err := request.GetCurrentStuID(c); err == nil {
+		log = log.With(zap.String("actor_id", actorID))
+	}
+
 	id, ok := managementID(c)
 	if !ok {
 		return
 	}
+	log = log.With(zap.Uint("target_id", id))
 	data, err := s.student.GetAdminStudent(id)
 	if err != nil {
-		managementError(c, err)
+		managementError(c, err, log)
 		return
 	}
 	response.Success(c, data)
 }
 
 func (s *StudentHandler) UpdateStudentHandler(c *gin.Context) {
+	log := s.logger.With(logutil.OperationFields(c, "admin.student.update_student")...)
+	if actorID, err := request.GetCurrentStuID(c); err == nil {
+		log = log.With(zap.String("actor_id", actorID))
+	}
+
 	id, ok := managementID(c)
 	if !ok {
 		return
 	}
+	log = log.With(zap.Uint("target_id", id))
 	input := new(dto.ProfileRequest)
 	if err := c.ShouldBindJSON(input); err != nil {
 		response.Error(c, response.CodeInvalidParam)
@@ -86,17 +104,24 @@ func (s *StudentHandler) UpdateStudentHandler(c *gin.Context) {
 	}
 	data, err := s.student.UpdateAdminStudent(id, input)
 	if err != nil {
-		managementError(c, err)
+		managementError(c, err, log)
 		return
 	}
+	log.Info("学生资料更新成功")
 	response.Success(c, data)
 }
 
 func (s *StudentHandler) UpdateStudentStatusHandler(c *gin.Context) {
+	log := s.logger.With(logutil.OperationFields(c, "admin.student.update_student_status")...)
+	if actorID, err := request.GetCurrentStuID(c); err == nil {
+		log = log.With(zap.String("actor_id", actorID))
+	}
+
 	id, ok := managementID(c)
 	if !ok {
 		return
 	}
+	log = log.With(zap.Uint("target_id", id))
 	input := new(dto.StudentStatusRequest)
 	if err := c.ShouldBindJSON(input); err != nil {
 		response.Error(c, response.CodeInvalidParam)
@@ -104,20 +129,28 @@ func (s *StudentHandler) UpdateStudentStatusHandler(c *gin.Context) {
 	}
 	data, err := s.student.UpdateAdminStudentStatus(id, input)
 	if err != nil {
-		managementError(c, err)
+		managementError(c, err, log)
 		return
 	}
+	log.Info("学生账号状态更新成功", zap.Uint8("status", *input.Status))
 	response.Success(c, data)
 }
 
 func (s *StudentHandler) ResetStudentPasswordHandler(c *gin.Context) {
+	log := s.logger.With(logutil.OperationFields(c, "admin.student.reset_student_password")...)
+	if actorID, err := request.GetCurrentStuID(c); err == nil {
+		log = log.With(zap.String("actor_id", actorID))
+	}
+
 	id, ok := managementID(c)
 	if !ok {
 		return
 	}
+	log = log.With(zap.Uint("target_id", id))
 	if err := s.student.ResetAdminStudentPassword(id); err != nil {
-		managementError(c, err)
+		managementError(c, err, log)
 		return
 	}
+	log.Info("重置密码成功")
 	response.Success(c, nil)
 }

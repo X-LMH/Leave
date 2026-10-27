@@ -93,7 +93,7 @@ func TestManagementErrors(t *testing.T) {
 		{gorm.ErrRecordNotFound, 404}, {gorm.ErrDuplicatedKey, 409}, {mysql.ErrorClassInUse, 409}, {adminservice.ErrorInvalidAdminInput, 400},
 	} {
 		r := gin.New()
-		r.GET("/", func(c *gin.Context) { managementError(c, tc.err) })
+		r.GET("/", func(c *gin.Context) { managementError(c, tc.err, zap.NewNop()) })
 		w := httptest.NewRecorder()
 		r.ServeHTTP(w, httptest.NewRequest("GET", "/", nil))
 		if w.Code != tc.status {

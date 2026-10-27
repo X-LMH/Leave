@@ -1,6 +1,7 @@
 package response
 
 import (
+	"backend/internal/request"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -8,17 +9,19 @@ import (
 
 // Response 是所有 JSON 响应的统一结构。
 type Response struct {
-	Code    Code   `json:"code"`
-	Message string `json:"message"`
-	Data    any    `json:"data"`
+	Code      Code   `json:"code"`
+	Message   string `json:"message"`
+	Data      any    `json:"data"`
+	RequestID string `json:"request_id"`
 }
 
 // Success 写出固定为 200 的成功响应。
 func Success(c *gin.Context, data any) {
 	c.JSON(http.StatusOK, Response{
-		Code:    CodeSuccess,
-		Message: CodeSuccess.Message(),
-		Data:    data,
+		Code:      CodeSuccess,
+		Message:   CodeSuccess.Message(),
+		Data:      data,
+		RequestID: request.GetRequestID(c),
 	})
 }
 
@@ -30,8 +33,9 @@ func Error(c *gin.Context, code Code) {
 		meta = metaByCode[CodeServerBusy]
 	}
 	c.JSON(meta.httpStatus, Response{
-		Code:    code,
-		Message: meta.message,
+		Code:      code,
+		Message:   meta.message,
+		RequestID: request.GetRequestID(c),
 	})
 }
 
@@ -43,8 +47,9 @@ func ErrorWithData(c *gin.Context, code Code, data any) {
 		meta = metaByCode[CodeServerBusy]
 	}
 	c.JSON(meta.httpStatus, Response{
-		Code:    code,
-		Message: meta.message,
-		Data:    data,
+		Code:      code,
+		Message:   meta.message,
+		Data:      data,
+		RequestID: request.GetRequestID(c),
 	})
 }

@@ -3,6 +3,7 @@ package app
 import (
 	"backend/internal/dao/mysql"
 	"backend/internal/dto"
+	logutil "backend/internal/logger"
 	"backend/internal/request"
 	"backend/internal/response"
 	appservice "backend/internal/service/app"
@@ -27,6 +28,8 @@ func NewRecordHandler(record *appservice.RecordService, logger *zap.Logger) *Rec
 
 // CreateRecordHandler 创建请假记录。
 func (r *RecordHandler) CreateRecordHandler(c *gin.Context) {
+	log := r.logger.With(logutil.OperationFields(c, "app.record.create")...)
+
 	req := new(dto.RecordCreateRequest)
 	if err := c.ShouldBindJSON(req); err != nil {
 		response.Error(c, response.CodeInvalidParam)
@@ -47,18 +50,26 @@ func (r *RecordHandler) CreateRecordHandler(c *gin.Context) {
 		case errors.Is(err, appservice.ErrorProfileIncomplete):
 			response.Error(c, response.CodeProfileIncomplete)
 		default:
+			log.Error("创建请假记录失败", logutil.Error(err))
 			response.Error(c, response.CodeServerBusy)
 		}
 		return
 	}
+	log.Info("创建请假记录成功",
+		zap.Uint("record_id", record.ID),
+		zap.String("actor_id", studentID),
+	)
 	response.Success(c, record)
 }
 
 func (r *RecordHandler) GetRecordHandler(c *gin.Context) {
+	log := r.logger.With(logutil.OperationFields(c, "app.record.get")...)
+
 	recordID, ok := recordIDFromContext(c)
 	if !ok {
 		return
 	}
+	log = log.With(zap.Int("record_id", recordID))
 	studentID, err := request.GetCurrentStuID(c)
 	if err != nil {
 		response.Error(c, response.CodeNeedLogin)
@@ -70,6 +81,7 @@ func (r *RecordHandler) GetRecordHandler(c *gin.Context) {
 		if errors.Is(err, mysql.ErrorRecordNotExist) {
 			response.Error(c, response.CodeRecordNotExist)
 		} else {
+			log.Error("查询请假记录失败", logutil.Error(err))
 			response.Error(c, response.CodeServerBusy)
 		}
 		return
@@ -78,6 +90,8 @@ func (r *RecordHandler) GetRecordHandler(c *gin.Context) {
 }
 
 func (r *RecordHandler) GetRecordsLIstHandler(c *gin.Context) {
+	log := r.logger.With(logutil.OperationFields(c, "app.record.list")...)
+
 	studentID, err := request.GetCurrentStuID(c)
 	if err != nil {
 		response.Error(c, response.CodeNeedLogin)
@@ -101,6 +115,7 @@ func (r *RecordHandler) GetRecordsLIstHandler(c *gin.Context) {
 	query.LeaveType = uint(leaveType)
 	records, err := r.record.GetRecordsList(studentID, query)
 	if err != nil {
+		log.Error("查询请假记录列表失败", logutil.Error(err))
 		response.Error(c, response.CodeServerBusy)
 		return
 	}
@@ -120,10 +135,13 @@ func queryInt(c *gin.Context, key string, fallback int) int {
 }
 
 func (r *RecordHandler) DeleteRecordHandler(c *gin.Context) {
+	log := r.logger.With(logutil.OperationFields(c, "app.record.delete")...)
+
 	recordID, ok := recordIDFromContext(c)
 	if !ok {
 		return
 	}
+	log = log.With(zap.Int("record_id", recordID))
 	studentID, err := request.GetCurrentStuID(c)
 	if err != nil {
 		response.Error(c, response.CodeNeedLogin)
@@ -134,10 +152,14 @@ func (r *RecordHandler) DeleteRecordHandler(c *gin.Context) {
 		if errors.Is(err, mysql.ErrorRecordNotExist) {
 			response.Error(c, response.CodeRecordNotExist)
 		} else {
+			log.Error("删除请假记录失败", logutil.Error(err))
 			response.Error(c, response.CodeServerBusy)
 		}
 		return
 	}
+	log.Info("删除请假记录成功",
+		zap.String("actor_id", studentID),
+	)
 	response.Success(c, nil)
 }
 

@@ -1,6 +1,7 @@
 package app
 
 import (
+	logutil "backend/internal/logger"
 	"backend/internal/response"
 	appservice "backend/internal/service/app"
 	"errors"
@@ -32,6 +33,8 @@ func NewAppVersionHandler(appVersion *appservice.AppVersionService, packageDir s
 
 // GetCurrentAppVersionHandler returns the current published version for a platform.
 func (a *AppVersionHandler) GetCurrentAppVersionHandler(c *gin.Context) {
+	log := a.logger.With(logutil.OperationFields(c, "app.version.current")...)
+
 	platform := strings.TrimSpace(c.Query("platform"))
 	if platform == "" {
 		response.Error(c, response.CodeInvalidParam)
@@ -41,6 +44,7 @@ func (a *AppVersionHandler) GetCurrentAppVersionHandler(c *gin.Context) {
 	versionCode, _ := strconv.Atoi(c.Query("version_code"))
 	version, err := a.appVersion.GetCurrentAppVersion(platform, versionCode)
 	if err != nil {
+		log.Error("查询客户端版本失败", logutil.Error(err))
 		response.Error(c, response.CodeServerBusy)
 		return
 	}
@@ -49,6 +53,8 @@ func (a *AppVersionHandler) GetCurrentAppVersionHandler(c *gin.Context) {
 
 // DownloadCurrentAppHandler serves only the current published package for a platform.
 func (a *AppVersionHandler) DownloadCurrentAppHandler(c *gin.Context) {
+	log := a.logger.With(logutil.OperationFields(c, "app.package.download")...)
+
 	platform := strings.TrimSpace(c.Query("platform"))
 	if platform == "" {
 		response.Error(c, response.CodeInvalidParam)
@@ -61,6 +67,7 @@ func (a *AppVersionHandler) DownloadCurrentAppHandler(c *gin.Context) {
 			response.Error(c, response.CodeFileNotFound)
 			return
 		}
+		log.Error("读取客户端安装包失败", logutil.Error(err))
 		response.Error(c, response.CodeServerBusy)
 		return
 	}
@@ -71,10 +78,15 @@ func (a *AppVersionHandler) DownloadCurrentAppHandler(c *gin.Context) {
 			response.Error(c, response.CodeFileNotFound)
 			return
 		}
+		log.Error("读取客户端安装包失败", logutil.Error(err))
 		response.Error(c, response.CodeServerBusy)
 		return
 	}
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			log.Warn("关闭客户端安装包失败", logutil.Error(err))
+		}
+	}()
 
 	serveAPK(c, file, info)
 }

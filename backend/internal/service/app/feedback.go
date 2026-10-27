@@ -4,13 +4,13 @@ import (
 	"backend/internal/config"
 	"backend/internal/dao/mysql"
 	"backend/internal/dto"
+	logutil "backend/internal/logger"
 	"backend/internal/models"
 	"backend/internal/utils/file"
 	"bytes"
 	"encoding/json"
 	"errors"
 	"io"
-	"log"
 	"mime/multipart"
 	"strings"
 	"unicode/utf8"
@@ -123,7 +123,11 @@ func (f *FeedbackService) saveFeedbackWithAttachments(feedback *models.Feedback,
 		}
 		for _, key := range keys {
 			if cleanupErr := file.Delete(root, key); cleanupErr != nil {
-				log.Printf("清理反馈附件失败 key=%s: %v", key, cleanupErr)
+				f.logger.Warn("清理反馈附件失败",
+					zap.String("operation", "app.feedback.cleanup_attachments"),
+					zap.String("file_key", key),
+					logutil.Error(cleanupErr),
+				)
 			}
 		}
 	}()
