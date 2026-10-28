@@ -2,8 +2,8 @@
 	"name": "Leave",
 	"appid": "__UNI__CAC4290",
 	"description": "",
-	"versionName": "1.0.0",
-	"versionCode": "14",
+	"versionName": "1.0.1",
+	"versionCode": "15",
 	"uni-app-x": {
 		"styleIsolationVersion": "2"
 	},
