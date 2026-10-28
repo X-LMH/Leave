@@ -132,9 +132,11 @@ func TestAdminPasswordIntegration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	router := SetupRouter(testDependencies(t, dao, settings))
 	call := func(auth, body string) response.Response {
 		t.Helper()
+		// 各业务断言独立计数，避免参数校验用例耗尽账号的改密额度。
+		// 数据库和令牌保持不变，仍验证改密前后的账号及会话状态。
+		router := SetupRouter(testDependencies(t, dao, settings))
 		req := httptest.NewRequest("POST", "/api/v1/admin/auth/password", strings.NewReader(body))
 		req.Header.Set("Content-Type", "application/json")
 		if auth != "" {
@@ -237,6 +239,7 @@ func TestAdminPasswordIntegration(t *testing.T) {
 	}
 	userService := appservice.NewUserService(dao, jwt.NewManager(settings.JWT.Secret, settings.JWT.ExpirationDays), settings.Storage, zap.NewNop())
 	t.Run("student password reset", func(t *testing.T) {
+		router := SetupRouter(testDependencies(t, dao, settings))
 		definition, err := os.ReadFile(filepath.Join("..", "..", "database", "tables", "profiles.sql"))
 		if err != nil {
 			t.Fatal(err)
