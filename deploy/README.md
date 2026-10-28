@@ -131,7 +131,9 @@ curl --fail -H 'Host: admin.leave.mhspace.dpdns.org' http://127.0.0.1:80/api/v1/
 
 ## 工作流与发布顺序
 
-`.github/workflows/ci.yml` 在 master 分支 push 时执行完整 CI，并通过 workflow_call 供测试、生产发布复用相同检查。CI 执行 Go 格式、vet、单元及 MySQL 集成测试、Ruby 元数据测试、Bash 部署夹具测试、App 版本 SQL 测试及 Linux 编译；admin 发布继续执行类型检查、不自动修复的 lint、现有 Node 测试及所选环境构建。
+`.github/workflows/ci.yml` 在 master 分支 push 时执行完整 CI，并通过 workflow_call 供测试、生产发布复用相同检查。CI 执行 Go 格式、vet、单元及 MySQL、Redis 集成测试、Ruby 元数据测试、Bash 部署夹具测试、App 版本 SQL 测试及 Linux 编译；Redis 使用独立容器，通过 RATE_LIMIT_TEST_REDIS_ADDR 启用限流测试。admin 发布继续执行类型检查、不自动修复的 lint、现有 Node 测试及所选环境构建。
+
+服务器测试、生产 YAML 都需包含正确的 redis 配置，并在各自根目录 .env 中设置 REDIS_PASSWORD（启用认证时）。CD 在迁移和停止旧后端之前，以宝塔运行用户从项目根目录执行新程序的 `-check-redis`，复用服务配置加载及 Redis 认证、PING 检查；失败时终止发布，保留旧后端运行。不自动安装或重启 Redis，也不将服务器凭据打入发布包。
 
 CI 使用 Runner 内独立的 MySQL 8 service，并配置 ADMIN_TEST_MYSQL_DSN、MYSQL_TEST_DSN 和 DEPLOY_TEST_MYSQL=1。集成测试创建、清理自己的临时 schema，不使用业务库或服务器配置。本地缺少独立 MySQL 时，相关测试仍会跳过，不能将跳过视为通过。
 

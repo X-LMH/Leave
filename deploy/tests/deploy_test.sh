@@ -13,7 +13,7 @@ if [ "$1" = all ]; then
   for scenario in back admin app admin-backend-down; do
     bash "$0" "$scenario" "$deploy_env"
   done
-  for scenario in pid migration health admin-health; do
+  for scenario in pid redis migration health admin-health; do
     status=0
     bash "$0" "$scenario" "$deploy_env" || status=$?
     test "$status" -eq 1 || { echo "Failure isolation failed: $scenario" >&2; exit 1; }
@@ -26,6 +26,7 @@ if [ "$1" = all ]; then
   bash "$0" migration-conflict "$deploy_env"
   bash "$0" real-pid-mismatch "$deploy_env"
   bash "$0" restart-lock "$deploy_env"
+  bash "$0" redis-command "$deploy_env"
   echo 'Deployment coordination tests passed (only fixtures and mocks).'
   exit 0
 fi
@@ -104,6 +105,10 @@ SH
 chmod +x "$APP_ROOT/fixtures/mysql"
 export PATH="$APP_ROOT/fixtures:$PATH"
 chown() { :; }
+check_redis() {
+  echo redis >> "$LOG_FILE"
+  test "$FAIL_PHASE" != redis
+}
 stop_backend() {
   echo stop >> "$LOG_FILE"
   test "$FAIL_PHASE" != pid || return 1
@@ -157,6 +162,31 @@ if [ "$scenario" = restart-lock ]; then
   exit 0
 fi
 
+if [ "$scenario" = redis-command ]; then
+  source "$TEST_DIR/../switch-and-restart.sh"
+  mkdir -p "$BACKEND_DIR/releases/v1"
+  cat > "$BACKEND_DIR/releases/v1/Leave" <<'SH'
+#!/bin/sh
+test "$PWD" = "$EXPECTED_ROOT" || exit 99
+test "$#" -eq 1 && test "$1" = -check-redis || exit 99
+test "$MYSQL_PASSWORD" = fixture || exit 99
+test "$FAIL_PHASE" != redis-command-failure
+SH
+  chmod +x "$BACKEND_DIR/releases/v1/Leave"
+  export EXPECTED_ROOT="$APP_ROOT"
+  runuser() {
+    test "$1" = -u && test "$2" = "$BACKEND_USER" && test "$3" = -- || return 99
+    shift 3
+    "$@"
+  }
+  check_redis
+  export FAIL_PHASE=redis-command-failure
+  status=0
+  check_redis || status=$?
+  test "$status" -eq 1
+  exit 0
+fi
+
 if [[ "$scenario" =~ ^(backend-conflict|backend-incomplete|admin-conflict|apk-conflict)$ ]]; then
   case "$scenario" in
     backend-conflict|backend-incomplete)
@@ -175,7 +205,7 @@ if [[ "$scenario" =~ ^(backend-conflict|backend-incomplete|admin-conflict|apk-co
   trap 'code=$?; if [ -e "$LOG_FILE" ] || [ "$(cat "$BACKEND_DIR/current/Leave")" != "old server" ]; then exit 99; fi; exit "$code"' ERR
 fi
 
-if [[ "$scenario" =~ ^(pid|migration|health|admin-health)$ ]]; then
+if [[ "$scenario" =~ ^(pid|redis|migration|health|admin-health)$ ]]; then
   assert_failed_release() {
     local code=$?
     test "$code" -ne 0
@@ -183,6 +213,10 @@ if [[ "$scenario" =~ ^(pid|migration|health|admin-health)$ ]]; then
     case "$scenario" in
       pid)
         test ! -e "$LOG_FILE" || exit 99
+        ;;
+      redis)
+        ! grep -Eq '^(migration|stop|start)$' "$LOG_FILE" || exit 99
+        test "$(cat "$BACKEND_DIR/current/Leave")" = 'old server' || exit 99
         ;;
       migration)
         ! grep -q stop "$LOG_FILE" || exit 99

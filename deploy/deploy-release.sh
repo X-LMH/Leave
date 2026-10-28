@@ -119,6 +119,8 @@ run_release() {
   prepare_backend
   # Install immutable files before stopping the service; current still points to the old version.
   install_version "$STAGE/ready-backend" "$BACKEND_DIR/releases/v$BACKEND_VERSION"
+  set_phase checking-redis
+  check_redis
   set_phase migrations
   sync_migrations
   chmod 0755 "$BUNDLE/scripts/migrate"
