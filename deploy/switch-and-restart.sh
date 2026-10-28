@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 # Sourced by deploy-release.sh; Baota retains ownership of the process lifecycle.
 
+check_redis() {
+  # Match the service's working directory and user; only authenticate and PING.
+  runuser -u "$BACKEND_USER" -- sh -c 'cd "$1" && exec "$2" -check-redis' \
+    sh "$APP_ROOT" "$BACKEND_DIR/releases/v$BACKEND_VERSION/Leave" 9>&-
+}
+
 read_backend_pid() {
   local pid
   test -s "$BAOTA_PID_FILE" || return 1

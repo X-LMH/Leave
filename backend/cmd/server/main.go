@@ -7,6 +7,7 @@ import (
 	"backend/internal/redis"
 	"backend/internal/router"
 	"errors"
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -17,9 +18,31 @@ import (
 )
 
 func main() {
+	checkRedis := flag.Bool("check-redis", false, "检查配置及 Redis 连接后退出，不启动 HTTP 服务")
+	flag.Parse()
+	if *checkRedis {
+		if err := checkRedisConnection(); err != nil {
+			log.Print(err)
+			os.Exit(1)
+		}
+		log.Print("Redis 连接检查通过")
+		return
+	}
 	if err := run(); err != nil {
 		os.Exit(1)
 	}
+}
+
+func checkRedisConnection() error {
+	cfg, err := config.Load()
+	if err != nil {
+		return fmt.Errorf("初始化配置失败: %w", err)
+	}
+	client, err := redis.Open(cfg.Redis)
+	if err != nil {
+		return fmt.Errorf("Redis 连接检查失败: %w", err)
+	}
+	return client.Close()
 }
 
 func run() (err error) {
