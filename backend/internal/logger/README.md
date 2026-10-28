@@ -1,6 +1,6 @@
 # 后端日志约定
 
-沿用 `log.level`、`log.encoding`、`log.dir` 配置。业务、异常和生命周期日志通过 Zap 输出到终端及可选的按日文件；HTTP 访问日志由 Gin 输出到终端，不重复写入 Zap。
+沿用 `log.level`、`log.encoding`、`log.dir` 配置。HTTP 访问、业务、异常和生命周期日志统一通过 Zap 输出到终端及可选的按日 JSONL 文件。
 
 ## 排查请求
 
@@ -8,7 +8,9 @@
 
 请求 ID 的上下文 Key、响应头名称及 `GetRequestID` 读取方法归属 `request` 包。`logger` 只读取，不生成 ID；读取不到时返回空字符串，不自行补发另一个 ID。`RequestID` 中间件不承担访问日志格式或路由字段处理。
 
-访问日志保留 Gin 的时间、彩色状态码、耗时、客户端 IP 和请求方法等显示风格，末尾追加 `request_id`。路径使用路由模板，未匹配路径记为 `unmatched`，不记录原始 URL、查询参数、请求头和请求体。用该 ID 关联 Gin 请求日志与 Zap 业务、错误日志。
+访问日志使用 Info 级别记录“HTTP 请求完成”，字段包括 `request_id`、`method`、`route`、`status`、`latency` 和 `client_ip`，沿用 Zap 的终端格式和文件格式。路径使用路由模板，未匹配路径记为 `unmatched`，不记录原始 URL、查询参数、请求头和请求体。用该 ID 关联请求、业务和错误日志。
+
+GET、POST、健康检查、OPTIONS 和失败请求均记录一次访问日志；业务错误和 panic 日志另行记录具体原因。`log.dir` 留空时仅输出终端；配置目录后同时追加到按日 JSONL 文件。访问日志遵循 `log.level`，设置为 warn 或更高时不会记录 Info 级别的访问日志。
 
 panic 由 Zap Recovery 记录堆栈，不输出可能携带业务数据的 panic 值；尚未开始响应时返回统一 JSON 错误，请求 ID 通过响应头返回。连接已断开或响应已经开始时不追加 JSON，避免破坏文件下载等响应。
 
@@ -20,7 +22,7 @@ Handler 使用原生 Zap 的 `With(OperationFields(c, operation)...)` 建立局�
 
 ## 级别和记录位置
 
-- `Info`：关键业务写入成功、登录结果、服务初始化阶段。普通查询成功不重复记录业务日志，请求完成仅由 Gin 记录。
+- `Info`：关键业务写入成功、登录结果、服务初始化阶段。普通查询成功不重复记录业务日志，请求完成由访问日志中间件统一记录。
 - `Warn`：主操作完成后的文件清理失败、附件关闭失败或请求连接断开。
 - `Error`：最终由 Handler 或中间件处理的未知系统错误、服务启动失败和 panic。参数无效、资源不存在、密码错误等预期业务拒绝不视为系统错误。
 

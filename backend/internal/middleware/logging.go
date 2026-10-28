@@ -2,10 +2,8 @@ package middleware
 
 import (
 	requestlog "backend/internal/logger"
-	"backend/internal/request"
 	"backend/internal/response"
 	"errors"
-	"fmt"
 	"net/http"
 	"syscall"
 	"time"
@@ -14,44 +12,17 @@ import (
 	"go.uber.org/zap"
 )
 
-const requestRouteKey = "log_request_route"
-
-// AccessLogger 保留 Gin 的终端显示风格，附加请求 ID，不再写入 Zap。
-func AccessLogger() gin.HandlerFunc {
-	accessLogger := gin.LoggerWithConfig(gin.LoggerConfig{
-		SkipQueryString: true,
-		Formatter: func(p gin.LogFormatterParams) string {
-			var statusColor, methodColor, latencyColor, reset string
-			if p.IsOutputColor() {
-				statusColor = p.StatusCodeColor()
-				methodColor = p.MethodColor()
-				latencyColor = p.LatencyColor()
-				reset = p.ResetColor()
-			}
-			switch {
-			case p.Latency > time.Minute:
-				p.Latency = p.Latency.Truncate(10 * time.Second)
-			case p.Latency > time.Second:
-				p.Latency = p.Latency.Truncate(10 * time.Millisecond)
-			case p.Latency > time.Millisecond:
-				p.Latency = p.Latency.Truncate(10 * time.Microsecond)
-			}
-			// 使用路由模板，避免将路径参数或未匹配地址中的个人信息打印出来。
-			return fmt.Sprintf("[GIN] %s |%s %3d %s|%s %8v %s| %15s |%s %-7s %s %q | request_id=%v\n",
-				p.TimeStamp.Format("2006/01/02 - 15:04:05"),
-				statusColor, p.StatusCode, reset,
-				latencyColor, p.Latency, reset, p.ClientIP,
-				methodColor, p.Method, reset, p.Keys[requestRouteKey], p.Keys[request.CtxRequestID],
-			)
-		},
-	})
+// AccessLogger 统一通过 Zap 记录请求，使终端与按日文件使用同一套字段。
+func AccessLogger(logger *zap.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		route := c.FullPath()
-		if route == "" {
-			route = "unmatched"
-		}
-		c.Set(requestRouteKey, route)
-		accessLogger(c)
+		started := time.Now()
+		c.Next()
+
+		logger.With(requestlog.RequestFields(c)...).Info("HTTP 请求完成",
+			zap.Int("status", c.Writer.Status()),
+			zap.Duration("latency", time.Since(started)),
+			zap.String("client_ip", c.ClientIP()),
+		)
 	}
 }
 

@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"backend/internal/config"
 	requestlog "backend/internal/logger"
 	"backend/internal/response"
 	"bytes"
@@ -9,9 +10,12 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -19,7 +23,7 @@ import (
 	"go.uber.org/zap/zaptest/observer"
 )
 
-func TestGinAccessLoggingCorrelationAndPrivacy(t *testing.T) {
+func TestAccessLoggingCorrelationAndPrivacy(t *testing.T) {
 	core, entries := observer.New(zapcore.DebugLevel)
 	log := zap.New(core)
 	router := gin.New()
@@ -27,51 +31,113 @@ func TestGinAccessLoggingCorrelationAndPrivacy(t *testing.T) {
 	previousWriter := gin.DefaultWriter
 	gin.DefaultWriter = &access
 	t.Cleanup(func() { gin.DefaultWriter = previousWriter })
-	router.Use(RequestID(), AccessLogger(), Recovery(log), CORSMiddleware())
+	router.Use(RequestID(), AccessLogger(log), Recovery(log), CORSMiddleware())
 	router.POST("/items/:id", func(c *gin.Context) {
 		log.With(requestlog.RequestFields(c)...).Info("业务操作完成")
 		response.Success(c, gin.H{"ok": true})
 	})
+	router.GET("/panic", func(c *gin.Context) { panic("panic-secret") })
 	var previousID string
-	for _, path := range []string{"/items/private-id?token=query-secret", "/unknown-private-id?token=query-secret"} {
-		entries.TakeAll()
-		request := httptest.NewRequest(http.MethodPost, path, strings.NewReader("body-secret"))
-		request.Header.Set("Authorization", "Bearer header-secret")
-		request.Header.Set("X-Request-ID", "client-secret")
-		recorder := httptest.NewRecorder()
-		router.ServeHTTP(recorder, request)
-		id := recorder.Header().Get("X-Request-ID")
-		if len(id) < hex.EncodedLen(8) || id == previousID || id == "client-secret" {
-			t.Fatalf("request ID should be server-generated and unique: %q", id)
-		}
-		previousID = id
-		output := access.String()
-		if strings.Count(output, "[GIN]") != 1 || !strings.Contains(output, "request_id="+id) || !strings.Contains(output, fmt.Sprint(recorder.Code)) {
-			t.Fatalf("unexpected Gin access log: %s", output)
-		}
-		assertNoSecrets(t, output)
-		if entries.FilterMessage("HTTP 请求完成").Len() != 0 {
-			t.Fatal("Zap must not duplicate access logs")
-		}
-		for _, entry := range entries.All() {
-			if entry.ContextMap()["request_id"] != id {
-				t.Fatalf("business and access logs must share ID: %#v", entry)
+	for _, tc := range []struct {
+		method string
+		path   string
+		route  string
+		status int
+	}{
+		{http.MethodPost, "/items/private-id?token=query-secret", "/items/:id", 200},
+		{http.MethodGet, "/unknown-private-id?token=query-secret", "unmatched", 404},
+		{http.MethodGet, "/panic?token=query-secret", "/panic", 500},
+		{http.MethodOptions, "/items/private-id", "unmatched", 204},
+	} {
+		t.Run(tc.method+tc.route, func(t *testing.T) {
+			entries.TakeAll()
+			access.Reset()
+			req := httptest.NewRequest(tc.method, tc.path, strings.NewReader("body-secret"))
+			req.RemoteAddr = "192.0.2.1:1234"
+			req.Header.Set("Authorization", "Bearer header-secret")
+			req.Header.Set("X-Request-ID", "client-secret")
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+			id := w.Header().Get("X-Request-ID")
+			if len(id) < hex.EncodedLen(8) || id == previousID || id == "client-secret" {
+				t.Fatalf("invalid request ID: %q", id)
 			}
-			assertNoSecrets(t, fmt.Sprint(entry.ContextMap()))
-		}
-		if path[1] == 'i' && !strings.Contains(output, "/items/:id") {
-			t.Fatalf("want route template: %s", output)
-		}
-		if recorder.Code == http.StatusOK {
-			var body map[string]any
-			if err := json.Unmarshal(recorder.Body.Bytes(), &body); err != nil || body["request_id"] != nil {
-				t.Fatalf("JSON response must omit request ID: %s, err=%v", recorder.Body.String(), err)
+			previousID = id
+			logs := entries.FilterMessage("HTTP 请求完成").All()
+			if w.Code != tc.status || len(logs) != 1 {
+				t.Fatalf("status=%d access logs=%v", w.Code, logs)
 			}
+			fields := logs[0].ContextMap()
+			if fields["route"] != tc.route || fields["method"] != tc.method || fields["status"] != int64(tc.status) || fields["client_ip"] != "192.0.2.1" || fields["latency"] == nil {
+				t.Fatalf("unexpected access fields: %v", fields)
+			}
+			for _, entry := range entries.All() {
+				if entry.ContextMap()["request_id"] != id {
+					t.Fatal("request and business logs must share ID")
+				}
+				assertNoSecrets(t, fmt.Sprint(entry.ContextMap()))
+			}
+			if strings.Contains(access.String(), "[GIN]") {
+				t.Fatal("duplicate Gin access log")
+			}
+			if !strings.Contains(w.Header().Get("Access-Control-Expose-Headers"), "X-Request-ID") {
+				t.Fatal("request ID must be accessible to web clients")
+			}
+		})
+	}
+}
+
+func TestAccessLoggingWritesDailyFile(t *testing.T) {
+	dir := t.TempDir()
+	log, err := requestlog.NewLogger(config.LogConfig{
+		Level:    "info",
+		Encoding: "console",
+		Dir:      dir,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	router := gin.New()
+	router.Use(RequestID(), AccessLogger(log))
+	router.GET("/items/:id", func(c *gin.Context) { c.Status(http.StatusNoContent) })
+	router.POST("/items/:id", func(c *gin.Context) { c.Status(http.StatusCreated) })
+	ids := make(map[string]string)
+	for _, method := range []string{http.MethodGet, http.MethodPost} {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest(method, "/items/private-id?token=query-secret", strings.NewReader("body-secret"))
+		router.ServeHTTP(w, req)
+		ids[method] = w.Header().Get("X-Request-ID")
+	}
+	// 按实际产生的文件读取，避免测试恰好跨越午夜时依赖单个日期。
+	files, err := filepath.Glob(filepath.Join(dir, "*.jsonl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	count := 0
+	for _, file := range files {
+		content, err := os.ReadFile(file)
+		if err != nil {
+			t.Fatal(err)
 		}
-		access.Reset()
-		if !strings.Contains(recorder.Header().Get("Access-Control-Expose-Headers"), "X-Request-ID") {
-			t.Fatal("request ID header must be accessible to web clients")
+		assertNoSecrets(t, string(content))
+		for _, line := range strings.Split(strings.TrimSpace(string(content)), "\n") {
+			var entry map[string]any
+			if err := json.Unmarshal([]byte(line), &entry); err != nil {
+				t.Fatal(err)
+			}
+			method, _ := entry["method"].(string)
+			if entry["msg"] != "HTTP 请求完成" || entry["route"] != "/items/:id" || ids[method] == "" || entry["request_id"] != ids[method] {
+				t.Fatalf("unexpected file entry: %v", entry)
+			}
+			if _, err := time.ParseDuration(entry["latency"].(string)); err != nil {
+				t.Fatal(err)
+			}
+			delete(ids, method)
+			count++
 		}
+	}
+	if count != 2 || len(ids) != 0 {
+		t.Fatalf("want GET and POST once each, count=%d remaining=%v", count, ids)
 	}
 }
 

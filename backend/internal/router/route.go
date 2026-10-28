@@ -44,7 +44,7 @@ func SetupRouter(deps Dependencies) *gin.Engine {
 	}
 
 	// 全局中间件
-	r.Use(middleware.RequestID(), middleware.AccessLogger(), middleware.Recovery(deps.Logger), middleware.CORSMiddleware())
+	r.Use(middleware.RequestID(), middleware.AccessLogger(deps.Logger), middleware.Recovery(deps.Logger), middleware.CORSMiddleware())
 
 	// API v1
 	api := r.Group("/api/v1")
