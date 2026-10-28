@@ -169,7 +169,7 @@ admin 入口先检查同域健康接口，再发布 admin；或发布 APK / 结�
 
 1. 确认服务器 YAML、.env、宝塔项目及 SSH Secrets；admin 入口先完成站点与 DNS 准备。
 2. 将代码、release.yaml、模板提交到待发布版本。App 还需在同一版本提交真实 APK、manifest 和发布说明。
-3. 先用对应测试标签验证，再给同一提交创建生产标签。当前配置为后端 1、admin 1，对应 back-v1、admin-v1，App 为 app-v0.0.10；App 按该提交 manifest 版本生成标签。
+3. 先用对应测试标签验证，再给同一提交创建生产标签。后端和 admin 标签分别按该提交 release.yaml 的版本生成；App 标签按 manifest 的 versionName 生成，例如 1.0.1 对应 app-test-v1.0.1 和 app-v1.0.1。
 4. 推送标签，观察 metadata、backend、admin（按需）和 deploy。标签校验后发生的临时故障可重新运行 Actions，无需移动标签。
 5. 发布后检查公网首页、history 子页刷新、登录及真实业务 API；App 检查下载和更新。脚本的本机 HTTP 检查不代替浏览器或业务验证。
 
