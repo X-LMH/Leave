@@ -2,7 +2,7 @@
 CREATE TABLE `users`
 (
     `id`            INT UNSIGNED     NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-    `student_id`    VARCHAR(22)      NOT NULL COMMENT '学号',
+    `student_id`    VARCHAR(22) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT '学号',
     `password` VARCHAR(255)     NOT NULL COMMENT '密码',
     `role`          VARCHAR(20)      NOT NULL DEFAULT 'student' COMMENT '角色：student=学生，admin=管理员',
     `status`        TINYINT UNSIGNED NOT NULL DEFAULT 1 COMMENT '账号状态：1=正常，0=停用',

@@ -2,7 +2,7 @@
 CREATE TABLE `profiles`
 (
     `id`           INT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '个人信息主键',
-    `student_id`   VARCHAR(22)  NOT NULL COMMENT '关联的学号',
+    `student_id`   VARCHAR(22) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT '关联的学号',
     `class_id`     INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '班级ID',
     `name`         VARCHAR(64)  NOT NULL COMMENT '学生姓名',
     `phone`        VARCHAR(20)  NOT NULL COMMENT '学生电话',

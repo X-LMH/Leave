@@ -2,7 +2,7 @@
 CREATE TABLE `feedbacks`
 (
     `id`           INT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '反馈主键',
-    `student_id`   VARCHAR(22)  NULL COMMENT '提交者学号，匿名反馈为空',
+    `student_id`   VARCHAR(22) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL COMMENT '提交者学号，匿名反馈为空',
     `is_anonymous` TINYINT(1)   NOT NULL DEFAULT 0 COMMENT '是否匿名：1=是，0=否',
     `content`      TEXT         NOT NULL COMMENT '反馈内容',
     `attachments`  JSON         NULL COMMENT '附件相对路径数组（相对于上传文件根目录，如 ["feedbacks/abc123.jpg"]），无附件为NULL',

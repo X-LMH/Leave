@@ -3,7 +3,7 @@
 CREATE TABLE `records`
 (
     `id`              INT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '请假记录主键',
-    `student_id`      VARCHAR(22)  NOT NULL COMMENT '学号',
+    `student_id`      VARCHAR(22) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT '学号',
     `name`            VARCHAR(64)  NOT NULL COMMENT '姓名快照',
     `gender`          VARCHAR(10)  NOT NULL DEFAULT '' COMMENT '性别快照：male/female',
     `parent_name`     VARCHAR(64)  NOT NULL COMMENT '家长姓名快照',
