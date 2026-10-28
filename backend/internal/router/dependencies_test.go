@@ -55,6 +55,7 @@ func testDependencies(t *testing.T, dao *mysql.DAO, settings config.Config) Depe
 	adminStudentHandler := admincontroller.NewStudentHandler(adminStudentService, zap.NewNop())
 	return Dependencies{
 		RateLimiter:          limiter,
+		Logger:               zap.NewNop(),
 		AppVersions:          appVersionHandler,
 		AppAvatar:            appAvatarHandler,
 		AppFeedback:          appFeedbackHandler,
