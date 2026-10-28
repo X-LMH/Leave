@@ -273,6 +273,47 @@ func TestLoginRegistrationValidationAndAccountLimits(t *testing.T) {
 	}
 }
 
+func TestRateLimitClientIPBehindLocalProxy(t *testing.T) {
+	for _, path := range []string{"/api/v1/home", "/api/v1/admin/overview"} {
+		for _, tc := range []struct {
+			name, peer, realIP, forwardedFor, want string
+		}{
+			{"local proxy", "127.0.0.1", "198.51.100.10", "203.0.113.99", "198.51.100.10"},
+			{"another client", "127.0.0.1", "198.51.100.11", "", "198.51.100.11"},
+			{"IPv6 proxy", "::1", "2001:db8::10", "", "2001:db8::10"},
+			{"IPv6 client", "127.0.0.1", "2001:db8::11", "", "2001:db8::11"},
+			{"untrusted peer", "192.0.2.1", "198.51.100.10", "203.0.113.99", "192.0.2.1"},
+			{"untrusted IPv6 peer", "2001:db8::1", "198.51.100.10", "", "2001:db8::1"},
+			{"missing header", "127.0.0.1", "", "203.0.113.99", "127.0.0.1"},
+			{"invalid header", "127.0.0.1", "invalid", "203.0.113.99", "127.0.0.1"},
+		} {
+			t.Run(path+"/"+tc.name, func(t *testing.T) {
+				var keys []string
+				limiter := testLimiter(t, func(ctx context.Context, cmd *redis.Cmd) error {
+					keys = append(keys, cmd.Args()[3].(string))
+					cmd.SetVal([]interface{}{int64(0), int64(60000)})
+					return nil
+				}, zap.NewNop())
+				r := router.SetupRouter(router.Dependencies{RateLimiter: limiter, Logger: zap.NewNop()})
+				req := httptest.NewRequest("GET", path, nil)
+				req.RemoteAddr = net.JoinHostPort(tc.peer, "1234")
+				req.Header.Set("X-Real-IP", tc.realIP)
+				req.Header.Set("X-Forwarded-For", tc.forwardedFor)
+				w := httptest.NewRecorder()
+				r.ServeHTTP(w, req)
+				side := "app"
+				if strings.Contains(path, "/admin/") {
+					side = "admin"
+				}
+				want := "leave:" + side + ":general:ip:" + tc.want
+				if w.Code != 429 || len(keys) != 1 || keys[0] != want {
+					t.Fatalf("status=%d keys=%v want=%s", w.Code, keys, want)
+				}
+			})
+		}
+	}
+}
+
 func TestIPRejectionAndUntrustedHeaders(t *testing.T) {
 	var keys []string
 	limiter := testLimiter(t, func(ctx context.Context, cmd *redis.Cmd) error {

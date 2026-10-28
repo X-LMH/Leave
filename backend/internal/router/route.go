@@ -37,8 +37,9 @@ type Dependencies struct {
 
 func SetupRouter(deps Dependencies) *gin.Engine {
 	r := gin.New()
-	// 不信任客户端转发头，按直接连接来源 IP 限流。
-	if err := r.SetTrustedProxies(nil); err != nil {
+	// 仅信任同机 Nginx，由它覆盖 X-Real-IP；公网直连不能通过转发头伪造 IP。
+	r.RemoteIPHeaders = []string{"X-Real-IP"}
+	if err := r.SetTrustedProxies([]string{"127.0.0.1", "::1"}); err != nil {
 		panic(err)
 	}
 
