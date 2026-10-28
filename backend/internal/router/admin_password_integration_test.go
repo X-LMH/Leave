@@ -100,11 +100,39 @@ func TestAdminPasswordIntegration(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	t.Run("case sensitive login identities", func(t *testing.T) {
+		auth := adminservice.NewAuthService(dao, jwt.NewManager(settings.JWT.Secret, settings.JWT.ExpirationDays), zap.NewNop())
+		otherHash, err := passwordutil.Hash("other-pass")
+		if err != nil {
+			t.Fatal(err)
+		}
+		other := models.User{StudentID: "Admin", Password: otherHash, Role: models.RoleAdmin, Status: models.UserStatusActive}
+		if err := testDB.Create(&other).Error; err != nil {
+			t.Fatal(err)
+		}
+		for _, input := range []struct {
+			name, password string
+			valid          bool
+		}{
+			{"admin", "old-pass", true}, {"Admin", "other-pass", true},
+			{"admin", "other-pass", false}, {"Admin", "old-pass", false},
+			{"ADMIN", "old-pass", false}, {"ádmin", "old-pass", false},
+			{" admin ", "old-pass", true},
+		} {
+			_, err := auth.AdminLogin(&dto.AdminLoginRequest{UserName: input.name, Password: input.password})
+			if input.valid && err != nil {
+				t.Fatalf("login %q: %v", input.name, err)
+			}
+			if !input.valid && !errors.Is(err, mysql.ErrorUserNotExist) && !errors.Is(err, mysql.ErrorInvalidPassword) {
+				t.Fatalf("unexpected login result %q: %v", input.name, err)
+			}
+		}
+	})
 	token, err := jwt.NewManager(settings.JWT.Secret, settings.JWT.ExpirationDays).GenerateToken("admin", models.RoleAdmin)
 	if err != nil {
 		t.Fatal(err)
 	}
-	router := SetupRouter(testDependencies(dao, settings))
+	router := SetupRouter(testDependencies(t, dao, settings))
 	call := func(auth, body string) response.Response {
 		t.Helper()
 		req := httptest.NewRequest("POST", "/api/v1/admin/auth/password", strings.NewReader(body))

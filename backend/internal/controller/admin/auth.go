@@ -4,6 +4,7 @@ import (
 	"backend/internal/dao/mysql"
 	"backend/internal/dto"
 	logutil "backend/internal/logger"
+	"backend/internal/middleware"
 	"backend/internal/request"
 	"backend/internal/response"
 	adminservice "backend/internal/service/admin"
@@ -15,14 +16,16 @@ import (
 )
 
 type AuthHandler struct {
-	logger *zap.Logger
-	auth   *adminservice.AuthService
+	limiter *middleware.RateLimiter
+	logger  *zap.Logger
+	auth    *adminservice.AuthService
 }
 
-func NewAuthHandler(auth *adminservice.AuthService, logger *zap.Logger) *AuthHandler {
+func NewAuthHandler(auth *adminservice.AuthService, logger *zap.Logger, limiter *middleware.RateLimiter) *AuthHandler {
 	return &AuthHandler{
-		logger: logger,
-		auth:   auth,
+		limiter: limiter,
+		logger:  logger,
+		auth:    auth,
 	}
 }
 
@@ -35,6 +38,9 @@ func (a *AuthHandler) LoginHandler(c *gin.Context) {
 		return
 	}
 
+	if !a.limiter.Check(c, middleware.SideAdmin, middleware.OperationLogin, middleware.DimensionAccount, strings.TrimSpace(p.UserName)) {
+		return
+	}
 	data, err := a.auth.AdminLogin(p)
 	if err != nil {
 		switch {

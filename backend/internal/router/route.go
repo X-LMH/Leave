@@ -12,6 +12,7 @@ import (
 
 // Dependencies 显式列出路由所需的已组装组件。
 type Dependencies struct {
+	RateLimiter          *middleware.RateLimiter
 	Logger               *zap.Logger
 	AppVersions          *appcontroller.AppVersionHandler
 	AppAvatar            *appcontroller.AvatarHandler
@@ -36,6 +37,10 @@ type Dependencies struct {
 
 func SetupRouter(deps Dependencies) *gin.Engine {
 	r := gin.New()
+	// 不信任客户端转发头，按直接连接来源 IP 限流。
+	if err := r.SetTrustedProxies(nil); err != nil {
+		panic(err)
+	}
 
 	// 全局中间件
 	r.Use(middleware.RequestID(), middleware.AccessLogger(), middleware.Recovery(deps.Logger), middleware.CORSMiddleware())
@@ -53,7 +58,8 @@ func SetupRouter(deps Dependencies) *gin.Engine {
 
 	// App 接口需要校验客户端版本；管理平台不受 App 版本限制。
 	app := api.Group("")
-	app.Use(deps.AppVersionMiddleware)
+	// Public version and download routes are registered above and remain exempt.
+	app.Use(appIPRateLimit(deps.RateLimiter), deps.AppVersionMiddleware)
 
 	// App 公共接口
 	{
@@ -63,13 +69,13 @@ func SetupRouter(deps Dependencies) *gin.Engine {
 	}
 
 	user := app.Group("")
-	user.Use(deps.AuthMiddleware)
+	user.Use(deps.AuthMiddleware, deps.RateLimiter.Account(middleware.SideApp, middleware.OperationGeneral))
 	{
 		user.POST("/logout", deps.AppUser.LogoutHandler)
 		user.POST("/client-info", deps.AppUser.UpdateAppInfoHandler)
 		user.POST("/profile", deps.AppProfile.ProfileHandler)
-		user.POST("/profile/avatar", deps.AppAvatar.UploadAvatarHandler)
-		user.POST("/password", deps.AppUser.ChangePasswordHandler)
+		user.POST("/profile/avatar", deps.RateLimiter.Account(middleware.SideApp, middleware.OperationAvatarUpload), deps.AppAvatar.UploadAvatarHandler)
+		user.POST("/password", deps.RateLimiter.Account(middleware.SideApp, middleware.OperationPasswordChange), deps.AppUser.ChangePasswordHandler)
 		user.GET("/profile", deps.AppProfile.GetProfileHandler)
 		user.GET("/home", deps.AppRecord.GetHomeHandler)
 
@@ -77,24 +83,33 @@ func SetupRouter(deps Dependencies) *gin.Engine {
 		user.GET("/apartments", deps.AppOptions.GetApartmentOptionsHandler)
 		user.GET("/leave-types", deps.AppOptions.GetLeaveTypeOptionsHandler)
 
-		user.POST("/record", deps.AppRecord.CreateRecordHandler)
+		user.POST("/record", deps.RateLimiter.Account(middleware.SideApp, middleware.OperationRecordCreate), deps.AppRecord.CreateRecordHandler)
 		user.GET("/record/:id", deps.AppRecord.GetRecordHandler)
 		user.GET("/records", deps.AppRecord.GetRecordsLIstHandler)
 		user.DELETE("/record/:id", deps.AppRecord.DeleteRecordHandler)
 
-		user.POST("/feedback", deps.AppFeedback.CreateFeedbackHandler)
+		user.POST("/feedback", deps.RateLimiter.Account(middleware.SideApp, middleware.OperationFeedbackCreate), deps.AppFeedback.CreateFeedbackHandler)
 	}
 
 	admin := api.Group("/admin")
+	admin.Use(func(c *gin.Context) {
+		operation := middleware.OperationGeneral
+		if c.Request.Method == "POST" && c.FullPath() == "/api/v1/admin/auth/login" {
+			operation = middleware.OperationLogin
+		}
+		if deps.RateLimiter.Check(c, middleware.SideAdmin, operation, middleware.DimensionIP, c.ClientIP()) {
+			c.Next()
+		}
+	})
 	adminAuth := admin.Group("/auth")
 	{
 		adminAuth.POST("/login", deps.AdminAuth.LoginHandler)
 
-		adminAuth.Use(deps.AuthMiddleware, middleware.AdminAuthMiddleware())
-		adminAuth.POST("/password", deps.AdminAuth.ChangePasswordHandler)
+		adminAuth.Use(deps.AuthMiddleware, middleware.AdminAuthMiddleware(), deps.RateLimiter.Account(middleware.SideAdmin, middleware.OperationGeneral))
+		adminAuth.POST("/password", deps.RateLimiter.Account(middleware.SideAdmin, middleware.OperationPasswordChange), deps.AdminAuth.ChangePasswordHandler)
 	}
 
-	admin.Use(deps.AuthMiddleware, middleware.AdminAuthMiddleware())
+	admin.Use(deps.AuthMiddleware, middleware.AdminAuthMiddleware(), deps.RateLimiter.Account(middleware.SideAdmin, middleware.OperationGeneral))
 	{
 		admin.GET("/overview", deps.AdminOverview.GetOverviewHandler)
 		admin.GET("/class-options", deps.AdminOptions.GetClassOptionsHandler)
@@ -138,4 +153,21 @@ func SetupRouter(deps Dependencies) *gin.Engine {
 	}
 
 	return r
+}
+
+func appIPRateLimit(limiter *middleware.RateLimiter) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		operation := middleware.OperationGeneral
+		if c.Request.Method == "POST" {
+			switch c.FullPath() {
+			case "/api/v1/auth/login":
+				operation = middleware.OperationLogin
+			case "/api/v1/auth/register":
+				operation = middleware.OperationRegister
+			}
+		}
+		if limiter.Check(c, middleware.SideApp, operation, middleware.DimensionIP, c.ClientIP()) {
+			c.Next()
+		}
+	}
 }

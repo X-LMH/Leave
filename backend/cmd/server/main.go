@@ -71,7 +71,7 @@ func run() (err error) {
 	}()
 	appLogger.Info("Redis 初始化成功")
 	dao := mysql.NewDAO(db, appLogger)
-	r := router.SetupRouter(buildDependencies(cfg, dao, appLogger))
+	r := router.SetupRouter(buildDependencies(cfg, dao, appLogger, redisClient))
 	// Run 成功后会阻塞；此日志只表示即将尝试监听。
 	appLogger.Info("准备监听 HTTP 请求", zap.Int("port", cfg.App.Port))
 	if err := r.Run(fmt.Sprintf(":%d", cfg.App.Port)); err != nil {

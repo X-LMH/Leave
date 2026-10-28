@@ -15,6 +15,7 @@ import (
 // Open 创建独立客户端，启动时检查连接，调用方负责关闭。
 func Open(cfg config.RedisConfig) (*redis.Client, error) {
 	client := redis.NewClient(&redis.Options{
+		MaxRetries:            -1, // Do not replay counter scripts after a lost reply.
 		Addr:                  net.JoinHostPort(cfg.Host, strconv.Itoa(cfg.Port)),
 		Username:              cfg.Username,
 		Password:              cfg.Password,

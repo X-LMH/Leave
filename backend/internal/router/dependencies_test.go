@@ -9,12 +9,15 @@ import (
 	adminservice "backend/internal/service/admin"
 	appservice "backend/internal/service/app"
 	commonservice "backend/internal/service/common"
+	"backend/internal/testutil"
 	"backend/internal/utils/jwt"
+	"testing"
 
 	"go.uber.org/zap"
 )
 
-func testDependencies(dao *mysql.DAO, settings config.Config) Dependencies {
+func testDependencies(t *testing.T, dao *mysql.DAO, settings config.Config) Dependencies {
+	limiter := testutil.NewRateLimiter(t)
 	tokens := jwt.NewManager(settings.JWT.Secret, settings.JWT.ExpirationDays)
 	commonOptionsService := commonservice.NewOptionsService(dao, zap.NewNop())
 	appVersionService := appservice.NewAppVersionService(dao, zap.NewNop())
@@ -39,10 +42,10 @@ func testDependencies(dao *mysql.DAO, settings config.Config) Dependencies {
 	appOptionsHandler := appcontroller.NewOptionsHandler(appOptionsService, commonOptionsService, zap.NewNop())
 	appProfileHandler := appcontroller.NewProfileHandler(appProfileService, zap.NewNop())
 	appRecordHandler := appcontroller.NewRecordHandler(appRecordService, zap.NewNop())
-	appUserHandler := appcontroller.NewUserHandler(appUserService, zap.NewNop())
+	appUserHandler := appcontroller.NewUserHandler(appUserService, zap.NewNop(), limiter)
 	adminApartmentHandler := admincontroller.NewApartmentHandler(adminApartmentService, zap.NewNop())
 	adminAppVersionHandler := admincontroller.NewAppVersionHandler(adminAppVersionService, zap.NewNop())
-	adminAuthHandler := admincontroller.NewAuthHandler(adminAuthService, zap.NewNop())
+	adminAuthHandler := admincontroller.NewAuthHandler(adminAuthService, zap.NewNop(), limiter)
 	adminClassHandler := admincontroller.NewClassHandler(adminClassService, zap.NewNop())
 	adminFeedbackHandler := admincontroller.NewFeedbackHandler(adminFeedbackService, zap.NewNop())
 	adminLeaveTypeHandler := admincontroller.NewLeaveTypeHandler(adminLeaveTypeService, zap.NewNop())
@@ -51,6 +54,7 @@ func testDependencies(dao *mysql.DAO, settings config.Config) Dependencies {
 	adminRecordHandler := admincontroller.NewRecordHandler(adminRecordService, zap.NewNop())
 	adminStudentHandler := admincontroller.NewStudentHandler(adminStudentService, zap.NewNop())
 	return Dependencies{
+		RateLimiter:          limiter,
 		AppVersions:          appVersionHandler,
 		AppAvatar:            appAvatarHandler,
 		AppFeedback:          appFeedbackHandler,

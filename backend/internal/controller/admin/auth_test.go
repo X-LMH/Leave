@@ -8,6 +8,7 @@ import (
 	"backend/internal/request"
 	"backend/internal/response"
 	adminservice "backend/internal/service/admin"
+	"backend/internal/testutil"
 	"backend/internal/utils/jwt"
 	"encoding/json"
 	"net/http/httptest"
@@ -41,7 +42,7 @@ func TestChangePasswordValidationAndRole(t *testing.T) {
 				c.Set(request.CtxStuID, "test-admin")
 				c.Set(request.CtxRole, tc.role)
 			})
-			r.POST("/password", middleware.AdminAuthMiddleware(), NewAuthHandler(adminservice.NewAuthService(dao, jwt.NewManager(settings.JWT.Secret, settings.JWT.ExpirationDays), zap.NewNop()), zap.NewNop()).ChangePasswordHandler)
+			r.POST("/password", middleware.AdminAuthMiddleware(), NewAuthHandler(adminservice.NewAuthService(dao, jwt.NewManager(settings.JWT.Secret, settings.JWT.ExpirationDays), zap.NewNop()), zap.NewNop(), testutil.NewRateLimiter(t)).ChangePasswordHandler)
 			req := httptest.NewRequest("POST", "/password", strings.NewReader(tc.body))
 			req.Header.Set("Content-Type", "application/json")
 			w := httptest.NewRecorder()

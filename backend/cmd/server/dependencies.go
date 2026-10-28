@@ -12,11 +12,13 @@ import (
 	commonservice "backend/internal/service/common"
 	"backend/internal/utils/jwt"
 
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
 
 // buildDependencies 组装当前应用实例的服务、Handler 和中间件。
-func buildDependencies(cfg config.Config, dao *mysql.DAO, logger *zap.Logger) router.Dependencies {
+func buildDependencies(cfg config.Config, dao *mysql.DAO, logger *zap.Logger, redisClient *redis.Client) router.Dependencies {
+	limiter := middleware.NewRateLimiter(redisClient, logger)
 	tokens := jwt.NewManager(cfg.JWT.Secret, cfg.JWT.ExpirationDays)
 	commonOptionsService := commonservice.NewOptionsService(dao, logger)
 	appVersionService := appservice.NewAppVersionService(dao, logger)
@@ -41,10 +43,10 @@ func buildDependencies(cfg config.Config, dao *mysql.DAO, logger *zap.Logger) ro
 	appOptionsHandler := appcontroller.NewOptionsHandler(appOptionsService, commonOptionsService, logger)
 	appProfileHandler := appcontroller.NewProfileHandler(appProfileService, logger)
 	appRecordHandler := appcontroller.NewRecordHandler(appRecordService, logger)
-	appUserHandler := appcontroller.NewUserHandler(appUserService, logger)
+	appUserHandler := appcontroller.NewUserHandler(appUserService, logger, limiter)
 	adminApartmentHandler := admincontroller.NewApartmentHandler(adminApartmentService, logger)
 	adminAppVersionHandler := admincontroller.NewAppVersionHandler(adminAppVersionService, logger)
-	adminAuthHandler := admincontroller.NewAuthHandler(adminAuthService, logger)
+	adminAuthHandler := admincontroller.NewAuthHandler(adminAuthService, logger, limiter)
 	adminClassHandler := admincontroller.NewClassHandler(adminClassService, logger)
 	adminFeedbackHandler := admincontroller.NewFeedbackHandler(adminFeedbackService, logger)
 	adminLeaveTypeHandler := admincontroller.NewLeaveTypeHandler(adminLeaveTypeService, logger)
@@ -54,6 +56,7 @@ func buildDependencies(cfg config.Config, dao *mysql.DAO, logger *zap.Logger) ro
 	adminStudentHandler := admincontroller.NewStudentHandler(adminStudentService, logger)
 	return router.Dependencies{
 		Logger:               logger,
+		RateLimiter:          limiter,
 		AppVersions:          appVersionHandler,
 		AppAvatar:            appAvatarHandler,
 		AppFeedback:          appFeedbackHandler,

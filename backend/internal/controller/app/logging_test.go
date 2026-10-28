@@ -6,6 +6,7 @@ import (
 	"backend/internal/request"
 	"backend/internal/response"
 	appservice "backend/internal/service/app"
+	"backend/internal/testutil"
 	"backend/internal/utils/jwt"
 	"encoding/json"
 	"net/http"
@@ -65,7 +66,7 @@ func TestLoginLogsSystemFailureAndExpectedRejection(t *testing.T) {
 			}
 			core, logs := observer.New(zapcore.DebugLevel)
 			log := zap.New(core)
-			handler := NewUserHandler(appservice.NewUserService(mysql.NewDAO(db, log), jwt.NewManager("test-secret", 1), config.StorageConfig{}, log), log)
+			handler := NewUserHandler(appservice.NewUserService(mysql.NewDAO(db, log), jwt.NewManager("test-secret", 1), config.StorageConfig{}, log), log, testutil.NewRateLimiter(t))
 			engine := gin.New()
 			engine.Use(func(c *gin.Context) {
 				c.Set(request.CtxRequestID, "login-test-request")

@@ -13,7 +13,7 @@ import (
 
 func TestHomeRequiresLogin(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	deps := testDependencies(mysql.NewDAO(nil, zap.NewNop()), config.Config{})
+	deps := testDependencies(t, mysql.NewDAO(nil, zap.NewNop()), config.Config{})
 	deps.AppVersionMiddleware = func(c *gin.Context) { c.Next() }
 	r := SetupRouter(deps)
 	w := httptest.NewRecorder()

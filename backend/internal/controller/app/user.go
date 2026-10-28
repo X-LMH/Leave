@@ -4,6 +4,7 @@ import (
 	"backend/internal/dao/mysql"
 	"backend/internal/dto"
 	logutil "backend/internal/logger"
+	"backend/internal/middleware"
 	"backend/internal/request"
 	"backend/internal/response"
 	appservice "backend/internal/service/app"
@@ -16,14 +17,16 @@ import (
 )
 
 type UserHandler struct {
-	logger *zap.Logger
-	user   *appservice.UserService
+	limiter *middleware.RateLimiter
+	logger  *zap.Logger
+	user    *appservice.UserService
 }
 
-func NewUserHandler(user *appservice.UserService, logger *zap.Logger) *UserHandler {
+func NewUserHandler(user *appservice.UserService, logger *zap.Logger, limiter *middleware.RateLimiter) *UserHandler {
 	return &UserHandler{
-		logger: logger,
-		user:   user,
+		limiter: limiter,
+		logger:  logger,
+		user:    user,
 	}
 }
 
@@ -49,6 +52,9 @@ func (u *UserHandler) RegisterHandler(c *gin.Context) {
 		return
 	}
 
+	if !u.limiter.Check(c, middleware.SideApp, middleware.OperationRegister, middleware.DimensionAccount, p.StudentID) {
+		return
+	}
 	// 业务逻辑
 	data, err := u.user.Register(p)
 	if err != nil {
@@ -89,6 +95,9 @@ func (u *UserHandler) LoginHandler(c *gin.Context) {
 		return
 	}
 
+	if !u.limiter.Check(c, middleware.SideApp, middleware.OperationLogin, middleware.DimensionAccount, p.StudentID) {
+		return
+	}
 	// 业务逻辑
 	data, err := u.user.Login(p)
 	if err != nil {
