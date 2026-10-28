@@ -182,7 +182,7 @@ async function submit() {
 			: await loginRequest(submittedStudentID, submittedPassword, deviceName, appVersion)
 		if (!pageActive) return
 		saveSession(submittedStudentID, data, deviceName)
-		destination.value = data.profile_completed ? '/pages/home/index' : '/pages/profile/edit?first=1'
+		destination.value = data.user.role == 'admin' || data.profile_completed ? '/pages/home/index' : '/pages/profile/edit?first=1'
 		enterDestination()
 	} catch (error) {
 		if (!pageActive) return

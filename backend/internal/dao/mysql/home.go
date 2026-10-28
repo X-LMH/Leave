@@ -11,10 +11,16 @@ import (
 
 func (s *DAO) GetHomeUser(tx *gorm.DB, studentID string) (dto.HomeUser, error) {
 	var user dto.HomeUser
-	err := tx.Model(&models.Profile{}).
-		Select("profiles.name", "profiles.avatar_url", "COALESCE(classes.class_name, '') AS class_name").
+	err := tx.Model(&models.User{}).
+		Select(
+			"users.role",
+			"COALESCE(profiles.name, '') AS name",
+			"COALESCE(profiles.avatar_url, '') AS avatar_url",
+			"COALESCE(classes.class_name, '') AS class_name",
+		).
+		Joins("LEFT JOIN profiles ON profiles.student_id = users.student_id AND profiles.deleted_at IS NULL").
 		Joins("LEFT JOIN classes ON classes.id = profiles.class_id").
-		Where("profiles.student_id = ?", studentID).
+		Where("users.student_id = ?", studentID).
 		Scan(&user).Error
 	return user, err
 }

@@ -13,6 +13,7 @@ export const DEFAULT_AVATAR_URL = process.env.NODE_ENV === 'development'
 
 export const STORAGE_TOKEN_KEY = 'leave_token'
 export const STORAGE_STUDENT_ID_KEY = 'leave_student_id'
+export const STORAGE_ROLE_KEY = 'leave_role'
 export const STORAGE_NAME_KEY = 'leave_name'
 export const STORAGE_CLASS_NAME_KEY = 'leave_class_name'
 export const STORAGE_DEVICE_NAME_KEY = 'leave_device_name'
@@ -57,6 +58,7 @@ let isRedirectingToUpdate = false
 export class LoginData {
 	token: string = ''
 	user: LoginUser = {
+		role: '',
 		avatar_url: '',
 		student_id: '',
 		name: '',
@@ -66,6 +68,7 @@ export class LoginData {
 }
 
 export type LoginUser = {
+	role: string
 	student_id: string
 	name: string
 	class_name: string
@@ -73,6 +76,7 @@ export type LoginUser = {
 }
 
 export type CurrentUser = {
+	role: string
 	student_id: string
 	name: string
 	class_name: string
@@ -202,6 +206,7 @@ export type HomeRecord = {
 }
 
 export type HomeUser = {
+	role: string
 	student_id: string
 	name: string
 	classname: string
@@ -235,6 +240,7 @@ function clearSession() {
 	}
 	avatarCacheVersion++
 	uni.removeStorageSync(STORAGE_TOKEN_KEY)
+	uni.removeStorageSync(STORAGE_ROLE_KEY)
 	uni.removeStorageSync(STORAGE_STUDENT_ID_KEY)
 	uni.removeStorageSync(STORAGE_NAME_KEY)
 	uni.removeStorageSync(STORAGE_CLASS_NAME_KEY)
@@ -259,6 +265,7 @@ export function getCachedHomeUser(): HomeUser | null {
 	}
 	return {
 		student_id: user.student_id,
+		role: user.role,
 		name: name,
 		classname: className,
 		avatar_url: avatarURL
@@ -277,11 +284,13 @@ export function getStoredName(): string {
 }
 
 export function getCurrentUser(): CurrentUser {
+	const role = uni.getStorageSync(STORAGE_ROLE_KEY)
 	const studentID = uni.getStorageSync(STORAGE_STUDENT_ID_KEY)
 	const name = uni.getStorageSync(STORAGE_NAME_KEY)
 	const className = uni.getStorageSync(STORAGE_CLASS_NAME_KEY)
 	return {
 		student_id: typeof studentID == 'string' ? studentID : '',
+		role: typeof role == 'string' ? role : '',
 		name: typeof name == 'string' ? name : '',
 		class_name: typeof className == 'string' ? className : ''
 	}
@@ -308,6 +317,7 @@ export function saveSession(studentID: string, data: LoginData, deviceName: stri
 	}
 	avatarCacheVersion++
 	uni.setStorageSync(STORAGE_TOKEN_KEY, data.token)
+	uni.setStorageSync(STORAGE_ROLE_KEY, data.user.role)
 	uni.setStorageSync(STORAGE_STUDENT_ID_KEY, data.user.student_id)
 	uni.setStorageSync(STORAGE_NAME_KEY, data.user.name)
 	uni.setStorageSync(STORAGE_CLASS_NAME_KEY, data.user.class_name)
@@ -506,6 +516,7 @@ function loginDataFromJSON(data: UTSJSONObject): LoginData {
 	loginData.token = data['token'] as string
 	const userData = data['user'] as UTSJSONObject
 	loginData.user = {
+		role: (userData['role'] as string | null) ?? '',
 		avatar_url: (userData['avatar_url'] as string | null) ?? '',
 		student_id: userData['student_id'] as string,
 		name: userData['name'] as string,
@@ -747,6 +758,7 @@ async function fetchHome(version: number): Promise<HomeData> {
 	const data = await request<UTSJSONObject>('/home', 'GET', null, true)
 	const userData = data['user'] as UTSJSONObject
 	const user: HomeUser = {
+		role: (userData['role'] as string | null) ?? '',
 		student_id: userData['student_id'] as string,
 		name: userData['name'] as string,
 		classname: userData['classname'] as string,
@@ -759,6 +771,7 @@ async function fetchHome(version: number): Promise<HomeData> {
 	) {
 		uni.setStorageSync(STORAGE_NAME_KEY, user.name)
 		uni.setStorageSync(STORAGE_CLASS_NAME_KEY, user.classname)
+		uni.setStorageSync(STORAGE_ROLE_KEY, user.role)
 		// 上传成功后，旧首页响应不能把头像缓存改回上传前的地址。
 		if (cacheVersion == avatarCacheVersion) cacheAvatarURL(studentID, user.avatar_url)
 	}

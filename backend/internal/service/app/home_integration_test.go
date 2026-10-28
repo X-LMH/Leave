@@ -63,7 +63,7 @@ func TestHomeIntegration(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer connection.Close()
-	for _, name := range []string{"records", "profiles", "classes"} {
+	for _, name := range []string{"users", "records", "profiles", "classes"} {
 		definition, err := os.ReadFile(filepath.Join("..", "..", "..", "database", "tables", name+".sql"))
 		if err != nil {
 			t.Fatal(err)
@@ -73,10 +73,24 @@ func TestHomeIntegration(t *testing.T) {
 		}
 	}
 	dao := mysql.NewDAO(db, zap.NewNop())
+	if err := db.Create(&[]models.User{
+		{StudentID: "student-a", Role: models.RoleStudent, Status: models.UserStatusActive},
+		{StudentID: "student-b", Role: models.RoleStudent, Status: models.UserStatusActive},
+		{StudentID: "admin", Role: models.RoleAdmin, Status: models.UserStatusActive},
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
 	service := NewRecordService(dao, NewProfileService(dao, config.StorageConfig{BaseURL: "https://example.com/api/v1/uploads"}, zap.NewNop()), zap.NewNop())
 	// 与运行环境一致，使用本地北京时间覆盖年初的月份边界。
 	now := time.Date(2026, 1, 1, 0, 30, 0, 0, time.Local)
 	monthStart := time.Date(2026, 1, 1, 0, 0, 0, 0, time.Local)
+	adminHome, err := service.getHomeAt("admin", now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if adminHome.User.Role != models.RoleAdmin || adminHome.User.Name != "" {
+		t.Fatalf("unexpected admin home without profile: %+v", adminHome.User)
+	}
 	empty, err := service.getHomeAt("student-a", now)
 	if err != nil {
 		t.Fatal(err)
@@ -87,7 +101,7 @@ func TestHomeIntegration(t *testing.T) {
 	if empty.User.Name != "" || empty.User.ClassName != "" || empty.User.AvatarURL != "https://example.com/api/v1/uploads/avatars/default.png" {
 		t.Fatalf("unexpected default home user: %+v", empty.User)
 	}
-	if empty.User.StudentID != "student-a" {
+	if empty.User.StudentID != "student-a" || empty.User.Role != models.RoleStudent {
 		t.Fatalf("missing authenticated student ID without profile: %+v", empty.User)
 	}
 	class := models.Class{College: "计算机学院", Major: "计算机科学与技术", ClassName: "计算机1班", IsEnabled: true}

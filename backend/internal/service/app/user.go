@@ -105,6 +105,7 @@ func (u *UserService) newLoginResponse(user dto.User, role string, profileComple
 		return nil, err
 	}
 	user.AvatarURL = avatarURL
+	user.Role = role
 	token, err := u.tokens.GenerateToken(user.StudentID, role)
 	if err != nil {
 		return nil, err

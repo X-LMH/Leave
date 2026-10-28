@@ -728,6 +728,7 @@ async function save() {
 		if (!pageActive) return
 		const currentUser = getCurrentUser()
 		updateCurrentUser({
+			role: currentUser.role,
 			student_id: currentUser.student_id,
 			name: name.value.trim(),
 			class_name: classOptions.value[classIndex.value].class_name
