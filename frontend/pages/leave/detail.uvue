@@ -23,16 +23,22 @@
 			<!-- 暗色仅作用于原生顶部导航，假条正文保持网页原有配色。 -->
 			<web-view
 				v-if="webSrc != ''"
+				id="leave-detail-web-view"
 				class="compare-web-view"
 				:src="webSrc"
 				:dark-mode="false"
+				@loading="fixDetailTextZoom"
+				@load="fixDetailTextZoom"
 			></web-view>
 		</view>
 	</PageTransition>
 </template>
 
 <script setup lang="uts">
-import { ref } from 'vue'
+import { ref, nextTick } from 'vue'
+// #ifdef APP-ANDROID
+import WebView from 'android.webkit.WebView'
+// #endif
 import PageTransition from '@/components/PageTransition.uvue'
 import { getRecord, RecordDetail } from '@/utils/api.uts'
 
@@ -40,6 +46,14 @@ const webSrc = ref('')
 const fromRecords = ref(false)
 const isDarkMode = ref(false)
 let isPageVisible = false
+
+function fixDetailTextZoom() {
+	// #ifdef APP-ANDROID
+	// 保留修复前手机 0.9 字号下的正文大小，不再跟随系统字体缩放。
+	const element = uni.getElementById('leave-detail-web-view')
+	element?.getAndroidView<WebView>()?.getSettings()?.setTextZoom(90)
+	// #endif
+}
 
 function applyNavTheme(theme: string) {
 	isDarkMode.value = theme == 'dark'
@@ -72,6 +86,9 @@ onUnload(() => {
 onShow(() => {
 	isPageVisible = true
 	syncNavTheme()
+	nextTick(() => {
+		fixDetailTextZoom()
+	})
 })
 
 onHide(() => {
@@ -120,6 +137,9 @@ async function loadRecord(id: number) {
 	try {
 		const record = await getRecord(id)
 		webSrc.value = `/static/leave/detail/index.html?application=${encodeURIComponent(detailApplication(record))}`
+		nextTick(() => {
+			fixDetailTextZoom()
+		})
 	} catch (error) {
 		const message = (error as Error).message
 		uni.showToast({ title: message == null || message == '' ? '请假记录加载失败' : message, icon: 'none' })
@@ -214,7 +234,7 @@ function goHome() {
 	line-height: 42.857rpx;
 	text-align: center;
 	font-size: 30.952rpx;
-	font-weight: 500;
+	font-weight: 700;
 	color: #000;
 	transform: scale(1.02);
 }
