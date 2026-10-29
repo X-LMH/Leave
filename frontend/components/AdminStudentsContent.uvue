@@ -1,0 +1,24 @@
+<template>
+	<AdminListContent
+		ref="list"
+		kind="students"
+		:height="height"
+		:active="active"
+		:pending-key="pendingKey"
+	/>
+</template>
+<script setup lang="uts">
+import { ref } from 'vue'
+import AdminListContent from '@/components/AdminListContent.uvue'
+withDefaults(
+	defineProps<{ active: boolean; height: number; pendingKey?: number }>(),
+	{
+		pendingKey: 0,
+	},
+)
+const list = ref<ComponentPublicInstance | null>(null)
+function closeFilter(): boolean {
+	return (list.value?.$callMethod('closeFilter') as boolean | null) ?? false
+}
+defineExpose({ closeFilter })
+</script>

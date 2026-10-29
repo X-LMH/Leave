@@ -231,7 +231,14 @@ export type FeedbackResponse = {
 	created_at: string
 }
 
+let sessionCleanup: (() => void) | null = null
+export function registerSessionCleanup(cleanup: () => void) {
+	sessionCleanup = cleanup
+}
+
 function clearSession() {
+	const cleanup = sessionCleanup
+	if (cleanup != null) cleanup()
 	invalidateHomeCache()
 	const studentID = getCurrentUser().student_id
 	if (studentID != '') {
@@ -312,6 +319,8 @@ export function saveSession(studentID: string, data: LoginData, deviceName: stri
 	invalidateHomeCache()
 	const previousStudentID = getCurrentUser().student_id
 	if (previousStudentID != '' && previousStudentID != data.user.student_id) {
+		const cleanup = sessionCleanup
+		if (cleanup != null) cleanup()
 		clearAvatarFileCache(previousStudentID)
 		uni.removeStorageSync(STORAGE_AVATAR_KEY_PREFIX + previousStudentID)
 	}
@@ -350,7 +359,7 @@ export function changePassword(password: string, newPassword: string, rePassword
 	}, true)
 }
 
-function handleUnauthorized() {
+export function handleUnauthorized() {
 	clearSession()
 	uni.reLaunch({ url: '/pages/auth/login' })
 }
@@ -439,7 +448,7 @@ export function getAppDownloadURL(): string {
 	return API_BASE_URL + '/app-download?platform=' + APP_PLATFORM
 }
 
-export function request<T>(path: string, method: 'GET' | 'POST' | 'DELETE' = 'GET', data: object | null = null, requiresAuth: boolean = false): Promise<T> {
+export function request<T>(path: string, method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' = 'GET', data: object | null = null, requiresAuth: boolean = false): Promise<T> {
 	return new Promise((resolve, reject) => {
 		const header = { 'Content-Type': 'application/json' } as UTSJSONObject
 		header['X-App-Platform'] = APP_PLATFORM

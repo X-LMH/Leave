@@ -1,0 +1,54 @@
+<template>
+	<ProfilePageShell title="意见反馈" subtitle="" :scrollable="false"
+		><view id="admin-feedback-panel"
+			><AdminFeedbackContent
+				ref="feedback"
+				:height="height"
+				:active="active"
+				:pending-key="pendingKey" /></view
+	></ProfilePageShell>
+</template>
+<script setup lang="uts">
+import { ref, nextTick } from 'vue'
+import {
+	onLoad,
+	onReady,
+	onShow,
+	onHide,
+	onResize,
+	onBackPress,
+} from '@dcloudio/uni-app'
+import ProfilePageShell from '@/components/ProfilePageShell.uvue'
+import AdminFeedbackContent from '@/components/AdminFeedbackContent.uvue'
+import { requireAdmin } from '@/utils/admin-api.uts'
+const active = ref(false)
+const height = ref(
+	uni.getWindowInfo().windowHeight - uni.getWindowInfo().statusBarHeight - 104,
+)
+const pendingKey = ref(0)
+const feedback = ref<ComponentPublicInstance | null>(null)
+function measure() {
+	const rect = uni
+		.getElementById('admin-feedback-panel')
+		?.getBoundingClientRect()
+	if (rect != null)
+		height.value = Math.max(1, uni.getWindowInfo().windowHeight - rect.top - 38)
+}
+onLoad((options) => {
+	if (options['unhandled'] == '1') pendingKey.value = 1
+})
+onReady(() => measure())
+onResize((_options: OnResizeOptions) => {
+	nextTick(() => measure())
+})
+onShow(async () => {
+	if (await requireAdmin()) active.value = true
+})
+onHide(() => {
+	active.value = false
+})
+onBackPress(
+	(_options: OnBackPressOptions): boolean =>
+		(feedback.value?.$callMethod('closeFilter') as boolean | null) ?? false,
+)
+</script>

@@ -41,9 +41,11 @@ import WebView from 'android.webkit.WebView'
 // #endif
 import PageTransition from '@/components/PageTransition.uvue'
 import { getRecord, RecordDetail } from '@/utils/api.uts'
+import { getAdminRecordForDisplay, requireAdmin } from '@/utils/admin-api.uts'
 
 const webSrc = ref('')
 const fromRecords = ref(false)
+let fromAdmin = false
 const isDarkMode = ref(false)
 let isPageVisible = false
 
@@ -100,6 +102,7 @@ function twoDigits(value: number): string {
 }
 
 function formatTime(value: string): string {
+	if (value == '') return '-'
 	const date = new Date(value)
 	if (isNaN(date.getTime())) return '-'
 	return `${date.getFullYear()}-${twoDigits(date.getMonth() + 1)}-${twoDigits(date.getDate())} ${twoDigits(date.getHours())}:${twoDigits(date.getMinutes())}:${twoDigits(date.getSeconds())}`
@@ -129,19 +132,34 @@ function detailApplication(record: RecordDetail): string {
 	})
 }
 
+function goHome() {
+	if (fromAdmin) {
+		if (getCurrentPages().length > 1) uni.navigateBack({})
+		else uni.reLaunch({ url: '/pages/admin/index?tab=records' })
+		return
+	}
+	if (fromRecords.value) {
+		uni.navigateBack({})
+		return
+	}
+	uni.reLaunch({ url: '/pages/home/index' })
+}
+
 function returnToPreviousPage() {
+	if (fromAdmin) { goHome(); return }
 	uni.navigateBack({})
 }
 
 async function loadRecord(id: number) {
 	try {
-		const record = await getRecord(id)
+		if (fromAdmin && !(await requireAdmin())) return
+		const record = fromAdmin ? await getAdminRecordForDisplay(id) : await getRecord(id)
 		webSrc.value = `/static/leave/detail/index.html?application=${encodeURIComponent(detailApplication(record))}`
 		nextTick(() => {
 			fixDetailTextZoom()
 		})
 	} catch (error) {
-		const message = (error as Error).message
+		const message = error instanceof Error ? error.message : '请假记录加载失败'
 		uni.showToast({ title: message == null || message == '' ? '请假记录加载失败' : message, icon: 'none' })
 		setTimeout(returnToPreviousPage, 1200)
 	}
@@ -149,6 +167,7 @@ async function loadRecord(id: number) {
 
 onLoad((options) => {
 	fromRecords.value = options?.source == 'records'
+	fromAdmin = options?.source == 'admin'
 	const idText = options?.id ?? '0'
 	const id = parseInt(idText, 10)
 	if (id <= 0 || Math.floor(id) != id) {
@@ -158,13 +177,6 @@ onLoad((options) => {
 	}
 	loadRecord(id)
 })
-function goHome() {
-	if (fromRecords.value) {
-		uni.navigateBack({})
-		return
-	}
-	uni.reLaunch({ url: '/pages/home/index' })
-}
 </script>
 
 <style>

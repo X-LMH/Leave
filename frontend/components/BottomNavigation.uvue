@@ -23,72 +23,17 @@
 				:class="themeClass('nav-items')"
 				role="tablist"
 			>
-				<view
-					id="navigation-home"
-					:class="themeClass('nav-item')"
-					role="tab"
-					aria-label="总览"
-					:aria-selected="active == 'home'"
-					@touchstart.stop="handleTouchStart"
-					@touchmove.stop="handleTouchMove"
-					@touchend.stop="handleTouchEnd"
-					@touchcancel.stop="handleTouchCancel"
-					@click="selectTab(0)"
-				>
-					<image
-						:class="themeClass(iconClass(0))"
-						:src="themeImage(selectedIndex == 0
-								? '/static/common/tabbar/home-outline-blue.svg'
-								: '/static/common/tabbar/home-outline.svg')"
-						mode="aspectFit"
-					></image>
-					<text :class="themeClass(labelClass(0))">总览</text>
-				</view>
-				<view
-					id="navigation-records"
-					:class="themeClass('nav-item')"
-					role="tab"
-					aria-label="记录"
-					:aria-selected="active == 'records'"
-					@touchstart.stop="handleTouchStart"
-					@touchmove.stop="handleTouchMove"
-					@touchend.stop="handleTouchEnd"
-					@touchcancel.stop="handleTouchCancel"
-					@click="selectTab(1)"
-				>
-					<image
-						:class="themeClass(iconClass(1))"
-						:src="themeImage(selectedIndex == 1
-								? '/static/common/tabbar/records-outline-blue.svg'
-								: '/static/common/tabbar/records-outline.svg')"
-						mode="aspectFit"
-					></image>
-					<text :class="themeClass(labelClass(1))">记录</text>
-				</view>
-				<view
-					id="navigation-profile"
-					:class="themeClass('nav-item')"
-					role="tab"
-					aria-label="我的"
-					:aria-selected="active == 'profile'"
-					@touchstart.stop="handleTouchStart"
-					@touchmove.stop="handleTouchMove"
-					@touchend.stop="handleTouchEnd"
-					@touchcancel.stop="handleTouchCancel"
-					@click="selectTab(2)"
-				>
-					<image
-						:class="themeClass(iconClass(2))"
-						:src="themeImage(selectedIndex == 2
-								? '/static/common/tabbar/profile-outline-blue.svg'
-								: '/static/common/tabbar/profile-outline.svg')"
-						mode="aspectFit"
-					></image>
-					<text :class="themeClass(labelClass(2))">我的</text>
-				</view>
+                <view v-for="(item, index) in items" :key="item.key" :id="item.id"
+                    :class="themeClass('nav-item')" role="tab" :aria-label="item.label" :aria-selected="active == item.key"
+                    @touchstart.stop="handleTouchStart" @touchmove.stop="handleTouchMove"
+                    @touchend.stop="handleTouchEnd" @touchcancel.stop="handleTouchCancel" @click="selectTab(index)">
+                    <image :class="themeClass(iconClass(index))" :src="themeImage(selectedIndex == index ? item.selectedIcon : item.icon)" mode="aspectFit" />
+                    <text :class="themeClass(labelClass(index))">{{ item.label }}</text>
+                </view>
 			</view>
 		</view>
 		<view
+			v-if="mode != 'admin'"
 			:class="themeClass('nav-create')"
 			role="button"
 			aria-label="申请请假"
@@ -113,20 +58,35 @@ import {
 	systemReducesMotion
 } from '@/utils/navigation-preferences.uts'
 
-const props = defineProps<{ active: string }>()
+const props = withDefaults(defineProps<{ active: string, mode?: string }>(), { mode: 'student' })
+type NavigationItem = { key: string, label: string, id: string, icon: string, selectedIcon: string, url: string }
+const items = computed((): NavigationItem[] => {
+ const keys = props.mode == 'admin' ? ['overview', 'students', 'records', 'more'] : ['home', 'records', 'profile']
+ const labels = props.mode == 'admin' ? ['概览', '学生', '假条', '更多'] : ['总览', '记录', '我的']
+ const icons = props.mode == 'admin' ? ['home', 'profile', 'records', 'more'] : ['home', 'records', 'profile']
+ const urls = ['/pages/home/index', '/pages/leave/records', '/pages/profile/index']
+ const result: NavigationItem[] = []
+ for (let i = 0; i < keys.length; i++) {
+  result.push({ key: keys[i], label: labels[i], id: (props.mode == 'admin' ? 'admin-navigation-' : 'navigation-') + keys[i],
+   icon: '/static/common/tabbar/' + icons[i] + '-outline.svg', selectedIcon: '/static/common/tabbar/' + icons[i] + '-outline-blue.svg',
+   url: props.mode == 'admin' ? keys[i] : urls[i] } as NavigationItem)
+ }
+ return result
+})
 const emit = defineEmits(['navigate', 'create'])
 const windowWidth = ref(uni.getWindowInfo().windowWidth)
-const navigationWidth = computed((): number => Math.min(340, windowWidth.value - 110))
+const navigationWidth = computed((): number => props.mode == 'admin' ? Math.min(408, windowWidth.value - 32) : Math.min(340, windowWidth.value - 110))
 const dockStyle = computed(
 	(): string =>
 		'width:' +
-		(navigationWidth.value + 68) +
+		(navigationWidth.value + (props.mode == 'admin' ? 0 : 68)) +
 		'px;left:' +
-		(windowWidth.value - navigationWidth.value - 68) / 2 +
+		(windowWidth.value - navigationWidth.value - (props.mode == 'admin' ? 0 : 68)) / 2 +
 		'px;'
 )
 function activeIndex(): number {
-	return props.active == 'profile' ? 2 : props.active == 'records' ? 1 : 0
+	for (let i = 0; i < items.value.length; i++) if (items.value[i].key == props.active) return i
+	return 0
 }
 const selectedIndex = ref(activeIndex())
 const selectionX = ref(0)
@@ -156,7 +116,7 @@ const navigationClass = computed((): string => {
 	if (highContrast.value) value += ' bottom-navigation-contrast'
 	return value
 })
-const selectionWidth = computed((): number => (navigationWidth.value - 12) / 3)
+const selectionWidth = computed((): number => (navigationWidth.value - 12) / items.value.length)
 const selectionClass = computed((): string => {
 	let value = 'nav-selection'
 	if (highContrast.value) value += ' nav-selection-contrast'
@@ -235,14 +195,7 @@ function settle(index: number) {
 	)
 	if (index != activeIndex()) {
 		// 常驻主页面立即确认切换，胶囊在同一视图中继续完成回弹。
-		emit(
-			'navigate',
-			index == 0
-				? '/pages/home/index'
-				: index == 1
-					? '/pages/leave/records'
-					: '/pages/profile/index'
-		)
+		emit('navigate', items.value[index].url)
 	}
 }
 
@@ -253,24 +206,11 @@ function selectTab(index: number) {
 }
 
 function updateAccessibility() {
-	configureNavigationAccessibility(
-		uni.getElementById('navigation-home'),
-		'总览',
-		props.active == 'home',
-		() => selectTab(0)
-	)
-	configureNavigationAccessibility(
-		uni.getElementById('navigation-records'),
-		'记录',
-		props.active == 'records',
-		() => selectTab(1)
-	)
-	configureNavigationAccessibility(
-		uni.getElementById('navigation-profile'),
-		'我的',
-		props.active == 'profile',
-		() => selectTab(2)
-	)
+ for (let i = 0; i < items.value.length; i++) {
+  const index = i
+  const item = items.value[index]
+  configureNavigationAccessibility(uni.getElementById(item.id), item.label, props.active == item.key, () => selectTab(index))
+ }
 }
 
 function refreshPreferences() {
@@ -323,7 +263,7 @@ function handleTouchMove(event: UniTouchEvent) {
 	moved = true
 	dragging.value = true
 	event.preventDefault()
-	selectionX.value = Math.max(0, Math.min(selectionWidth.value * 2, startSelectionX + dx))
+	selectionX.value = Math.max(0, Math.min(selectionWidth.value * (items.value.length - 1), startSelectionX + dx))
 	selectedIndex.value = Math.round(selectionX.value / selectionWidth.value)
 }
 
@@ -356,11 +296,7 @@ watch(
 			if (active != previous && haptics.value) {
 				navigationSelectionFeedback(
 					uni.getElementById(
-						active == 'profile'
-							? 'navigation-profile'
-							: active == 'records'
-								? 'navigation-records'
-								: 'navigation-home'
+						items.value[activeIndex()].id
 					)
 				)
 			}

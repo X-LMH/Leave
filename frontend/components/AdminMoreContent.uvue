@@ -1,0 +1,181 @@
+<template>
+	<scroll-view
+		class="more-scroll"
+		:style="'height:' + height + 'px;'"
+		scroll-y="true"
+	>
+		<view class="more-content">
+			<text :class="themeClass('more-heading')">管理工具</text>
+			<view :class="themeClass('more-group')">
+				<view
+					v-for="item in tools"
+					:key="item.kind"
+					:class="themeClass('more-row')"
+					role="button"
+					:aria-label="item.label"
+					@click="openTool(item.kind)"
+					><view class="more-row-copy"
+						><text :class="themeClass('more-title')">{{ item.label }}</text
+						><text :class="themeClass('more-subtitle')">{{
+							item.subtitle
+						}}</text></view
+					><text :class="themeClass('more-chevron')">›</text></view
+				>
+			</view>
+			<text :class="themeClass('more-heading')">支持与反馈</text>
+			<view :class="themeClass('more-group')"
+				><view
+					:class="themeClass('more-row')"
+					role="button"
+					aria-label="意见反馈"
+					@click="openFeedback"
+					><view class="more-row-copy"
+						><text :class="themeClass('more-title')">意见反馈</text
+						><text :class="themeClass('more-subtitle')"
+							>查看学生反馈并更新处理状态</text
+						></view
+					><text v-if="pending > 0" class="more-badge">{{ pending }}</text
+					><text :class="themeClass('more-chevron')">›</text></view
+				></view
+			>
+			<text v-if="error != ''" class="more-error" @click="refresh"
+				>{{ error }} · 点击重试</text
+			>
+		</view>
+	</scroll-view>
+</template>
+<script setup lang="uts">
+import { ref, watch, onUnmounted } from 'vue'
+import { themeClass as resolveThemeClass } from '@/utils/app-theme.uts'
+import { adminList, adminSession, adminRevision } from '@/utils/admin-api.uts'
+const props = defineProps<{ height: number; active: boolean }>()
+type MoreTool = { kind: string; label: string; subtitle: string }
+const tools: MoreTool[] = [
+	{ kind: 'classes', label: '班级管理', subtitle: '维护学院、专业与班级' },
+	{ kind: 'apartments', label: '公寓管理', subtitle: '维护公寓及适用性别' },
+	{
+		kind: 'leave-types',
+		label: '请假类型',
+		subtitle: '维护请假类型与显示顺序',
+	},
+]
+const pending = ref(0)
+const error = ref('')
+let sequence = 0
+let revision = -1
+let session = ''
+function themeClass(value: string): string {
+	return resolveThemeClass(value)
+}
+function openTool(kind: string) {
+	uni.navigateTo({ url: '/pages/admin/reference?kind=' + kind })
+}
+function openFeedback() {
+	uni.navigateTo({ url: '/pages/admin/feedbacks' })
+}
+async function refresh() {
+	const seq = ++sequence
+	const key = adminSession()
+	error.value = ''
+	try {
+		const result = await adminList(
+			'feedbacks',
+			'page=1&page_size=1&is_handled=false',
+		)
+		if (!props.active || seq != sequence || key != adminSession()) return
+		pending.value = result.total
+		revision = adminRevision
+		session = key
+	} catch (e) {
+		if (props.active && seq == sequence && key == adminSession())
+			error.value = (e as Error).message
+	}
+}
+watch(
+	(): boolean => props.active,
+	(active: boolean) => {
+		if (!active) {
+			sequence++
+			return
+		}
+		if (session != adminSession()) pending.value = 0
+		if (revision != adminRevision || session != adminSession()) refresh()
+	},
+	{ immediate: true },
+)
+onUnmounted(() => {
+	sequence++
+})
+</script>
+<style lang="scss">
+@import '@/styles/ios-theme.scss';
+.more-scroll {
+	flex-shrink: 0;
+}
+.more-content {
+	padding-bottom: 110px;
+}
+.more-heading {
+	color: $ios-secondary;
+	font-size: 13px;
+	margin: 6px 4px 10px;
+}
+.more-group {
+	background-color: $ios-surface;
+	border-radius: 20px;
+	margin-bottom: 26px;
+	overflow: hidden;
+}
+.more-row {
+	flex-direction: row;
+	align-items: center;
+	padding: 18px 16px;
+	border-bottom-width: 0.5px;
+	border-bottom-color: $ios-separator;
+}
+.more-row-copy {
+	flex: 1;
+}
+.more-title {
+	color: $ios-ink;
+	font-size: 17px;
+	font-weight: 500;
+}
+.more-subtitle {
+	color: $ios-secondary;
+	font-size: 12px;
+	line-height: 20px;
+	margin-top: 5px;
+}
+.more-chevron {
+	color: $ios-secondary;
+	font-size: 22px;
+	margin-left: 12px;
+}
+.more-badge {
+	color: #ffffff;
+	background-color: $ios-blue;
+	padding: 3px 8px;
+	border-radius: 12px;
+	font-size: 12px;
+}
+.more-error {
+	color: $ios-red;
+	font-size: 14px;
+	padding: 12px;
+}
+.dark-more-group {
+	background-color: $ios-dark-surface;
+}
+.dark-more-row {
+	border-bottom-color: $ios-dark-separator;
+}
+.dark-more-title {
+	color: $ios-dark-ink;
+}
+.dark-more-heading,
+.dark-more-subtitle,
+.dark-more-chevron {
+	color: $ios-dark-secondary;
+}
+</style>

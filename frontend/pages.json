@@ -167,6 +167,35 @@
 				"backgroundColorContent": "@pageBackground",
 				"swipeBackAsBackPress": true
 			}
+		},
+		{
+			"path": "pages/admin/index",
+			"style": {
+				"navigationStyle": "custom",
+				"disableScroll": true,
+				"backgroundColor": "@pageBackground",
+				"navigationBarBackgroundColor": "@pageBackground"
+			}
+		},
+        { "path": "pages/admin/feedbacks", "style": { "navigationStyle": "custom", "disableScroll": true, "backgroundColor": "@pageBackground", "navigationBarBackgroundColor": "@pageBackground" } },
+        { "path": "pages/admin/reference", "style": { "navigationStyle": "custom", "disableScroll": true, "backgroundColor": "@pageBackground", "navigationBarBackgroundColor": "@pageBackground" } },
+		{
+			"path": "pages/admin/student-detail",
+			"style": {
+				"navigationStyle": "custom",
+				"disableScroll": true,
+				"backgroundColor": "@pageBackground",
+				"navigationBarBackgroundColor": "@pageBackground"
+			}
+		},
+		{
+			"path": "pages/admin/feedback-detail",
+			"style": {
+				"navigationStyle": "custom",
+				"disableScroll": true,
+				"backgroundColor": "@pageBackground",
+				"navigationBarBackgroundColor": "@pageBackground"
+			}
 		}
 	],
 	"globalStyle": {

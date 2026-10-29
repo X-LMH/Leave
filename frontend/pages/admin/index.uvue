@@ -1,0 +1,180 @@
+<template>
+	<view :class="themeClass('admin-root')">
+		<view class="safe-top"></view>
+		<view class="header"
+			><text :class="themeClass('page-title')">{{ title }}</text
+			><text class="exit" @click="exitAdmin">返回我的</text></view
+		>
+		<view id="admin-panels" class="panels">
+			<view v-show="tab == 'overview'" class="panel"
+				><AdminOverviewContent
+					:height="panelHeight"
+					:active="active && tab == 'overview'"
+					@navigate="switchTab"
+			/></view>
+			<view v-if="studentsVisited" v-show="tab == 'students'" class="panel"
+				><AdminStudentsContent
+					ref="students"
+					:height="panelHeight"
+					:active="active && tab == 'students'"
+			/></view>
+			<view v-if="recordsVisited" v-show="tab == 'records'" class="panel"
+				><AdminRecordsContent
+					ref="records"
+					:height="panelHeight"
+					:active="active && tab == 'records'"
+			/></view>
+			<view v-if="moreVisited" v-show="tab == 'more'" class="panel"
+				><AdminMoreContent
+					:height="panelHeight"
+					:active="active && tab == 'more'"
+			/></view>
+		</view>
+		<BottomNavigation
+			ref="navigation"
+			mode="admin"
+			:active="tab"
+			@navigate="switchTab"
+		/>
+	</view>
+</template>
+<script setup lang="uts">
+import { ref, computed } from 'vue'
+import {
+	onLoad,
+	onShow,
+	onHide,
+	onBackPress,
+	onResize,
+	onReady,
+} from '@dcloudio/uni-app'
+import BottomNavigation from '@/components/BottomNavigation.uvue'
+import AdminOverviewContent from '@/components/AdminOverviewContent.uvue'
+import AdminStudentsContent from '@/components/AdminStudentsContent.uvue'
+import AdminRecordsContent from '@/components/AdminRecordsContent.uvue'
+import AdminMoreContent from '@/components/AdminMoreContent.uvue'
+import { requireAdmin } from '@/utils/admin-api.uts'
+import { themeClass as resolveThemeClass } from '@/utils/app-theme.uts'
+const active = ref(false)
+const panelHeight = ref(
+	uni.getWindowInfo().windowHeight - uni.getWindowInfo().statusBarHeight - 84,
+)
+function measurePanel() {
+	const rect = uni.getElementById('admin-panels')?.getBoundingClientRect()
+	if (rect != null)
+		panelHeight.value = Math.max(1, uni.getWindowInfo().windowHeight - rect.top)
+}
+onReady(() => measurePanel())
+const tab = ref('overview')
+const studentsVisited = ref(false)
+const recordsVisited = ref(false)
+const moreVisited = ref(false)
+const students = ref<ComponentPublicInstance | null>(null)
+const records = ref<ComponentPublicInstance | null>(null)
+const navigation = ref<ComponentPublicInstance | null>(null)
+const title = computed((): string =>
+	tab.value == 'overview'
+		? '管理'
+		: tab.value == 'students'
+			? '学生'
+			: tab.value == 'records'
+				? '假条'
+				: '更多',
+)
+function themeClass(value: string): string {
+	return resolveThemeClass(value)
+}
+function exitAdmin() {
+	if (getCurrentPages().length > 1) uni.navigateBack({})
+	else uni.reLaunch({ url: '/pages/home/index?tab=profile' })
+}
+function switchTab(value: string) {
+	if (value == 'pending' || value == 'feedbacks') {
+		uni.navigateTo({
+			url:
+				'/pages/admin/feedbacks' + (value == 'pending' ? '?unhandled=1' : ''),
+		})
+		return
+	}
+	if (value == 'students') studentsVisited.value = true
+	if (value == 'records') recordsVisited.value = true
+	if (value == 'more') moreVisited.value = true
+	tab.value = value
+}
+
+onLoad((options) => {
+	const target = options['tab']
+	if (target == 'students' || target == 'records' || target == 'more')
+		switchTab(target)
+})
+onShow(async () => {
+	if (await requireAdmin()) active.value = true
+})
+onHide(() => {
+	active.value = false
+})
+onResize((_options: OnResizeOptions) => {
+	measurePanel()
+	navigation.value?.$callMethod('updateLayout')
+})
+onBackPress((_options: OnBackPressOptions): boolean => {
+	if (_options.from == 'navigateBack') return false
+	const panel =
+		tab.value == 'students'
+			? students.value
+			: tab.value == 'records'
+				? records.value
+				: null
+	if ((panel?.$callMethod('closeFilter') as boolean | null) == true) return true
+	exitAdmin()
+	return true
+})
+</script>
+<style lang="scss">
+@import '@/styles/ios-theme.scss';
+.admin-root {
+	overflow: hidden;
+	flex: 1;
+	padding: 0 20px;
+	background-color: $ios-page;
+}
+.dark-admin-root {
+	background-color: $ios-dark-page;
+}
+.safe-top {
+	height: var(--status-bar-height);
+}
+.header {
+	flex-direction: row;
+	align-items: center;
+	justify-content: space-between;
+	padding-top: 14px;
+	padding-bottom: 24px;
+}
+.page-title {
+	color: $ios-ink;
+	font-size: 34px;
+	font-weight: 700;
+}
+.dark-page-title {
+	color: $ios-dark-ink;
+}
+.exit {
+	color: $ios-blue;
+	padding: 12px 0 12px 16px;
+	font-size: 14px;
+}
+.panels {
+	height: 0;
+	min-height: 0;
+	flex: 1;
+	position: relative;
+}
+.panel {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+}
+</style>

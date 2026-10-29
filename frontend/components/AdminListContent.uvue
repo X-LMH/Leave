@@ -1,0 +1,522 @@
+<template>
+	<view
+		class="admin-panel-root"
+		:id="'admin-root-' + kind"
+		:style="'height:' + height + 'px;'"
+		><view class="list-toolbar">
+			<view class="search-bar">
+				<view :class="themeClass('search-box')">
+					<picker
+						v-if="kind != 'feedbacks'"
+						:range="searchModes"
+						@change="changeSearchMode"
+						><text class="link">{{ searchModes[searchMode] }} ▾</text></picker
+					>
+					<input
+						:class="themeClass('search-input')"
+						v-model="keyword"
+						:placeholder="
+							kind == 'feedbacks'
+								? '搜索反馈内容'
+								: '输入' + searchModes[searchMode]
+						"
+						confirm-type="search"
+						@confirm="refresh"
+					/>
+				</view>
+				<text class="link" @click="openFilters">筛选</text>
+			</view>
+			<view v-if="kind == 'feedbacks'" class="status-tabs">
+				<view
+					v-for="(label, index) in feedbackTabs"
+					:key="label"
+					:class="
+						themeClass(
+							handling == index ? 'status-tab status-selected' : 'status-tab',
+						)
+					"
+					@click="changeHandling(index)"
+					><text :class="themeClass('status-label')">{{ label }}</text></view
+				>
+			</view>
+			<view v-if="filterSummary != ''" class="filter-chip" @click="resetFilters"
+				><text class="link">{{ filterSummary }}　清除 ×</text></view
+			>
+		</view>
+		<scroll-view
+			class="admin-scroll"
+			:id="'admin-scroll-' + kind"
+			scroll-y="true"
+			:refresher-enabled="true"
+			:refresher-triggered="refreshing"
+			:scroll-top="scrollTop"
+			@scroll="rememberScroll"
+			@refresherrefresh="refresh"
+			@scrolltolower="more"
+		>
+			<view :class="themeClass('admin-content')">
+				<text v-if="error != ''" class="error" @click="retry"
+					>{{ error }} · 点击重试</text
+				>
+				<text v-if="busy && rows.length == 0" :class="themeClass('muted')"
+					>正在加载…</text
+				>
+				<view
+					v-for="row in rows"
+					:key="row.id"
+					:class="themeClass('admin-card')"
+					@click="openDetail(row.id)"
+				>
+					<view class="row-heading"
+						><text :class="themeClass('row-title')">{{ row.title }}</text
+						><text class="badge">{{ row.status }}</text></view
+					>
+					<text :class="themeClass('muted')">{{ row.subtitle }}</text
+					><text :class="themeClass('summary')">{{ row.summary }}</text>
+				</view>
+				<text
+					v-if="!busy && error == '' && rows.length == 0"
+					:class="themeClass('muted')"
+					>暂无数据</text
+				>
+				<text v-if="rows.length > 0" class="load-more" @click="more">{{
+					busy
+						? '正在加载…'
+						: rows.length < total
+							? '上拉加载更多'
+							: '已显示全部'
+				}}</text>
+			</view>
+		</scroll-view>
+		<view v-if="filterOpen" class="filter-overlay" @click="filterOpen = false">
+			<view
+				:class="themeClass('filter-panel')"
+				:style="filterStyle"
+				@click.stop="noop"
+				><scroll-view class="filter-scroll" scroll-y="true">
+					<text :class="themeClass('section-heading')">筛选条件</text>
+					<template v-if="kind == 'students'">
+						<picker
+							:range="optionLabels"
+							:value="draftOption"
+							@change="chooseOption"
+							><text :class="themeClass('menu-item')"
+								>班级：{{ optionLabels[draftOption] }} ▾</text
+							></picker
+						>
+						<picker
+							:range="accountStates"
+							:value="draftState"
+							@change="chooseState"
+							><text :class="themeClass('menu-item')"
+								>账号：{{ accountStates[draftState] }} ▾</text
+							></picker
+						>
+					</template>
+					<template v-if="kind == 'records'">
+						<picker
+							:range="optionLabels"
+							:value="draftOption"
+							@change="chooseOption"
+							><text :class="themeClass('menu-item')"
+								>类型：{{ optionLabels[draftOption] }} ▾</text
+							></picker
+						>
+						<picker
+							:range="schoolStates"
+							:value="draftState"
+							@change="chooseState"
+							><text :class="themeClass('menu-item')"
+								>离校：{{ schoolStates[draftState] }} ▾</text
+							></picker
+						>
+						<picker mode="date" :value="draftFrom" @change="chooseFrom"
+							><text :class="themeClass('menu-item')"
+								>开始日期：{{ draftFrom == '' ? '不限' : draftFrom }} ▾</text
+							></picker
+						>
+						<picker mode="date" :value="draftTo" @change="chooseTo"
+							><text :class="themeClass('menu-item')"
+								>结束日期：{{ draftTo == '' ? '不限' : draftTo }} ▾</text
+							></picker
+						>
+					</template>
+					<template v-if="kind == 'feedbacks'">
+						<input
+							:class="themeClass('search-input')"
+							v-model="draftStudent"
+							placeholder="筛选学号（可留空）"
+						/>
+						<picker
+							:range="anonymousStates"
+							:value="draftAnonymous"
+							@change="chooseAnonymous"
+							><text :class="themeClass('menu-item')"
+								>身份：{{ anonymousStates[draftAnonymous] }} ▾</text
+							></picker
+						>
+					</template> </scroll-view
+				><button class="primary-button" @click="applyFilters">应用筛选</button>
+				<text class="load-more" @click="resetFilters">清除全部条件</text>
+			</view>
+		</view>
+	</view>
+</template>
+<script setup lang="uts">
+import { ref, watch, onUnmounted, nextTick, computed } from 'vue'
+import { themeClass as resolveThemeClass } from '@/utils/app-theme.uts'
+import {
+	AdminRow,
+	AdminOption,
+	adminSession,
+	adminRevision,
+	requireAdmin,
+	adminList,
+	adminOptions,
+} from '@/utils/admin-api.uts'
+const props = defineProps<{
+	kind: string
+	active: boolean
+	height: number
+	pendingKey: number
+}>()
+const kind = props.kind
+const rows = ref<AdminRow[]>([])
+const busy = ref(false)
+const refreshing = ref(false)
+const loaded = ref(false)
+const error = ref('')
+const total = ref(0)
+const keyword = ref('')
+const searchModes = ['姓名', '学号']
+const searchMode = ref(0)
+const accountStates = ['全部', '正常', '停用']
+const schoolStates = ['全部', '离校', '不离校']
+const anonymousStates = ['全部', '匿名', '实名']
+const feedbackTabs = ['未处理', '全部', '已处理']
+const handling = ref(0)
+const scrollTop = ref(0)
+let rememberedTop = 0
+const filterStyle = computed(
+	(): string => 'height:' + Math.floor(props.height * 0.8) + 'px;',
+)
+function restoreScroll(value: number) {
+	scrollTop.value = value + 0.01
+	nextTick(() => {
+		scrollTop.value = value
+	})
+}
+const optionLabels = ref<string[]>(['全部'])
+const options = ref<AdminOption[]>([])
+const filterOpen = ref(false)
+const draftOption = ref(0)
+const draftState = ref(0)
+const draftAnonymous = ref(0)
+const draftStudent = ref('')
+const draftFrom = ref('')
+const draftTo = ref('')
+const filterSummary = ref('')
+let filterQuery = ''
+let appliedSearch = ''
+let appliedOptionID = 0
+let page = 0
+let lastReset = true
+let lastPreserve = false
+let sequence = 0
+let revision = -1
+let session = ''
+function rememberScroll(e: UniScrollEvent) {
+	rememberedTop = e.detail.scrollTop
+}
+function themeClass(value: string): string {
+	return resolveThemeClass(value)
+}
+function noop() {}
+function changeSearchMode(e: UniPickerChangeEvent) {
+	searchMode.value = parseInt(e.detail.value as string)
+}
+function chooseOption(e: UniPickerChangeEvent) {
+	draftOption.value = parseInt(e.detail.value as string)
+}
+function chooseState(e: UniPickerChangeEvent) {
+	draftState.value = parseInt(e.detail.value as string)
+}
+function chooseAnonymous(e: UniPickerChangeEvent) {
+	draftAnonymous.value = parseInt(e.detail.value as string)
+}
+function chooseFrom(e: UniPickerChangeEvent) {
+	draftFrom.value = e.detail.value as string
+}
+function chooseTo(e: UniPickerChangeEvent) {
+	draftTo.value = e.detail.value as string
+}
+function valid(seq: number, key: string): boolean {
+	return props.active && sequence == seq && key == adminSession()
+}
+async function openFilters() {
+	filterOpen.value = true
+}
+function classLabel(id: number): string {
+	for (const option of options.value) if (option.id == id) return option.label
+	return '未设置'
+}
+function openDetail(id: number) {
+	uni.navigateTo({
+		url:
+			kind == 'records'
+				? '/pages/leave/detail?id=' + id + '&source=admin'
+				: '/pages/admin/' +
+					(kind == 'students' ? 'student-detail' : 'feedback-detail') +
+					'?id=' +
+					id,
+	})
+}
+async function load(reset: boolean, preserve: boolean = false) {
+	const previousTop = rememberedTop
+	const previousPage = preserve ? Math.max(1, page) : 1
+	if (busy.value && !reset) return
+	const seq = ++sequence
+	lastReset = reset
+	lastPreserve = preserve
+	const key = adminSession()
+	busy.value = true
+	error.value = ''
+	try {
+		if (!(await requireAdmin()) || !valid(seq, key)) return
+		if (kind != 'feedbacks' && (reset || options.value.length == 0)) {
+			// 基础资料可能在“更多”中改名或重新排序，按 ID 恢复筛选选择。
+			const draftID = draftOption.value > 0 && draftOption.value <= options.value.length
+				? options.value[draftOption.value - 1].id : 0
+			let oldLabel = ''
+			for (const option of options.value) if (option.id == appliedOptionID) oldLabel = option.label
+			const result = await adminOptions(
+				kind == 'students' ? 'class' : 'leave-type',
+			)
+			if (!valid(seq, key)) return
+			options.value = result
+			optionLabels.value = ['全部']
+			draftOption.value = 0
+			for (let i = 0; i < result.length; i++) {
+				const option = result[i]
+				optionLabels.value.push(option.label)
+				if (option.id == draftID) draftOption.value = i + 1
+				if (option.id == appliedOptionID && oldLabel != '')
+					filterSummary.value = filterSummary.value.replace(oldLabel, option.label)
+			}
+		}
+		const next = reset ? 1 : page + 1
+		const statusQuery =
+			kind == 'feedbacks' && handling.value != 1
+				? '&is_handled=' + (handling.value == 2 ? 'true' : 'false')
+				: ''
+		let result = await adminList(
+			kind,
+			'page=' +
+				next +
+				'&page_size=20' +
+				appliedSearch +
+				filterQuery +
+				statusQuery,
+		)
+		let loadedPage = next
+		if (preserve) {
+			for (
+				let n = 2;
+				n <= previousPage && result.rows.length < result.total;
+				n++
+			) {
+				const extra = await adminList(
+					kind,
+					'page=' +
+						n +
+						'&page_size=20' +
+						appliedSearch +
+						filterQuery +
+						statusQuery,
+				)
+				if (!valid(seq, key)) return
+				result.rows = result.rows.concat(extra.rows)
+				result.total = extra.total
+				loadedPage = n
+			}
+		}
+
+		if (!valid(seq, key)) return
+		if (kind == 'students')
+			for (const row of result.rows) row.summary = classLabel(row.classID)
+		rows.value = reset ? result.rows : rows.value.concat(result.rows)
+		page = loadedPage
+		total.value = result.total
+		loaded.value = true
+		revision = adminRevision
+		if (preserve) nextTick(() => restoreScroll(previousTop))
+	} catch (e) {
+		if (valid(seq, key)) error.value = (e as Error).message
+	} finally {
+		if (sequence == seq) {
+			busy.value = false
+			refreshing.value = false
+		}
+	}
+}
+function refresh() {
+	appliedSearch =
+		'&' +
+		(kind == 'feedbacks'
+			? 'keyword'
+			: searchMode.value == 0
+				? 'name'
+				: 'student_id') +
+		'=' +
+		encodeURIComponent(keyword.value.trim())
+	refreshing.value = true
+	restoreScroll(0)
+	load(true)
+}
+function retry() {
+	load(lastReset, lastPreserve)
+}
+function more() {
+	if (kind != 'overview' && !busy.value && rows.value.length < total.value)
+		load(false)
+}
+function resetFilters() {
+	appliedOptionID = 0
+	draftOption.value = 0
+	draftState.value = 0
+	draftAnonymous.value = 0
+	draftStudent.value = ''
+	draftFrom.value = ''
+	draftTo.value = ''
+	filterQuery = ''
+	filterSummary.value = ''
+	filterOpen.value = false
+	refresh()
+}
+function applyFilters() {
+	if (
+		draftFrom.value != '' &&
+		draftTo.value != '' &&
+		draftFrom.value > draftTo.value
+	) {
+		uni.showToast({ title: '结束日期不能早于开始日期', icon: 'none' })
+		return
+	}
+	let query = ''
+	appliedOptionID = 0
+	const labels: string[] = []
+	if (draftOption.value > 0 && draftOption.value <= options.value.length) {
+		appliedOptionID = options.value[draftOption.value - 1].id
+		query +=
+			'&' +
+			(kind == 'students' ? 'class_id' : 'leave_type_id') +
+			'=' +
+			options.value[draftOption.value - 1].id
+		labels.push(optionLabels.value[draftOption.value])
+	}
+	if (draftState.value > 0 && kind != 'feedbacks') {
+		query +=
+			'&' +
+			(kind == 'students'
+				? 'status'
+				: kind == 'records'
+					? 'is_leave_school'
+					: 'is_handled') +
+			'=' +
+			(kind == 'students'
+				? draftState.value == 1
+					? '1'
+					: '0'
+				: kind == 'records'
+					? draftState.value == 1
+						? 'true'
+						: 'false'
+					: draftState.value == 1
+						? 'false'
+						: 'true')
+		labels.push(
+			kind == 'students'
+				? accountStates[draftState.value]
+				: kind == 'records'
+					? schoolStates[draftState.value]
+					: '',
+		)
+	}
+	if (kind == 'feedbacks') {
+		if (draftAnonymous.value > 0) {
+			query += '&is_anonymous=' + (draftAnonymous.value == 1 ? 'true' : 'false')
+			labels.push(anonymousStates[draftAnonymous.value])
+		}
+		if (draftStudent.value.trim() != '') {
+			query += '&student_id=' + encodeURIComponent(draftStudent.value.trim())
+			labels.push(draftStudent.value.trim())
+		}
+	}
+	if (kind == 'records') {
+		if (draftFrom.value != '') {
+			query +=
+				'&start_time_from=' +
+				encodeURIComponent(draftFrom.value + 'T00:00:00+08:00')
+			labels.push(draftFrom.value + ' 起')
+		}
+		if (draftTo.value != '') {
+			const end = new Date(draftTo.value + 'T00:00:00+08:00')
+			query +=
+				'&start_time_to=' +
+				encodeURIComponent(new Date(end.getTime() + 86400000).toISOString())
+			labels.push('至 ' + draftTo.value)
+		}
+	}
+	filterQuery = query
+	filterSummary.value = labels.join(' · ')
+	filterOpen.value = false
+	refresh()
+}
+function changeHandling(index: number) {
+	handling.value = index
+	refresh()
+}
+function closeFilter(): boolean {
+	if (!filterOpen.value) return false
+	filterOpen.value = false
+	return true
+}
+defineExpose({ closeFilter })
+watch(
+	(): number => props.pendingKey,
+	() => {
+		if (kind == 'feedbacks') {
+			handling.value = 0
+			keyword.value = ''
+			resetFilters()
+		}
+	},
+)
+watch(
+	(): boolean => props.active,
+	(active: boolean) => {
+		if (!active) {
+			sequence++
+			busy.value = false
+			refreshing.value = false
+			filterOpen.value = false
+			return
+		}
+		const key = adminSession()
+		if (session != key) {
+			rows.value = []
+			options.value = []
+			loaded.value = false
+			session = key
+		}
+		if (!loaded.value || revision != adminRevision) load(true, loaded.value)
+	},
+	{ immediate: true },
+)
+onUnmounted(() => {
+	sequence++
+})
+</script>
+<style lang="scss">
+@import '@/styles/admin-content.scss';
+</style>

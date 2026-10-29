@@ -1,0 +1,360 @@
+<template>
+	<ProfilePageShell
+		:title="kind == 'students' ? '学生资料' : '反馈详情'"
+		subtitle=""
+		:scrollable="true"
+	>
+		<text v-if="error != ''" class="error" @click="load"
+			>{{ error }} · 点击重试</text
+		>
+		<text v-if="!loaded && error == ''" :class="themeClass('muted')"
+			>正在加载…</text
+		>
+		<template v-if="loaded">
+			<view v-for="group in groupTitles" :key="group">
+				<text :class="themeClass('section-heading group-heading')">{{
+					group
+				}}</text>
+				<view :class="themeClass('admin-card')">
+					<template v-for="field in fields" :key="field.label"
+						><view
+							v-if="groupFor(field.label) == group"
+							:class="themeClass('field-row')"
+						>
+							<text :class="themeClass('muted')">{{ field.label }}</text
+							><text :class="themeClass('field-value')" selectable>{{
+								field.value
+							}}</text>
+						</view></template
+					>
+				</view>
+			</view>
+			<template v-if="kind == 'students'">
+				<text :class="themeClass('section-heading group-heading')"
+					>账号管理</text
+				>
+				<view :class="themeClass('admin-card')">
+					<button
+						class="account-button"
+						:disabled="accountBusy"
+						@click="confirmAccount('password')"
+					>
+						{{ accountBusy ? '操作中…' : '重置密码' }}
+					</button>
+					<button
+						:class="
+							studentStatus == 1
+								? 'account-button danger-button'
+								: 'account-button'
+						"
+						:disabled="accountBusy"
+						@click="confirmAccount('status')"
+					>
+						{{ studentStatus == 1 ? '停用账号' : '启用账号' }}
+					</button>
+				</view></template
+			>
+
+			<template v-if="kind == 'feedbacks'">
+				<view v-if="attachments.length > 0" :class="themeClass('admin-card')">
+					<text :class="themeClass('section-heading')">附件</text>
+					<view
+						v-for="item in attachments"
+						:key="item.index"
+						@click="previewAttachment(item.index)"
+					>
+						<image
+							v-if="item.path != ''"
+							class="attachment"
+							:src="item.path"
+							mode="aspectFit"
+						/>
+						<text v-else class="link">{{
+							item.loading ? '加载中…' : '查看图片（点击重试）'
+						}}</text>
+					</view>
+				</view>
+				<button
+					class="primary-button"
+					:disabled="saving"
+					@click="toggleHandled"
+				>
+					{{ saving ? '提交中…' : handled ? '标记未处理' : '标记已处理' }}
+				</button>
+			</template>
+		</template>
+	</ProfilePageShell>
+</template>
+<script setup lang="uts">
+import ProfilePageShell from '@/components/ProfilePageShell.uvue'
+import { ref, watch, onUnmounted } from 'vue'
+import { themeClass as resolveThemeClass } from '@/utils/app-theme.uts'
+import {
+	AdminField,
+	AdminOption,
+	adminSession,
+	requireAdmin,
+	adminDetail,
+	adminOptions,
+	stringValue,
+	displayDate,
+	setFeedbackHandled,
+	downloadAdminAttachment,
+	resetAdminStudentPassword,
+	setAdminStudentStatus,
+} from '@/utils/admin-api.uts'
+const props = defineProps<{ kind: string; itemId: number; active: boolean }>()
+const kind = props.kind
+const fields = ref<AdminField[]>([])
+const options = ref<AdminOption[]>([])
+const apartments = ref<AdminOption[]>([])
+type Attachment = { index: number; path: string; loading: boolean }
+const attachments = ref<Attachment[]>([])
+const loaded = ref(false)
+const error = ref('')
+const saving = ref(false)
+const accountBusy = ref(false)
+const studentStatus = ref(1)
+let studentName = ''
+let studentNumber = ''
+const handled = ref(false)
+let sequence = 0
+const groupTitles =
+	kind == 'students' ? ['基本信息', '联系与住宿', '使用信息'] : ['反馈内容']
+function groupFor(label: string): string {
+	if (kind == 'feedbacks') return '反馈内容'
+	if (['姓名', '学号', '性别', '班级', '账号状态'].includes(label))
+		return '基本信息'
+	if (['客户端版本', '最近设备', '最近使用'].includes(label)) return '使用信息'
+	return '联系与住宿'
+}
+function themeClass(value: string): string {
+	return resolveThemeClass(value)
+}
+function valid(seq: number, key: string): boolean {
+	return props.active && sequence == seq && key == adminSession()
+}
+function classLabel(id: number): string {
+	for (const option of options.value) if (option.id == id) return option.label
+	return '未设置'
+}
+function addField(
+	data: UTSJSONObject,
+	key: string,
+	label: string,
+	date: boolean = false,
+) {
+	let value = stringValue(data, key)
+	if (key == 'gender')
+		value = value == 'male' ? '男' : value == 'female' ? '女' : value
+	fields.value.push({
+		label: label,
+		value: date ? displayDate(value) : value == '' ? '未设置' : value,
+	} as AdminField)
+}
+function showDetail(data: UTSJSONObject) {
+	if (kind == 'students') {
+		studentStatus.value = data['status'] as number
+		studentName = stringValue(data, 'name')
+		studentNumber = stringValue(data, 'student_id')
+	}
+	fields.value = []
+	if (kind == 'feedbacks') {
+		handled.value = data['is_handled'] as boolean
+		fields.value.push({
+			label: '提交人',
+			value: (data['is_anonymous'] as boolean)
+				? '匿名'
+				: stringValue(data, 'student_id'),
+		} as AdminField)
+		fields.value.push({
+			label: '处理状态',
+			value: handled.value ? '已处理' : '未处理',
+		} as AdminField)
+		addField(data, 'content', '反馈内容')
+		addField(data, 'created_at', '提交时间', true)
+		addField(data, 'updated_at', '更新时间', true)
+		return
+	}
+	addField(data, 'name', '姓名')
+	addField(data, 'student_id', '学号')
+	addField(data, 'gender', '性别')
+	if (kind == 'students') {
+		fields.value.push({
+			label: '班级',
+			value: classLabel(data['class_id'] as number),
+		} as AdminField)
+		fields.value.push({
+			label: '账号状态',
+			value: (data['status'] as number) == 1 ? '正常' : '停用',
+		} as AdminField)
+		addField(data, 'phone', '联系电话')
+		let apartment = '未设置'
+		for (const option of apartments.value)
+			if (option.id == (data['apartment_id'] as number))
+				apartment = option.label
+		fields.value.push({ label: '公寓', value: apartment } as AdminField)
+		addField(data, 'dormitory_number', '宿舍号')
+		addField(data, 'app_version', '客户端版本')
+		addField(data, 'last_seen_device', '最近设备')
+		addField(data, 'last_seen_at', '最近使用', true)
+	}
+	addField(data, 'parent_name', '家长姓名')
+	addField(data, 'parent_phone', '家长电话')
+	addField(data, 'teacher_name', '辅导员')
+}
+async function performAccount(
+	action: string,
+	id: number,
+	status: number,
+	label: string,
+	seq: number,
+	key: string,
+) {
+	try {
+		if (action == 'password') await resetAdminStudentPassword(id)
+		else {
+			const data = await setAdminStudentStatus(id, status)
+			if (valid(seq, key)) showDetail(data)
+		}
+		if (valid(seq, key))
+			uni.showToast({
+				title: action == 'password' ? '密码已重置为 12345678' : label + '成功',
+				icon: 'none',
+			})
+	} catch (e) {
+		if (valid(seq, key))
+			uni.showToast({ title: (e as Error).message, icon: 'none' })
+	} finally {
+		accountBusy.value = false
+	}
+}
+function confirmAccount(action: string) {
+	if (accountBusy.value || !props.active) return
+	accountBusy.value = true
+	const seq = sequence
+	const key = adminSession()
+	const id = props.itemId
+	const status = studentStatus.value == 1 ? 0 : 1
+	const label =
+		action == 'password' ? '重置密码' : status == 1 ? '启用账号' : '停用账号'
+	uni.showModal({
+		title: label,
+		content:
+			(studentName == '' ? '未设置姓名' : studentName) +
+			'（' +
+			studentNumber +
+			'）\n' +
+			(action == 'password'
+				? '确认将密码重置为 12345678？请提醒学生登录后修改。'
+				: status == 0
+					? '停用后无法登录，已有登录将在后续请求时被拒绝。确认停用？'
+					: '确认恢复此账号的登录权限？'),
+		confirmText: '确认',
+		success: (result) => {
+			if (!result.confirm || !valid(seq, key)) {
+				accountBusy.value = false
+				return
+			}
+			performAccount(action, id, status, label, seq, key)
+		},
+		fail: () => {
+			accountBusy.value = false
+		},
+	})
+}
+async function toggleHandled() {
+	if (saving.value) return
+	saving.value = true
+	const seq = sequence
+	const key = adminSession()
+	try {
+		const data = await setFeedbackHandled(props.itemId, !handled.value)
+		if (valid(seq, key)) {
+			showDetail(data)
+		}
+	} catch (e) {
+		if (valid(seq, key))
+			uni.showToast({ title: (e as Error).message, icon: 'none' })
+	} finally {
+		saving.value = false
+	}
+}
+async function previewAttachment(index: number) {
+	const item = attachments.value.find(
+		(entry: Attachment): boolean => entry.index == index,
+	)
+	if (item == null || item.loading) return
+	if (item.path != '') {
+		uni.previewImage({ urls: [item.path] })
+		return
+	}
+	item.loading = true
+	const seq = sequence
+	const key = adminSession()
+	try {
+		const path = await downloadAdminAttachment(props.itemId, index)
+		if (valid(seq, key)) {
+			item.path = path
+			uni.previewImage({ urls: [path] })
+		}
+	} catch (e) {
+		if (valid(seq, key))
+			uni.showToast({ title: (e as Error).message, icon: 'none' })
+	} finally {
+		item.loading = false
+	}
+}
+async function load() {
+	const seq = ++sequence
+	const key = adminSession()
+	error.value = ''
+	try {
+		if (!(await requireAdmin()) || !valid(seq, key)) return
+		if (kind == 'students') {
+			const classes = await adminOptions('class')
+			const rooms = await adminOptions('apartment')
+			if (!valid(seq, key)) return
+			options.value = classes
+			apartments.value = rooms
+		}
+		const data = await adminDetail(kind, props.itemId)
+		if (!valid(seq, key)) return
+		showDetail(data)
+		attachments.value = []
+		if (kind == 'feedbacks')
+			for (const item of data['attachments'] as UTSJSONObject[])
+				attachments.value.push({
+					index: item['index'] as number,
+					path: '',
+					loading: false,
+				} as Attachment)
+		loaded.value = true
+	} catch (e) {
+		if (valid(seq, key)) error.value = (e as Error).message
+	}
+}
+watch(
+	(): boolean => props.active,
+	(active: boolean) => {
+		if (active) load()
+		else sequence++
+	},
+	{ immediate: true },
+)
+onUnmounted(() => {
+	sequence++
+})
+</script>
+<style lang="scss">
+@import '@/styles/admin-content.scss';
+.account-button {
+	background-color: transparent;
+	color: #0066dc;
+	font-size: 16px;
+	padding: 12px;
+}
+.danger-button {
+	color: #d13b38;
+}
+</style>

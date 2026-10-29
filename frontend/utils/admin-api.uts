@@ -1,0 +1,395 @@
+import {
+	request,
+	RecordDetail,
+	getCurrentUser,
+	getHome,
+	STORAGE_TOKEN_KEY,
+	API_BASE_URL,
+	APP_PLATFORM,
+	registerSessionCleanup,
+	handleUnauthorized,
+} from '@/utils/api.uts'
+import { getAppVersionCode } from '@/utils/device.uts'
+
+export type AdminRow = {
+	id: number
+	classID: number
+	title: string
+	subtitle: string
+	summary: string
+	status: string
+}
+export type AdminField = { label: string; value: string }
+export type AdminOption = { id: number; label: string }
+export type AdminPage = { rows: AdminRow[]; total: number }
+export let adminRevision = 0
+let attachmentPaths: string[] = []
+
+export function invalidateAdmin() {
+	adminRevision++
+}
+export function clearAdminAttachments() {
+	for (const path of attachmentPaths)
+		uni.getFileSystemManager().unlink({ filePath: path })
+	attachmentPaths = []
+}
+registerSessionCleanup(() => {
+	clearAdminAttachments()
+	invalidateAdmin()
+})
+
+export function adminSession(): string {
+	const token = uni.getStorageSync(STORAGE_TOKEN_KEY)
+	return (
+		getCurrentUser().student_id + '|' + (typeof token == 'string' ? token : '')
+	)
+}
+export async function requireAdmin(): Promise<boolean> {
+	if (getCurrentUser().role == '') await getHome()
+	if (getCurrentUser().role == 'admin') return true
+	uni.showToast({ title: '当前账号没有管理权限', icon: 'none' })
+	if (getCurrentPages().length > 1) uni.navigateBack()
+	else uni.reLaunch({ url: '/pages/home/index?tab=profile' })
+	return false
+}
+export function stringValue(data: UTSJSONObject, key: string): string {
+	const value = data[key]
+	return value == null ? '' : value.toString()
+}
+function padDate(value: number): string {
+	return value < 10 ? '0' + value : value.toString()
+}
+export function displayDate(value: string): string {
+	if (value == '') return '未设置'
+	const date = new Date(value)
+	if (isNaN(date.getTime())) return value
+	return (
+		date.getFullYear().toString() +
+		'-' +
+		padDate(date.getMonth() + 1) +
+		'-' +
+		padDate(date.getDate()) +
+		' ' +
+		padDate(date.getHours()) +
+		':' +
+		padDate(date.getMinutes())
+	)
+}
+export function adminRow(kind: string, data: UTSJSONObject): AdminRow {
+	const id = data['id'] as number
+	if (kind == 'feedbacks') {
+		const anonymous = data['is_anonymous'] as boolean
+		return {
+			id: id,
+			classID: 0,
+			title: anonymous ? '匿名反馈' : '账号 ' + stringValue(data, 'student_id'),
+			subtitle: displayDate(stringValue(data, 'created_at')),
+			summary: stringValue(data, 'content'),
+			status: (data['is_handled'] as boolean) ? '已处理' : '未处理',
+		}
+	}
+
+	return {
+		id: id,
+		classID: (data['class_id'] as number | null) ?? 0,
+		title:
+			stringValue(data, 'name') == ''
+				? '未设置姓名'
+				: stringValue(data, 'name'),
+		subtitle: stringValue(data, 'student_id'),
+		summary:
+			kind == 'students'
+				? stringValue(data, 'class_name')
+				: stringValue(data, 'leave_type_name') +
+					' · ' +
+					displayDate(stringValue(data, 'start_time')),
+		status:
+			kind == 'students'
+				? (data['status'] as number) == 1
+					? '正常'
+					: '停用'
+				: (data['is_leave_school'] as boolean)
+					? '离校'
+					: '不离校',
+	}
+}
+export async function adminList(
+	kind: string,
+	query: string,
+): Promise<AdminPage> {
+	const data = await request<UTSJSONObject>(
+		'/admin/' + kind + '?' + query,
+		'GET',
+		null,
+		true,
+	)
+	const rows: AdminRow[] = []
+	for (const item of data['items'] as UTSJSONObject[])
+		rows.push(adminRow(kind, item))
+	return { rows: rows, total: data['total'] as number }
+}
+export async function adminOptions(kind: string): Promise<AdminOption[]> {
+	const data = await request<UTSJSONObject[]>(
+		'/admin/' + kind + '-options',
+		'GET',
+		null,
+		true,
+	)
+	const result: AdminOption[] = []
+	for (const item of data)
+		result.push({
+			id: item['id'] as number,
+			label:
+				kind == 'class'
+					? stringValue(item, 'college') +
+						' / ' +
+						stringValue(item, 'major') +
+						' / ' +
+						stringValue(item, 'class_name')
+					: stringValue(item, 'name'),
+		})
+	return result
+}
+export function adminDetail(kind: string, id: number): Promise<UTSJSONObject> {
+	return request<UTSJSONObject>('/admin/' + kind + '/' + id, 'GET', null, true)
+}
+export type AdminWeek = {
+	start: string
+	end: string
+	count: number
+	current: boolean
+}
+export type AdminVersionGroup = {
+	key: string
+	version: string
+	count: number
+	percentage: number
+}
+export type AdminOverviewData = {
+	studentCount: number
+	recordCount: number
+	weeks: AdminWeek[]
+	applicationTotal: number
+	versionGroups: AdminVersionGroup[]
+	versionTotal: number
+	latestCount: number
+	latestVersion: string
+}
+export async function adminOverview(): Promise<AdminOverviewData> {
+	const data = await request<UTSJSONObject>(
+		'/admin/overview',
+		'GET',
+		null,
+		true,
+	)
+	const statistics = data['statistics'] as UTSJSONObject
+	const weekly = data['weekly_applications'] as UTSJSONObject
+	const usage = data['version_usage'] as UTSJSONObject
+	const latest = data['latest_android_version'] as UTSJSONObject | null
+	const weeks: AdminWeek[] = []
+	for (const item of weekly['weeks'] as UTSJSONObject[])
+		weeks.push({
+			start: stringValue(item, 'start'),
+			end: stringValue(item, 'end'),
+			count: item['count'] as number,
+			current: item['is_current'] as boolean,
+		})
+	const groups: AdminVersionGroup[] = []
+	for (const item of usage['groups'] as UTSJSONObject[])
+		groups.push({
+			key: stringValue(item, 'key'),
+			version: stringValue(item, 'version'),
+			count: item['count'] as number,
+			percentage: item['percentage'] as number,
+		})
+	return {
+		studentCount: statistics['student_count'] as number,
+		recordCount: statistics['record_count'] as number,
+		weeks: weeks,
+		applicationTotal: weekly['total'] as number,
+		versionGroups: groups,
+		versionTotal: usage['total'] as number,
+		latestCount: usage['latest_count'] as number,
+		latestVersion: latest == null ? '' : stringValue(latest, 'version_name'),
+	}
+}
+export type AdminReference = {
+	id: number
+	name: string
+	college: string
+	major: string
+	enabled: boolean
+	gender: string
+	sortOrder: number
+}
+export type AdminReferencePage = { items: AdminReference[]; total: number }
+function referenceFromJSON(kind: string, data: UTSJSONObject): AdminReference {
+	return {
+		id: data['id'] as number,
+		name: stringValue(data, kind == 'classes' ? 'class_name' : 'name'),
+		college: stringValue(data, 'college'),
+		major: stringValue(data, 'major'),
+		enabled: data['is_enabled'] as boolean,
+		gender: stringValue(data, 'gender'),
+		sortOrder: (data['sort_order'] as number | null) ?? 0,
+	}
+}
+export async function adminReferenceList(
+	kind: string,
+	page: number,
+	keyword: string,
+	state: number,
+): Promise<AdminReferencePage> {
+	const query =
+		'?page=' +
+		page +
+		'&page_size=20&' +
+		(kind == 'classes' ? 'class_name' : 'name') +
+		'=' +
+		encodeURIComponent(keyword.trim()) +
+		(state == 0 ? '' : '&is_enabled=' + (state == 1 ? 'true' : 'false'))
+	const data = await request<UTSJSONObject>(
+		'/admin/' + kind + query,
+		'GET',
+		null,
+		true,
+	)
+	const rows: AdminReference[] = []
+	for (const item of data['items'] as UTSJSONObject[])
+		rows.push(referenceFromJSON(kind, item))
+	return { items: rows, total: data['total'] as number }
+}
+export async function saveAdminReference(
+	kind: string,
+	item: AdminReference,
+): Promise<AdminReference> {
+	const payload =
+		kind == 'classes'
+			? ({
+					college: item.college.trim(),
+					major: item.major.trim(),
+					class_name: item.name.trim(),
+					is_enabled: item.enabled,
+				} as UTSJSONObject)
+			: ({
+					name: item.name.trim(),
+					sort_order: item.sortOrder,
+					is_enabled: item.enabled,
+				} as UTSJSONObject)
+	if (kind == 'apartments') payload['gender'] = item.gender
+	const data = await request<UTSJSONObject>(
+		'/admin/' + kind + (item.id == 0 ? '' : '/' + item.id),
+		item.id == 0 ? 'POST' : 'PUT',
+		payload,
+		true,
+	)
+	invalidateAdmin()
+	return referenceFromJSON(kind, data)
+}
+export async function setFeedbackHandled(
+	id: number,
+	handled: boolean,
+): Promise<UTSJSONObject> {
+	const data = await request<UTSJSONObject>(
+		'/admin/feedbacks/' + id + '/handling',
+		'PATCH',
+		{ is_handled: handled },
+		true,
+	)
+	invalidateAdmin()
+	return data
+}
+export function downloadAdminAttachment(
+	id: number,
+	index: number,
+): Promise<string> {
+	const session = adminSession()
+	return new Promise((resolve, reject) => {
+		const token = uni.getStorageSync(STORAGE_TOKEN_KEY)
+		uni.downloadFile({
+			url: API_BASE_URL + '/admin/feedbacks/' + id + '/attachments/' + index,
+			header: {
+				Authorization: 'Bearer ' + token,
+				'X-App-Platform': APP_PLATFORM,
+				'X-App-Version-Code': getAppVersionCode().toString(),
+			},
+			success: (result) => {
+				if (result.statusCode == 401 && session == adminSession())
+					handleUnauthorized()
+				if (result.statusCode != 200 || session != adminSession()) {
+					uni.getFileSystemManager().unlink({
+						filePath: result.tempFilePath,
+					})
+					reject(new Error('附件下载失败，请重试'))
+					return
+				}
+				attachmentPaths.push(result.tempFilePath)
+				resolve(result.tempFilePath)
+			},
+			fail: () => {
+				reject(new Error('附件下载失败，请重试'))
+			},
+		})
+	})
+}
+
+// 管理接口返回历史快照，适配现有假条展示，不扩大个人记录接口权限。
+export async function getAdminRecordForDisplay(
+	id: number,
+): Promise<RecordDetail> {
+	const data = await adminDetail('records', id)
+	const start = stringValue(data, 'start_time')
+	const end = stringValue(data, 'end_time')
+	const difference = new Date(end).getTime() - new Date(start).getTime()
+	const hours = difference > 0 ? Math.ceil(difference / 3600000) : 0
+	return {
+		id: data['id'] as number,
+		student_id: stringValue(data, 'student_id'),
+		applicant_info: {
+			name: stringValue(data, 'name'),
+			gender: stringValue(data, 'gender'),
+			parent_name: stringValue(data, 'parent_name'),
+			parent_phone: stringValue(data, 'parent_phone'),
+			teacher_name: stringValue(data, 'teacher_name'),
+		},
+		class_info: {
+			college: stringValue(data, 'college'),
+			major: stringValue(data, 'major'),
+			class_name: stringValue(data, 'class_name'),
+		},
+		leave_type: stringValue(data, 'leave_type_name'),
+		start_time: start,
+		end_time: end,
+		duration_days: Math.floor(hours / 24),
+		duration_hours: hours % 24,
+		affected_course: stringValue(data, 'affected_course'),
+		is_leave_school: data['is_leave_school'] as boolean,
+		leave_reason: stringValue(data, 'leave_reason'),
+		travel_way: stringValue(data, 'travel_way'),
+		destination: stringValue(data, 'destination'),
+		applied_at: stringValue(data, 'applied_at'),
+		approved_at: stringValue(data, 'approved_at'),
+	}
+}
+
+export function resetAdminStudentPassword(id: number): Promise<void> {
+	return request<void>(
+		'/admin/students/' + id + '/reset-password',
+		'POST',
+		null,
+		true,
+	)
+}
+export async function setAdminStudentStatus(
+	id: number,
+	status: number,
+): Promise<UTSJSONObject> {
+	const data = await request<UTSJSONObject>(
+		'/admin/students/' + id + '/status',
+		'PUT',
+		{ status: status },
+		true,
+	)
+	invalidateAdmin()
+	return data
+}

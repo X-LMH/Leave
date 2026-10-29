@@ -1,0 +1,22 @@
+<template>
+	<AdminDetailContent kind="students" :item-id="itemID" :active="active" />
+</template>
+<script setup lang="uts">
+import { ref } from 'vue'
+import { onLoad, onShow, onHide } from '@dcloudio/uni-app'
+import AdminDetailContent from '@/components/AdminDetailContent.uvue'
+const itemID = ref(0)
+const active = ref(false)
+const unhandled = ref(false)
+onLoad((options) => {
+	const raw = options['id']
+	if (raw != null) itemID.value = parseInt(raw)
+	unhandled.value = options['unhandled'] == '1'
+})
+onShow(() => {
+	active.value = true
+})
+onHide(() => {
+	active.value = false
+})
+</script>

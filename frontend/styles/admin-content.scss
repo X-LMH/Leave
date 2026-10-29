@@ -1,0 +1,195 @@
+@import '@/styles/ios-theme.scss';
+.admin-panel-root {
+ flex-shrink: 0;
+	overflow: hidden;
+}
+.list-toolbar {
+	padding-bottom: 8px;
+}
+.filter-scroll {
+	flex: 1;
+}
+.admin-scroll {
+	min-height: 0;
+	flex: 1;
+}
+.admin-content {
+	padding-bottom: 110px;
+}
+.admin-card {
+	background-color: $ios-surface;
+	border-radius: 18px;
+	padding: 14px;
+	margin-bottom: 10px;
+}
+.dark-admin-card {
+	background-color: $ios-dark-surface;
+}
+.muted {
+	color: $ios-secondary;
+	font-size: 13px;
+	line-height: 21px;
+}
+.dark-muted {
+	color: $ios-dark-secondary;
+}
+.section-heading {
+	font-size: 17px;
+	font-weight: 600;
+	margin-bottom: 16px;
+}
+.menu-item {
+	padding-top: 16px;
+	padding-bottom: 16px;
+	font-size: 16px;
+}
+.row-heading {
+	flex-direction: row;
+	justify-content: space-between;
+	margin-bottom: 6px;
+}
+.row-title {
+	font-size: 17px;
+	font-weight: 600;
+	flex: 1;
+}
+.badge {
+	font-size: 12px;
+	color: $ios-blue;
+	margin-left: 12px;
+}
+.summary {
+	font-size: 14px;
+	line-height: 23px;
+	margin-top: 8px;
+	lines: 3;
+	text-overflow: ellipsis;
+}
+.search-bar {
+	flex-direction: row;
+	align-items: center;
+	margin-bottom: 10px;
+}
+.search-input {
+	flex: 1;
+	min-height: 44px;
+	padding: 10px;
+	font-size: 14px;
+	background-color: $ios-surface;
+	border-radius: 12px;
+	color: $ios-ink;
+}
+.dark-search-input {
+	background-color: $ios-dark-surface;
+	color: $ios-dark-ink;
+}
+.link {
+	color: $ios-blue;
+	font-size: 14px;
+	padding: 8px;
+}
+.filter-chip {
+	padding: 8px;
+	margin-bottom: 8px;
+}
+.error {
+	color: $ios-red;
+	font-size: 14px;
+	padding: 16px;
+}
+.load-more {
+	color: $ios-blue;
+	text-align: center;
+	padding: 20px;
+	font-size: 14px;
+}
+.field-value {
+	margin-top: 6px;
+	font-size: 16px;
+	line-height: 25px;
+}
+.attachment {
+	height: 200px;
+	width: 280px;
+	margin-bottom: 10px;
+}
+.primary-button {
+	background-color: $ios-blue;
+	color: #ffffff;
+	border-radius: 14px;
+	margin-top: 16px;
+	font-size: 16px;
+}
+.filter-overlay {
+	z-index: 20;
+	position: fixed;
+	left: 0;
+	right: 0;
+	top: 0;
+	bottom: 0;
+	background-color: rgba(0, 0, 0, 0.4);
+	justify-content: flex-end;
+}
+.filter-panel {
+	padding: 24px;
+	padding-bottom: 40px;
+	background-color: $ios-page;
+	border-top-left-radius: 24px;
+	border-top-right-radius: 24px;
+}
+.dark-filter-panel {
+	background-color: $ios-dark-page;
+}
+.section-heading,
+.menu-item,
+.row-title,
+.summary,
+.field-value {
+	color: $ios-ink;
+}
+.dark-section-heading,
+.dark-menu-item,
+.dark-row-title,
+.dark-summary,
+.dark-field-value {
+	color: $ios-dark-ink;
+}
+.status-tabs {
+	flex-direction: row;
+	margin-bottom: 16px;
+}
+.status-tab {
+	flex: 1;
+	padding: 10px;
+	border-radius: 14px;
+	align-items: center;
+}
+.status-selected {
+	background-color: rgba(0, 102, 220, 0.12);
+}
+.group-heading {
+	margin-top: 22px;
+	margin-bottom: 10px;
+}
+.field-row {
+	padding-top: 12px;
+	padding-bottom: 12px;
+	border-bottom-width: 0.5px;
+	border-bottom-color: #e8e8ed;
+}
+.dark-field-row {
+	border-bottom-color: #383a44;
+}
+.search-box {
+	flex: 1;
+	flex-direction: row;
+	align-items: center;
+}
+.status-label {
+	font-size: 14px;
+	line-height: 22px;
+	color: $ios-ink;
+}
+.dark-status-label {
+	color: $ios-dark-ink;
+}

@@ -1,0 +1,519 @@
+<template>
+	<scroll-view
+		class="overview-scroll"
+		:style="'height:' + height + 'px;'"
+		scroll-y="true"
+		:refresher-enabled="true"
+		:refresher-triggered="busy"
+		@refresherrefresh="load"
+	>
+		<view class="overview-content">
+			<view :class="themeClass('overview-metrics')">
+				<view
+					v-for="(stat, index) in stats"
+					:key="stat.label"
+					class="overview-metric"
+					@click="openMetric(index)"
+				>
+					<text :class="themeClass('overview-value')">{{ stat.value }}</text
+					><text :class="themeClass('overview-muted')">{{ stat.label }}</text>
+				</view>
+			</view>
+			<text v-if="error != ''" class="overview-error" @click="load"
+				>{{ error }} · 点击重试</text
+			>
+			<template v-if="loaded">
+				<view :class="themeClass('overview-card')">
+					<view class="overview-heading-row"
+						><text :class="themeClass('overview-heading')">请假申请趋势</text
+						><text :class="themeClass('overview-muted')">按周</text></view
+					>
+					<text :class="themeClass('overview-muted')">近8周及本周</text>
+					<text :class="themeClass('overview-total')"
+						>{{ applicationTotal }} 份</text
+					>
+					<text :class="themeClass('overview-muted')">累计申请</text>
+					<view
+						v-if="weeks.length > 0"
+						class="trend-chart"
+						:style="'width:' + (chartWidth + 30) + 'px;'"
+						role="img"
+						aria-label="每周请假申请数量趋势，下方可查看所选周数量"
+					>
+						<view
+							v-for="tick in [0, 1, 2]"
+							:key="tick"
+							class="trend-grid-row"
+							:style="'top:' + (8 + tick * 65) + 'px;'"
+						>
+							<text :class="themeClass('trend-axis')">{{
+								Math.round((maximum * (2 - tick)) / 2)
+							}}</text
+							><view
+								:class="themeClass('trend-grid')"
+								:style="'width:' + chartWidth + 'px;'"
+							></view>
+						</view>
+						<template v-for="(week, index) in weeks" :key="week.start">
+							<view
+								v-if="index > 0"
+								:class="
+									week.current ? 'trend-segment trend-current' : 'trend-segment'
+								"
+								:style="segmentStyle(index)"
+								><view
+									v-if="week.current"
+									v-for="dash in [0, 1, 2, 3, 4, 5]"
+									:key="dash"
+									class="trend-dash"
+								></view
+							></view>
+							<view
+								:class="
+									themeClass(
+										selectedWeek == index
+											? 'trend-point trend-selected'
+											: 'trend-point',
+									)
+								"
+								:style="pointStyle(index)"
+								role="button"
+								:aria-label="weekLabel(index) + '，' + week.count + '份'"
+								@click="selectedWeek = index"
+								><view class="trend-point-dot"></view
+							></view>
+							<text
+								v-if="index % 2 == 0 || week.current"
+								:class="themeClass('trend-date')"
+								:style="'left:' + (pointX(index) - 20) + 'px;'"
+								>{{ weekLabel(index) }}</text
+							>
+						</template>
+					</view>
+					<text
+						v-if="weeks.length > 0"
+						:class="themeClass('overview-muted trend-caption')"
+						>{{ selectedCaption }}</text
+					>
+					<text v-else :class="themeClass('overview-muted')">暂无趋势数据</text>
+				</view>
+				<view :class="themeClass('overview-card')">
+					<text :class="themeClass('overview-heading')"
+						>客户端版本使用情况</text
+					>
+					<view class="overview-heading-row"
+						><text :class="themeClass('overview-value')">{{ coverage }}</text
+						><text :class="themeClass('overview-muted')">{{
+							latestVersion == ''
+								? '暂无已发布版本'
+								: '当前版本 ' + latestVersion
+						}}</text></view
+					>
+					<text :class="themeClass('overview-muted')">最新版覆盖率</text>
+					<view v-if="versionTotal > 0" class="version-bar"
+						><view
+							v-for="group in versionGroups"
+							:key="group.key"
+							:style="versionBarStyle(group)"
+						></view
+					></view>
+					<view
+						v-for="group in versionGroups"
+						:key="group.key"
+						class="version-row"
+						><view
+							class="version-dot"
+							:style="'background-color:' + versionColor(group.key) + ';'"
+						></view
+						><text :class="themeClass('version-label')">{{
+							versionLabel(group)
+						}}</text
+						><text :class="themeClass('overview-text')"
+							>{{ group.count }} 人</text
+						></view
+					>
+					<text v-if="versionTotal == 0" :class="themeClass('overview-muted')"
+						>暂无版本上报数据</text
+					>
+					<text :class="themeClass('overview-muted version-note')"
+						>按学生账号最近上报版本统计</text
+					>
+				</view>
+			</template>
+			<text v-else-if="busy" :class="themeClass('overview-muted')"
+				>正在加载统计…</text
+			>
+		</view>
+	</scroll-view>
+</template>
+<script setup lang="uts">
+import { ref, computed, watch, onUnmounted } from 'vue'
+import { themeClass as resolveThemeClass } from '@/utils/app-theme.uts'
+import {
+	AdminField,
+	AdminWeek,
+	AdminVersionGroup,
+	adminOverview,
+	adminList,
+	adminRevision,
+	adminSession,
+	requireAdmin,
+} from '@/utils/admin-api.uts'
+const props = defineProps<{ active: boolean; height: number }>()
+const emit = defineEmits(['navigate'])
+const stats = ref<AdminField[]>([
+	{ label: '学生', value: '—' },
+	{ label: '假条', value: '—' },
+	{ label: '未处理反馈', value: '—' },
+])
+const weeks = ref<AdminWeek[]>([])
+const versionGroups = ref<AdminVersionGroup[]>([])
+const applicationTotal = ref(0)
+const versionTotal = ref(0)
+const latestCount = ref(0)
+const latestVersion = ref('')
+const selectedWeek = ref(0)
+const chartWidth = ref(Math.max(170, uni.getWindowInfo().windowWidth - 110))
+const busy = ref(false)
+const loaded = ref(false)
+const error = ref('')
+let sequence = 0
+let revision = -1
+let session = ''
+function themeClass(value: string): string {
+	return resolveThemeClass(value)
+}
+const maximum = computed((): number => {
+	let max = 0
+	for (const week of weeks.value) max = Math.max(max, week.count)
+	return Math.max(2, Math.ceil(max / 2) * 2)
+})
+const coverage = computed((): string =>
+	versionTotal.value == 0 || latestVersion.value == ''
+		? '—'
+		: ((latestCount.value / versionTotal.value) * 100).toFixed(1) + '%',
+)
+function pointX(index: number): number {
+	return (
+		30 +
+		(weeks.value.length <= 1
+			? chartWidth.value / 2
+			: (index * (chartWidth.value - 24)) / (weeks.value.length - 1))
+	)
+}
+function pointY(index: number): number {
+	return 144 - (weeks.value[index].count / maximum.value) * 130
+}
+function pointStyle(index: number): string {
+	return (
+		'left:' + (pointX(index) - 12) + 'px;top:' + (pointY(index) - 12) + 'px;'
+	)
+}
+// 使用原生视图绘制九个节点，避免引入图表依赖或 WebView 滚动容器。
+function segmentStyle(index: number): string {
+	const dx = pointX(index) - pointX(index - 1)
+	const dy = pointY(index) - pointY(index - 1)
+	const length = Math.sqrt(dx * dx + dy * dy)
+	return (
+		'left:' +
+		(pointX(index) + pointX(index - 1) - length) / 2 +
+		'px;top:' +
+		((pointY(index) + pointY(index - 1)) / 2 - 1) +
+		'px;width:' +
+		length +
+		'px;transform:rotate(' +
+		(Math.atan2(dy, dx) * 180) / Math.PI +
+		'deg);'
+	)
+}
+function weekLabel(index: number): string {
+	const week = weeks.value[index]
+	return week.current ? '本周' : week.start.substring(5, 10).replace('-', '/')
+}
+const selectedCaption = computed((): string => {
+	if (weeks.value.length == 0) return ''
+	const week = weeks.value[Math.min(selectedWeek.value, weeks.value.length - 1)]
+	return (
+		week.start.substring(0, 10) +
+		' — ' +
+		week.end.substring(5, 10) +
+		' · ' +
+		week.count +
+		' 份' +
+		(week.current ? '（本周进行中）' : '')
+	)
+})
+function versionColor(key: string): string {
+	return key == 'latest'
+		? '#408cf2'
+		: key == 'previous'
+			? '#87b8f5'
+			: key == 'older'
+				? '#a8caf2'
+				: key == 'unreported'
+					? '#a3a8b2'
+					: '#737c8c'
+}
+function versionBarStyle(group: AdminVersionGroup): string {
+	return (
+		'height:12px;flex-grow:' +
+		group.count +
+		';background-color:' +
+		versionColor(group.key) +
+		';'
+	)
+}
+function versionLabel(group: AdminVersionGroup): string {
+	const label =
+		group.key == 'latest'
+			? '最新版'
+			: group.key == 'previous'
+				? '上一版'
+				: group.key == 'older'
+					? '更早版本'
+					: group.key == 'unreported'
+						? '未上报'
+						: '其他版本'
+	return label + (group.version == '' ? '' : ' ' + group.version)
+}
+function openMetric(index: number) {
+	emit('navigate', index == 0 ? 'students' : index == 1 ? 'records' : 'pending')
+}
+async function load() {
+	const seq = ++sequence
+	const key = adminSession()
+	busy.value = true
+	error.value = ''
+	try {
+		if (!(await requireAdmin())) return
+		const data = await adminOverview()
+		const pending = await adminList(
+			'feedbacks',
+			'page=1&page_size=1&is_handled=false',
+		)
+		if (!props.active || sequence != seq || key != adminSession()) return
+		stats.value = [
+			{ label: '学生', value: data.studentCount.toString() },
+			{ label: '假条', value: data.recordCount.toString() },
+			{ label: '未处理反馈', value: pending.total.toString() },
+		]
+		weeks.value = data.weeks
+		applicationTotal.value = data.applicationTotal
+		versionGroups.value = data.versionGroups
+		versionTotal.value = data.versionTotal
+		latestCount.value = data.latestCount
+		latestVersion.value = data.latestVersion
+		selectedWeek.value = Math.max(0, data.weeks.length - 1)
+		revision = adminRevision
+		session = key
+		loaded.value = true
+	} catch (e) {
+		if (props.active && sequence == seq && key == adminSession())
+			error.value = (e as Error).message
+	} finally {
+		if (sequence == seq) busy.value = false
+	}
+}
+watch(
+	(): number => props.height,
+	() => {
+		chartWidth.value = Math.max(170, uni.getWindowInfo().windowWidth - 110)
+	},
+)
+watch(
+	(): boolean => props.active,
+	(active: boolean) => {
+		if (!active) {
+			sequence++
+			busy.value = false
+			return
+		}
+		if (session != adminSession()) {
+			loaded.value = false
+			weeks.value = []
+			versionGroups.value = []
+		}
+		if (revision != adminRevision || session != adminSession()) load()
+	},
+	{ immediate: true },
+)
+onUnmounted(() => {
+	sequence++
+})
+</script>
+<style lang="scss">
+@import '@/styles/ios-theme.scss';
+.overview-scroll {
+	flex-shrink: 0;
+}
+.overview-content {
+	padding-bottom: 110px;
+}
+.overview-metrics {
+	flex-direction: row;
+	background-color: $ios-surface;
+	border-radius: 22px;
+	padding: 18px 4px;
+	margin-bottom: 14px;
+}
+.overview-metric {
+	flex: 1;
+	align-items: center;
+}
+.overview-value {
+	color: $ios-blue;
+	font-size: 27px;
+	font-weight: 600;
+	margin-bottom: 5px;
+}
+.overview-muted {
+	color: $ios-secondary;
+	font-size: 12px;
+	line-height: 20px;
+}
+.overview-text {
+	color: $ios-ink;
+	font-size: 14px;
+}
+.overview-card {
+	padding: 16px;
+	border-radius: 22px;
+	background-color: $ios-surface;
+	margin-bottom: 14px;
+}
+.overview-heading-row {
+	flex-direction: row;
+	justify-content: space-between;
+	align-items: center;
+}
+.overview-heading {
+	color: $ios-ink;
+	font-size: 17px;
+	font-weight: 600;
+	margin-bottom: 8px;
+}
+.overview-total {
+	color: $ios-ink;
+	font-size: 25px;
+	font-weight: 600;
+	margin-top: 4px;
+}
+.trend-chart {
+	height: 180px;
+	margin-top: 12px;
+	position: relative;
+}
+.trend-grid-row {
+	position: absolute;
+	left: 0;
+	height: 12px;
+	flex-direction: row;
+	align-items: center;
+}
+.trend-axis {
+	width: 30px;
+	font-size: 10px;
+	color: $ios-secondary;
+}
+.trend-grid {
+	height: 0.5px;
+	background-color: $ios-separator;
+}
+.trend-segment {
+	position: absolute;
+	height: 2px;
+	background-color: #408cf2;
+	flex-direction: row;
+}
+.trend-current {
+	background-color: transparent;
+}
+.trend-dash {
+	flex: 1;
+	height: 2px;
+	margin-right: 2px;
+	background-color: #408cf2;
+}
+.trend-point {
+	position: absolute;
+	width: 24px;
+	height: 24px;
+	border-radius: 12px;
+	align-items: center;
+	justify-content: center;
+}
+.trend-selected {
+	background-color: rgba(64, 140, 242, 0.18);
+}
+.trend-point-dot {
+	width: 7px;
+	height: 7px;
+	border-radius: 4px;
+	background-color: #408cf2;
+}
+.trend-date {
+	position: absolute;
+	top: 158px;
+	width: 40px;
+	text-align: center;
+	color: $ios-secondary;
+	font-size: 10px;
+}
+.trend-caption {
+	margin-top: 4px;
+}
+.version-bar {
+	flex-direction: row;
+	height: 12px;
+	border-radius: 5px;
+	overflow: hidden;
+	margin-top: 12px;
+	margin-bottom: 10px;
+}
+.version-row {
+	flex-direction: row;
+	align-items: center;
+	padding-top: 6px;
+	padding-bottom: 6px;
+}
+.version-dot {
+	width: 8px;
+	height: 8px;
+	border-radius: 4px;
+	margin-right: 8px;
+}
+.version-label {
+	flex: 1;
+	color: $ios-secondary;
+	font-size: 13px;
+}
+.version-note {
+	margin-top: 8px;
+}
+.overview-error {
+	color: $ios-red;
+	padding: 12px 0;
+	font-size: 14px;
+}
+.dark-overview-metrics,
+.dark-overview-card {
+	background-color: $ios-dark-surface;
+}
+.dark-overview-value {
+	color: $ios-dark-blue;
+}
+.dark-overview-muted,
+.dark-version-label,
+.dark-trend-axis,
+.dark-trend-date {
+	color: $ios-dark-secondary;
+}
+.dark-overview-heading,
+.dark-overview-total,
+.dark-overview-text {
+	color: $ios-dark-ink;
+}
+.dark-trend-grid {
+	background-color: $ios-dark-separator;
+}
+</style>

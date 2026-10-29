@@ -36,7 +36,7 @@
 								:src="themeImage('/static/ios/school-white.svg')"
 								mode="aspectFit"
 							></image>
-							<text :class="themeClass('identity-label')">校园身份</text>
+							<text :class="themeClass('identity-label')">{{ adminRole ? '管理员' : '校园身份' }}</text>
 						</view>
 						<text :class="themeClass('identity-arrow')">查看信息 ›</text>
 					</view>
@@ -59,20 +59,39 @@
 							</text>
 						</view>
 						<view :class="themeClass('profile-details')">
-							<text :class="themeClass('profile-name')">{{ profileName == '' ? '未完善资料' : profileName }}</text>
+							<text :class="themeClass('profile-name')">{{ profileName == '' ? (adminRole ? '管理员' : '未完善资料') : profileName }}</text>
 							<text :class="themeClass('profile-class')">
-								{{ className == '' ? '请完善个人资料' : className }}
+								{{ adminRole ? '管理账号' : (className == '' ? '请完善个人资料' : className) }}
 							</text>
 						</view>
 					</view>
 					<view :class="themeClass('student-row')">
-						<text :class="themeClass('student-label')">学号</text>
+						<text :class="themeClass('student-label')">{{ adminRole ? '账号' : '学号' }}</text>
 						<text :class="themeClass('student-number')">{{ studentID }}</text>
 					</view>
 				</view>
 				<view :class="themeClass('service-group')">
 					<text :class="themeClass('section-title')"> 资料与账号 </text>
 					<view :class="themeClass('service-card')">
+						<view
+							v-if="adminRole"
+							:class="themeClass('service-item')"
+							@click="openAdmin"
+						>
+							<view :class="themeClass('service-icon-box service-icon-blue')">
+								<image
+									:class="themeClass('service-icon')"
+									:src="themeImage('/static/ios/school-white.svg')"
+									mode="aspectFit"
+								></image>
+							</view>
+							<text :class="themeClass('service-title')">管理工作台</text>
+							<image
+								:class="themeClass('service-arrow')"
+								:src="themeImage('/static/ios/arrow-secondary.svg')"
+								mode="aspectFit"
+							></image>
+						</view>
 						<view
 							:class="themeClass('service-item')"
 							@click="openInfo"
@@ -84,7 +103,7 @@
 									mode="aspectFit"
 								></image>
 							</view>
-							<text :class="themeClass('service-title')"> 个人信息 </text>
+							<text :class="themeClass('service-title')">个人信息</text>
 							<image
 								:class="themeClass('service-arrow')"
 								:src="themeImage('/static/ios/arrow-secondary.svg')"
@@ -205,6 +224,8 @@ const scrollTop = ref(0)
 function rememberScroll(event: UniScrollEvent) {
 	scrollTop.value = event.detail.scrollTop
 }
+const adminRole = ref(getCurrentUser().role == 'admin')
+function openAdmin() { uni.navigateTo({ url: '/pages/admin/index' }) }
 const profileName = ref(getCurrentUser().name)
 const studentID = ref(getCurrentUser().student_id)
 const className = ref(getCurrentUser().class_name)
@@ -323,6 +344,7 @@ async function loadUser() {
 			updateVersion != avatarUpdateVersion
 		)
 			return
+		adminRole.value = user.role == 'admin'
 		profileName.value = user.name
 		studentID.value = user.student_id
 		className.value = user.classname
@@ -399,7 +421,8 @@ async function handleLogout() {
 }
 function refresh() {
 	const user = getCurrentUser()
-	profileName.value = user.name
+	adminRole.value = user.role == 'admin'
+		profileName.value = user.name
 	studentID.value = user.student_id
 	className.value = user.class_name
 	const cachedURL = getStoredAvatarURL()

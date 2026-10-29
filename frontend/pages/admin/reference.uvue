@@ -1,0 +1,527 @@
+<template>
+	<ProfilePageShell :title="title" subtitle="" :scrollable="false">
+		<template #toolbar
+			><text
+				class="reference-link"
+				role="button"
+				aria-label="新增"
+				@click="create"
+				>新增</text
+			></template
+		>
+		<view class="reference-root">
+			<view class="reference-search-row"
+				><input
+					:class="themeClass('reference-input reference-search')"
+					v-model="keyword"
+					placeholder="搜索名称"
+					confirm-type="search"
+					@confirm="refresh"
+				/><picker :range="states" :value="state" @change="changeState"
+					><text class="reference-link">{{ states[state] }} ▾</text></picker
+				></view
+			>
+			<scroll-view
+				class="reference-scroll"
+				scroll-y="true"
+				:scroll-top="scrollTop"
+				:refresher-enabled="true"
+				:refresher-triggered="refreshing"
+				@scroll="rememberScroll"
+				@scrolltolower="more"
+				@refresherrefresh="refresh"
+			>
+				<text v-if="error != ''" class="reference-error" @click="retry"
+					>{{ error }} · 点击重试</text
+				>
+				<view
+					v-for="item in items"
+					:key="item.id"
+					:class="themeClass('reference-card')"
+					role="button"
+					:aria-label="'编辑' + item.name"
+					@click="edit(item)"
+				>
+					<view class="reference-row"
+						><text :class="themeClass('reference-title')">{{ item.name }}</text
+						><text
+							:class="item.enabled ? 'reference-status' : 'reference-disabled'"
+							>{{ item.enabled ? '启用' : '停用' }}　›</text
+						></view
+					>
+					<text :class="themeClass('reference-muted')">{{
+						kind == 'classes'
+							? item.college + ' / ' + item.major
+							: kind == 'apartments'
+								? (item.gender == 'male' ? '男生公寓' : '女生公寓') +
+									' · 排序 ' +
+									item.sortOrder
+								: '排序 ' + item.sortOrder
+					}}</text>
+				</view>
+				<text
+					v-if="!busy && items.length == 0 && error == ''"
+					:class="themeClass('reference-muted')"
+					>暂无数据，可从右上角新增</text
+				>
+				<text v-if="busy" :class="themeClass('reference-more')">正在加载…</text>
+				<text
+					v-else-if="items.length > 0"
+					:class="themeClass('reference-more')"
+					@click="more"
+					>{{ items.length < total ? '上拉加载更多' : '已显示全部' }}</text
+				>
+				<view class="reference-bottom-space"></view>
+			</scroll-view>
+		</view>
+		<view v-if="editorOpen" class="reference-overlay" @click="closeEditor">
+			<view
+				:class="themeClass('reference-editor')"
+				:style="editorStyle"
+				@click.stop="noop"
+			>
+				<view class="reference-row"
+					><text :class="themeClass('reference-title')"
+						>{{ draft.id == 0 ? '新增' : '编辑' }}{{ entityName }}</text
+					><text class="reference-link" @click="closeEditor">取消</text></view
+				>
+				<scroll-view class="reference-scroll" scroll-y="true">
+					<template v-if="kind == 'classes'"
+						><text :class="themeClass('reference-label')">学院</text
+						><input
+							:class="themeClass('reference-input')"
+							v-model="draft.college"
+							placeholder="请输入学院"
+							:maxlength="100" /><text :class="themeClass('reference-label')"
+							>专业</text
+						><input
+							:class="themeClass('reference-input')"
+							v-model="draft.major"
+							placeholder="请输入专业"
+							:maxlength="100"
+					/></template>
+					<text :class="themeClass('reference-label')">{{
+						kind == 'classes'
+							? '班级名称'
+							: kind == 'apartments'
+								? '公寓名称'
+								: '请假类型名称'
+					}}</text
+					><input
+						:class="themeClass('reference-input')"
+						v-model="draft.name"
+						placeholder="请输入名称"
+						:maxlength="
+							kind == 'leave-types' ? 32 : kind == 'classes' ? 64 : 100
+						"
+					/>
+					<template v-if="kind == 'apartments'"
+						><text :class="themeClass('reference-label')">适用性别</text
+						><picker
+							:range="genders"
+							:value="draft.gender == 'male' ? 0 : 1"
+							@change="changeGender"
+							><text :class="themeClass('reference-input')"
+								>{{ draft.gender == 'male' ? '男生' : '女生' }} ▾</text
+							></picker
+						></template
+					>
+					<template v-if="kind != 'classes'"
+						><text :class="themeClass('reference-label')">显示顺序</text
+						><input
+							:class="themeClass('reference-input')"
+							v-model="sortText"
+							type="number"
+							placeholder="0"
+					/></template>
+					<view class="reference-switch-row"
+						><text :class="themeClass('reference-label')">启用</text
+						><switch
+							aria-label="启用选项"
+							:checked="draft.enabled"
+							@change="changeEnabled"
+					/></view>
+					<text :class="themeClass('reference-muted')"
+						>停用后不再作为新选项，已有记录仍保留。</text
+					>
+				</scroll-view>
+				<button class="reference-save" :disabled="saving" @click="save">
+					{{ saving ? '保存中…' : '保存' }}
+				</button>
+			</view>
+		</view>
+	</ProfilePageShell>
+</template>
+<script setup lang="uts">
+import { ref, computed, nextTick } from 'vue'
+import {
+	onLoad,
+	onShow,
+	onHide,
+	onBackPress,
+	onResize,
+} from '@dcloudio/uni-app'
+import ProfilePageShell from '@/components/ProfilePageShell.uvue'
+import { themeClass as resolveThemeClass } from '@/utils/app-theme.uts'
+import {
+	AdminReference,
+	adminReferenceList,
+	saveAdminReference,
+	adminSession,
+	requireAdmin,
+} from '@/utils/admin-api.uts'
+const kind = ref('classes')
+const title = computed((): string =>
+	kind.value == 'classes'
+		? '班级管理'
+		: kind.value == 'apartments'
+			? '公寓管理'
+			: '请假类型',
+)
+const entityName = computed((): string =>
+	kind.value == 'classes'
+		? '班级'
+		: kind.value == 'apartments'
+			? '公寓'
+			: '请假类型',
+)
+const items = ref<AdminReference[]>([])
+const total = ref(0)
+const busy = ref(false)
+const refreshing = ref(false)
+const error = ref('')
+const keyword = ref('')
+let appliedKeyword = ''
+const states = ['全部', '启用', '停用']
+const state = ref(0)
+const scrollTop = ref(0)
+let rememberedTop = 0
+let page = 0
+let sequence = 0
+let active = false
+let lastReset = true
+let lastPreserve = false
+const editorOpen = ref(false)
+const saving = ref(false)
+const windowHeight = ref(uni.getWindowInfo().windowHeight)
+const editorStyle = computed(
+	(): string =>
+		'height:' + Math.max(200, Math.floor(windowHeight.value * 0.8)) + 'px;',
+)
+const genders = ['男生', '女生']
+const draft = ref<AdminReference>({
+	id: 0,
+	name: '',
+	college: '',
+	major: '',
+	enabled: true,
+	gender: 'male',
+	sortOrder: 0,
+})
+const sortText = ref('0')
+function themeClass(value: string): string {
+	return resolveThemeClass(value)
+}
+function noop() {}
+function valid(seq: number, key: string): boolean {
+	return active && seq == sequence && key == adminSession()
+}
+function rememberScroll(e: UniScrollEvent) {
+	rememberedTop = e.detail.scrollTop
+}
+function restoreScroll(value: number) {
+	scrollTop.value = value + 0.01
+	nextTick(() => {
+		scrollTop.value = value
+	})
+}
+function changeGender(e: UniPickerChangeEvent) {
+	draft.value.gender =
+		parseInt(e.detail.value as string) == 0 ? 'male' : 'female'
+}
+function changeEnabled(e: UniSwitchChangeEvent) {
+	draft.value.enabled = e.detail.value
+}
+function closeEditor() {
+	if (!saving.value) editorOpen.value = false
+}
+function create() {
+	if (saving.value) return
+	draft.value = {
+		id: 0,
+		name: '',
+		college: '',
+		major: '',
+		enabled: true,
+		gender: 'male',
+		sortOrder: 0,
+	}
+	sortText.value = '0'
+	editorOpen.value = true
+}
+function edit(item: AdminReference) {
+	if (saving.value) return
+	draft.value = {
+		id: item.id,
+		name: item.name,
+		college: item.college,
+		major: item.major,
+		enabled: item.enabled,
+		gender: item.gender,
+		sortOrder: item.sortOrder,
+	}
+	sortText.value = item.sortOrder.toString()
+	editorOpen.value = true
+}
+async function load(reset: boolean, preserve: boolean = false) {
+	if (busy.value && !reset) return
+	const oldTop = rememberedTop
+	const oldPage = Math.max(1, page)
+	const seq = ++sequence
+	const key = adminSession()
+	busy.value = true
+	error.value = ''
+	lastReset = reset
+	lastPreserve = preserve
+	try {
+		if (!(await requireAdmin()) || !valid(seq, key)) return
+		let next = reset ? 1 : page + 1
+		const result = await adminReferenceList(
+			kind.value,
+			next,
+			appliedKeyword,
+			state.value,
+		)
+		if (!valid(seq, key)) return
+		let rows = result.items
+		let count = result.total
+		if (preserve) {
+			for (let n = 2; n <= oldPage && rows.length < count; n++) {
+				const extra = await adminReferenceList(
+					kind.value,
+					n,
+					appliedKeyword,
+					state.value,
+				)
+				if (!valid(seq, key)) return
+				rows = rows.concat(extra.items)
+				count = extra.total
+				next = n
+			}
+		}
+		items.value = reset ? rows : items.value.concat(rows)
+		total.value = count
+		page = next
+		if (preserve) nextTick(() => restoreScroll(oldTop))
+	} catch (e) {
+		if (valid(seq, key)) error.value = (e as Error).message
+	} finally {
+		if (sequence == seq) {
+			busy.value = false
+			refreshing.value = false
+		}
+	}
+}
+function refresh() {
+	appliedKeyword = keyword.value
+	refreshing.value = true
+	restoreScroll(0)
+	load(true)
+}
+function changeState(e: UniPickerChangeEvent) {
+	state.value = parseInt(e.detail.value as string)
+	refresh()
+}
+function retry() {
+	load(lastReset, lastPreserve)
+}
+function more() {
+	if (!busy.value && items.value.length < total.value) load(false)
+}
+async function save() {
+	if (saving.value) return
+	if (
+		draft.value.name.trim() == '' ||
+		(kind.value == 'classes' &&
+			(draft.value.college.trim() == '' || draft.value.major.trim() == ''))
+	) {
+		uni.showToast({ title: '请填写完整信息', icon: 'none' })
+		return
+	}
+	const order = parseFloat(sortText.value)
+	if (
+		kind.value != 'classes' &&
+		(!/^[0-9]+$/.test(sortText.value.trim()) ||
+			isNaN(order) ||
+			order < 0 ||
+			order > 4294967295 ||
+			Math.floor(order) != order)
+	) {
+		uni.showToast({ title: '显示顺序须为非负整数', icon: 'none' })
+		return
+	}
+	draft.value.sortOrder = kind.value == 'classes' ? 0 : order
+	saving.value = true
+	const seq = sequence
+	const key = adminSession()
+	try {
+		await saveAdminReference(kind.value, draft.value)
+		if (!valid(seq, key)) return
+		editorOpen.value = false
+		uni.showToast({ title: '保存成功', icon: 'none' })
+		await load(true, true)
+	} catch (e) {
+		if (valid(seq, key))
+			uni.showToast({ title: (e as Error).message, icon: 'none' })
+	} finally {
+		saving.value = false
+	}
+}
+onLoad((options) => {
+	const value = options['kind']
+	if (value == 'classes' || value == 'apartments' || value == 'leave-types')
+		kind.value = value
+})
+onShow(() => {
+	active = true
+	load(true, page > 0)
+})
+onHide(() => {
+	active = false
+	sequence++
+	busy.value = false
+	refreshing.value = false
+	editorOpen.value = false
+})
+onResize((_options: OnResizeOptions) => {
+	windowHeight.value = uni.getWindowInfo().windowHeight
+})
+onBackPress((_options: OnBackPressOptions): boolean => {
+	if (!editorOpen.value) return false
+	closeEditor()
+	return true
+})
+</script>
+<style lang="scss">
+@import '@/styles/ios-theme.scss';
+.reference-root {
+	flex: 1;
+	overflow: hidden;
+}
+.reference-scroll {
+	flex: 1;
+	min-height: 0;
+}
+.reference-search-row,
+.reference-row,
+.reference-switch-row {
+	flex-direction: row;
+	align-items: center;
+	justify-content: space-between;
+}
+.reference-search-row {
+	margin-bottom: 14px;
+}
+.reference-input {
+	color: $ios-ink;
+	background-color: $ios-surface;
+	border-radius: 12px;
+	min-height: 44px;
+	padding: 12px;
+	font-size: 15px;
+}
+.reference-search {
+	flex: 1;
+}
+.reference-link {
+	color: $ios-blue;
+	padding: 10px;
+	font-size: 14px;
+}
+.reference-card {
+	background-color: $ios-surface;
+	border-radius: 18px;
+	padding: 16px;
+	margin-bottom: 12px;
+}
+.reference-title {
+	color: $ios-ink;
+	font-size: 17px;
+	font-weight: 600;
+	flex: 1;
+}
+.reference-status {
+	color: $ios-blue;
+	font-size: 12px;
+	margin-left: 10px;
+}
+.reference-disabled {
+	color: $ios-secondary;
+	font-size: 12px;
+	margin-left: 10px;
+}
+.reference-muted {
+	color: $ios-secondary;
+	font-size: 13px;
+	line-height: 21px;
+	margin-top: 8px;
+}
+.reference-more {
+	color: $ios-blue;
+	font-size: 14px;
+	text-align: center;
+	padding: 20px;
+}
+.reference-bottom-space {
+	height: 24px;
+}
+.reference-error {
+	color: $ios-red;
+	font-size: 14px;
+	padding: 12px;
+}
+.reference-label {
+	color: $ios-ink;
+	font-size: 14px;
+	margin-top: 16px;
+	margin-bottom: 8px;
+}
+.reference-overlay {
+	position: fixed;
+	top: 0;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	z-index: 20;
+	background-color: rgba(0, 0, 0, 0.4);
+	justify-content: flex-end;
+}
+.reference-editor {
+	background-color: $ios-page;
+	padding: 20px;
+	border-top-left-radius: 24px;
+	border-top-right-radius: 24px;
+}
+.reference-save {
+	background-color: $ios-blue;
+	color: #ffffff;
+	border-radius: 14px;
+	margin-top: 14px;
+	font-size: 16px;
+}
+.dark-reference-input,
+.dark-reference-card {
+	background-color: $ios-dark-surface;
+}
+.dark-reference-editor {
+	background-color: $ios-dark-page;
+}
+.dark-reference-input,
+.dark-reference-title,
+.dark-reference-label {
+	color: $ios-dark-ink;
+}
+.dark-reference-muted {
+	color: $ios-dark-secondary;
+}
+</style>
