@@ -85,7 +85,7 @@ func (u *UserHandler) LoginHandler(c *gin.Context) {
 		response.Error(c, response.CodeInvalidParam)
 		return
 	}
-	if !validStudentID(p.StudentID) ||
+	if !validLoginAccount(p.StudentID) ||
 		len(p.Password) == 0 ||
 		utf8.RuneCountInString(strings.TrimSpace(p.DeviceName)) > 255 ||
 		len(p.AppVersion) > 64 {
@@ -199,4 +199,10 @@ func validStudentID(studentID string) bool {
 		}
 	}
 	return true
+}
+
+// 登录兼容管理员账号；注册仍只接受十二位学号。
+func validLoginAccount(account string) bool {
+	length := utf8.RuneCountInString(strings.TrimSpace(account))
+	return length > 0 && length <= 22
 }

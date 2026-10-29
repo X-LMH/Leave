@@ -82,3 +82,16 @@ func TestValidStudentID(t *testing.T) {
 		})
 	}
 }
+
+func TestValidLoginAccount(t *testing.T) {
+	for _, tc := range []struct {
+		account string
+		valid   bool
+	}{
+		{"admin-test", true}, {"202600000001", true}, {"  admin  ", true}, {"", false}, {"   ", false}, {"12345678901234567890123", false},
+	} {
+		if validLoginAccount(tc.account) != tc.valid {
+			t.Errorf("unexpected validity for %q", tc.account)
+		}
+	}
+}

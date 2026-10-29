@@ -15,7 +15,7 @@
 			label="学号"
 			:placeholder="'请输入学号'"
 			:password="false"
-			:maxlength="12"
+			:maxlength="isRegister ? 12 : 22"
 			field-class=""
 			:invalid="errorField == 'studentID'"
 			:focused="focusedField == 'studentID'"
@@ -138,7 +138,11 @@ async function submit() {
 		enterDestination()
 		return
 	}
-	if (!/^\d{12}$/.test(studentID.value.trim())) {
+	if (isRegister.value && !/^\d{12}$/.test(studentID.value.trim())) {
+		showFieldError('studentID', '请输入 12 位学号')
+		return
+	}
+	if (studentID.value.trim() == '') {
 		showFieldError('studentID', '请输入 12 位学号')
 		return
 	}
