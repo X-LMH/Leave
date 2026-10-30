@@ -255,7 +255,7 @@ const local: App.I18n.Schema = {
       students: '学生总数',
       classes: '班级总数',
       records: '请假记录总数',
-      feedback: '意见反馈总数',
+      feedback: '未处理反馈',
       peopleUnit: '人',
       classesUnit: '个',
       recordsUnit: '条',

@@ -58,6 +58,30 @@
 	color: $ios-blue;
 	margin-left: 12px;
 }
+.feedback-state {
+	align-self: flex-start;
+	flex-shrink: 0;
+	padding: 2px 8px;
+	border-radius: 6px;
+	font-size: 12px;
+	line-height: 20px;
+}
+.feedback-handled {
+	color: $ios-green;
+	background-color: rgba(82, 196, 26, 0.1);
+}
+.feedback-unhandled {
+	color: #ad6800;
+	background-color: rgba(250, 173, 20, 0.12);
+}
+.dark-feedback-handled {
+	color: $ios-dark-green;
+	background-color: rgba(82, 196, 26, 0.15);
+}
+.dark-feedback-unhandled {
+	color: #ffc85c;
+	background-color: rgba(250, 173, 20, 0.15);
+}
 .summary {
 	font-size: 14px;
 	line-height: 23px;

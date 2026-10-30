@@ -17,6 +17,8 @@ export type AdminRow = {
 	title: string
 	subtitle: string
 	summary: string
+	appVersion: string
+	appVersionStatus: string
 	status: string
 }
 export type AdminField = { label: string; value: string }
@@ -27,6 +29,9 @@ let attachmentPaths: string[] = []
 
 export function invalidateAdmin() {
 	adminRevision++
+	overviewSequence++
+	overviewCache = null
+	pendingOverview = null
 }
 export function clearAdminAttachments() {
 	for (const path of attachmentPaths)
@@ -82,6 +87,8 @@ export function adminRow(kind: string, data: UTSJSONObject): AdminRow {
 		return {
 			id: id,
 			classID: 0,
+			appVersion: '',
+			appVersionStatus: '',
 			title: anonymous ? '匿名反馈' : '账号 ' + stringValue(data, 'student_id'),
 			subtitle: displayDate(stringValue(data, 'created_at')),
 			summary: stringValue(data, 'content'),
@@ -92,6 +99,8 @@ export function adminRow(kind: string, data: UTSJSONObject): AdminRow {
 	return {
 		id: id,
 		classID: (data['class_id'] as number | null) ?? 0,
+		appVersion: kind == 'students' ? stringValue(data, 'app_version') : '',
+		appVersionStatus: kind == 'students' ? stringValue(data, 'app_version_status') : '',
 		title:
 			stringValue(data, 'name') == ''
 				? '未设置姓名'
@@ -106,8 +115,8 @@ export function adminRow(kind: string, data: UTSJSONObject): AdminRow {
 		status:
 			kind == 'students'
 				? (data['status'] as number) == 1
-					? '正常'
-					: '停用'
+					? '启用'
+					: '禁用'
 				: (data['is_leave_school'] as boolean)
 					? '离校'
 					: '不离校',
@@ -141,11 +150,7 @@ export async function adminOptions(kind: string): Promise<AdminOption[]> {
 			id: item['id'] as number,
 			label:
 				kind == 'class'
-					? stringValue(item, 'college') +
-						' / ' +
-						stringValue(item, 'major') +
-						' / ' +
-						stringValue(item, 'class_name')
+					? stringValue(item, 'class_name')
 					: stringValue(item, 'name'),
 		})
 	return result
@@ -168,6 +173,7 @@ export type AdminVersionGroup = {
 export type AdminOverviewData = {
 	studentCount: number
 	recordCount: number
+	unhandledFeedbackCount: number
 	weeks: AdminWeek[]
 	applicationTotal: number
 	versionGroups: AdminVersionGroup[]
@@ -175,7 +181,42 @@ export type AdminOverviewData = {
 	latestCount: number
 	latestVersion: string
 }
-export async function adminOverview(): Promise<AdminOverviewData> {
+let overviewCache: AdminOverviewData | null = null
+let pendingOverview: Promise<AdminOverviewData> | null = null
+let overviewSession = ''
+let overviewRevision = -1
+let overviewSequence = 0
+
+export async function adminOverview(force: boolean = false): Promise<AdminOverviewData> {
+	const key = adminSession()
+	const revision = adminRevision
+	if (key != overviewSession || revision != overviewRevision) {
+		overviewSequence++
+		overviewCache = null
+		pendingOverview = null
+		overviewSession = key
+		overviewRevision = revision
+	}
+	// 同一会话和数据版本共用进行中的请求，下拉刷新只跳过已完成的缓存。
+	const pending = pendingOverview
+	if (pending != null) return pending
+	const cached = overviewCache
+	if (!force && cached != null) return cached
+	overviewCache = null
+	const seq = ++overviewSequence
+	const task = fetchAdminOverview()
+	pendingOverview = task
+	try {
+		const data = await task
+		if (seq == overviewSequence && key == adminSession() && revision == adminRevision)
+			overviewCache = data
+		return data
+	} finally {
+		if (seq == overviewSequence) pendingOverview = null
+	}
+}
+
+async function fetchAdminOverview(): Promise<AdminOverviewData> {
 	const data = await request<UTSJSONObject>(
 		'/admin/overview',
 		'GET',
@@ -205,6 +246,7 @@ export async function adminOverview(): Promise<AdminOverviewData> {
 	return {
 		studentCount: statistics['student_count'] as number,
 		recordCount: statistics['record_count'] as number,
+		unhandledFeedbackCount: statistics['unhandled_feedback_count'] as number,
 		weeks: weeks,
 		applicationTotal: weekly['total'] as number,
 		versionGroups: groups,

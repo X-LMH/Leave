@@ -3,10 +3,10 @@ package dto
 import "time"
 
 type OverviewStatistics struct {
-	StudentCount  int64 `json:"student_count"`
-	ClassCount    int64 `json:"class_count"`
-	RecordCount   int64 `json:"record_count"`
-	FeedbackCount int64 `json:"feedback_count"`
+	StudentCount           int64 `json:"student_count"`
+	ClassCount             int64 `json:"class_count"`
+	RecordCount            int64 `json:"record_count"`
+	UnhandledFeedbackCount int64 `json:"unhandled_feedback_count"`
 }
 
 type OverviewWeek struct {

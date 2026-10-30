@@ -11,18 +11,36 @@
 			>正在加载…</text
 		>
 		<template v-if="loaded">
-			<view v-for="group in groupTitles" :key="group">
-				<text :class="themeClass('section-heading group-heading')">{{
-					group
+			<view v-if="kind == 'students'" :class="themeClass('student-summary')">
+				<view class="student-identity">
+					<text :class="themeClass('student-name')" selectable>{{ studentName == '' ? '未设置' : studentName }}</text>
+					<text :class="themeClass('student-number')" selectable>学号 · {{ studentNumber == '' ? '未设置' : studentNumber }}</text>
+					<view class="student-header-version">
+						<AdminStudentVersion :version="studentVersion" :status="studentVersionStatus" />
+					</view>
+				</view>
+				<text :class="themeClass(studentStatus == 1 ? 'student-status' : 'student-status student-status-disabled')">
+					{{ studentStatus == 1 ? '启用' : '禁用' }}
+				</text>
+			</view>
+			<view v-for="group in detailGroups" :key="group.title">
+				<text :class="themeClass(kind == 'students' ? 'student-group-heading' : 'section-heading group-heading')">{{
+					group.title
 				}}</text>
-				<view :class="themeClass('admin-card')">
-					<template v-for="field in fields" :key="field.label"
+				<view :class="themeClass(kind == 'students' ? 'student-card' : 'admin-card')">
+					<template v-for="(field, index) in group.fields" :key="field.label"
 						><view
-							v-if="groupFor(field.label) == group"
-							:class="themeClass('field-row')"
+							:class="themeClass(kind == 'students'
+								? (index == group.fields.length - 1 ? 'student-field-row student-field-last' : 'student-field-row')
+								: 'field-row')"
 						>
-							<text :class="themeClass('muted')">{{ field.label }}</text
-							><text :class="themeClass('field-value')" selectable>{{
+							<text :class="themeClass(kind == 'students' ? 'student-field-label' : 'muted')">{{ field.label }}</text
+							>
+							<text :class="themeClass(kind == 'students'
+								? 'student-field-value'
+								: field.label == '处理状态'
+									? (handled ? 'field-value feedback-state feedback-handled' : 'field-value feedback-state feedback-unhandled')
+									: 'field-value')" selectable>{{
 								field.value
 							}}</text>
 						</view></template
@@ -30,12 +48,13 @@
 				</view>
 			</view>
 			<template v-if="kind == 'students'">
-				<text :class="themeClass('section-heading group-heading')"
+				<text :class="themeClass('student-group-heading')"
 					>账号管理</text
 				>
-				<view :class="themeClass('admin-card')">
+				<view :class="themeClass('admin-card account-actions')">
 					<button
-						class="account-button"
+						:class="themeClass('account-button account-reset')"
+						hover-class="account-button-pressed"
 						:disabled="accountBusy"
 						@click="confirmAccount('password')"
 					>
@@ -43,14 +62,17 @@
 					</button>
 					<button
 						:class="
-							studentStatus == 1
-								? 'account-button danger-button'
-								: 'account-button'
+							themeClass(
+								studentStatus == 1
+									? 'account-button danger-button'
+									: 'account-button',
+							)
 						"
+						hover-class="account-button-pressed"
 						:disabled="accountBusy"
 						@click="confirmAccount('status')"
 					>
-						{{ studentStatus == 1 ? '停用账号' : '启用账号' }}
+						{{ studentStatus == 1 ? '禁用账号' : '启用账号' }}
 					</button>
 				</view></template
 			>
@@ -87,7 +109,8 @@
 </template>
 <script setup lang="uts">
 import ProfilePageShell from '@/components/ProfilePageShell.uvue'
-import { ref, watch, onUnmounted } from 'vue'
+import AdminStudentVersion from '@/components/AdminStudentVersion.uvue'
+import { ref, computed, watch, onUnmounted } from 'vue'
 import { themeClass as resolveThemeClass } from '@/utils/app-theme.uts'
 import {
 	AdminField,
@@ -115,19 +138,27 @@ const error = ref('')
 const saving = ref(false)
 const accountBusy = ref(false)
 const studentStatus = ref(1)
-let studentName = ''
-let studentNumber = ''
+const studentName = ref('')
+const studentNumber = ref('')
+const studentVersion = ref('')
+const studentVersionStatus = ref('')
 const handled = ref(false)
 let sequence = 0
-const groupTitles =
-	kind == 'students' ? ['基本信息', '联系与住宿', '使用信息'] : ['反馈内容']
+type DetailGroup = { title: string; fields: AdminField[] }
 function groupFor(label: string): string {
-	if (kind == 'feedbacks') return '反馈内容'
-	if (['姓名', '学号', '性别', '班级', '账号状态'].includes(label))
-		return '基本信息'
-	if (['客户端版本', '最近设备', '最近使用'].includes(label)) return '使用信息'
+	if (['性别', '班级', '辅导员'].includes(label)) return '基本信息'
+	if (['使用版本', '最近设备', '最近使用', '注册时间', '更新时间'].includes(label)) return '使用信息'
 	return '联系与住宿'
 }
+const detailGroups = computed((): DetailGroup[] => {
+	if (kind == 'feedbacks') return [{ title: '反馈内容', fields: fields.value } as DetailGroup]
+	return ['基本信息', '联系与住宿', '使用信息'].map((title: string): DetailGroup => {
+		return {
+			title: title,
+			fields: fields.value.filter((field: AdminField): boolean => groupFor(field.label) == title),
+		} as DetailGroup
+	})
+})
 function themeClass(value: string): string {
 	return resolveThemeClass(value)
 }
@@ -144,9 +175,7 @@ function addField(
 	label: string,
 	date: boolean = false,
 ) {
-	let value = stringValue(data, key)
-	if (key == 'gender')
-		value = value == 'male' ? '男' : value == 'female' ? '女' : value
+	const value = stringValue(data, key)
 	fields.value.push({
 		label: label,
 		value: date ? displayDate(value) : value == '' ? '未设置' : value,
@@ -155,8 +184,10 @@ function addField(
 function showDetail(data: UTSJSONObject) {
 	if (kind == 'students') {
 		studentStatus.value = data['status'] as number
-		studentName = stringValue(data, 'name')
-		studentNumber = stringValue(data, 'student_id')
+		studentName.value = stringValue(data, 'name')
+		studentNumber.value = stringValue(data, 'student_id')
+		studentVersion.value = stringValue(data, 'app_version')
+		studentVersionStatus.value = stringValue(data, 'app_version_status')
 	}
 	fields.value = []
 	if (kind == 'feedbacks') {
@@ -176,32 +207,34 @@ function showDetail(data: UTSJSONObject) {
 		addField(data, 'updated_at', '更新时间', true)
 		return
 	}
-	addField(data, 'name', '姓名')
-	addField(data, 'student_id', '学号')
-	addField(data, 'gender', '性别')
 	if (kind == 'students') {
+		const gender = stringValue(data, 'gender')
+		fields.value.push({
+			label: '性别',
+			value: gender == 'male' ? '男' : gender == 'female' ? '女' : gender == '' ? '未设置' : gender,
+		} as AdminField)
 		fields.value.push({
 			label: '班级',
 			value: classLabel(data['class_id'] as number),
 		} as AdminField)
-		fields.value.push({
-			label: '账号状态',
-			value: (data['status'] as number) == 1 ? '正常' : '停用',
-		} as AdminField)
+		addField(data, 'teacher_name', '辅导员')
 		addField(data, 'phone', '联系电话')
 		let apartment = '未设置'
 		for (const option of apartments.value)
-			if (option.id == (data['apartment_id'] as number))
-				apartment = option.label
+			if (option.id == (data['apartment_id'] as number)) apartment = option.label
 		fields.value.push({ label: '公寓', value: apartment } as AdminField)
 		addField(data, 'dormitory_number', '宿舍号')
-		addField(data, 'app_version', '客户端版本')
+		addField(data, 'parent_name', '家长姓名')
+		addField(data, 'parent_phone', '家长电话')
+		const lastSeen = stringValue(data, 'last_seen_at')
+		fields.value.push({
+			label: '最近使用',
+			value: lastSeen == '' ? '未上报' : displayDate(lastSeen),
+		} as AdminField)
 		addField(data, 'last_seen_device', '最近设备')
-		addField(data, 'last_seen_at', '最近使用', true)
+		addField(data, 'created_at', '注册时间', true)
+		addField(data, 'updated_at', '更新时间', true)
 	}
-	addField(data, 'parent_name', '家长姓名')
-	addField(data, 'parent_phone', '家长电话')
-	addField(data, 'teacher_name', '辅导员')
 }
 async function performAccount(
 	action: string,
@@ -237,18 +270,18 @@ function confirmAccount(action: string) {
 	const id = props.itemId
 	const status = studentStatus.value == 1 ? 0 : 1
 	const label =
-		action == 'password' ? '重置密码' : status == 1 ? '启用账号' : '停用账号'
+		action == 'password' ? '重置密码' : status == 1 ? '启用账号' : '禁用账号'
 	uni.showModal({
 		title: label,
 		content:
-			(studentName == '' ? '未设置姓名' : studentName) +
+			(studentName.value == '' ? '未设置姓名' : studentName.value) +
 			'（' +
-			studentNumber +
+			studentNumber.value +
 			'）\n' +
 			(action == 'password'
 				? '确认将密码重置为 12345678？请提醒学生登录后修改。'
 				: status == 0
-					? '停用后无法登录，已有登录将在后续请求时被拒绝。确认停用？'
+					? '禁用后无法登录，已有登录将在后续请求时被拒绝。确认禁用？'
 					: '确认恢复此账号的登录权限？'),
 		confirmText: '确认',
 		success: (result) => {
@@ -313,6 +346,7 @@ async function load() {
 		if (!(await requireAdmin()) || !valid(seq, key)) return
 		if (kind == 'students') {
 			const classes = await adminOptions('class')
+			if (!valid(seq, key)) return
 			const rooms = await adminOptions('apartment')
 			if (!valid(seq, key)) return
 			options.value = classes
@@ -348,13 +382,143 @@ onUnmounted(() => {
 </script>
 <style lang="scss">
 @import '@/styles/admin-content.scss';
+.student-summary {
+	flex-direction: row;
+	align-items: flex-start;
+	padding: 22px 18px;
+	margin-top: 8px;
+	background-color: $ios-surface;
+	border-radius: 18px;
+}
+.student-identity {
+	flex: 1;
+	min-width: 0;
+}
+.student-name {
+	font-size: 25px;
+	font-weight: 600;
+	line-height: 34px;
+	color: $ios-ink;
+}
+.student-number {
+	margin-top: 6px;
+	font-size: 13px;
+	line-height: 21px;
+	color: $ios-secondary;
+}
+.student-status {
+	flex-shrink: 0;
+	margin-top: 5px;
+	margin-left: 14px;
+	padding: 3px 10px;
+	border-radius: 8px;
+	font-size: 12px;
+	line-height: 18px;
+	color: $ios-blue;
+	background-color: rgba(0, 102, 220, 0.08);
+}
+.student-status-disabled {
+	color: $ios-red;
+	background-color: rgba(195, 41, 52, 0.08);
+}
+.student-group-heading {
+	margin: 24px 4px 10px;
+	font-size: 14px;
+	font-weight: 500;
+	line-height: 22px;
+	color: $ios-secondary;
+}
+.student-card {
+	padding: 2px 18px;
+	border-radius: 18px;
+	background-color: $ios-surface;
+}
+.student-field-row {
+	flex-direction: row;
+	align-items: flex-start;
+	padding: 15px 0;
+	border-bottom-width: 0.5px;
+	border-bottom-color: $ios-separator;
+}
+.student-field-label {
+	width: 84px;
+	flex-shrink: 0;
+	margin-right: 16px;
+	font-size: 14px;
+	line-height: 23px;
+	color: $ios-secondary;
+}
+.student-field-value {
+	flex: 1;
+	min-width: 0;
+	font-size: 15px;
+	line-height: 23px;
+	text-align: right;
+	color: $ios-ink;
+}
+.student-field-last {
+	border-bottom-width: 0;
+}
+.student-header-version {
+	margin-top: 10px;
+}
+.dark-student-summary,
+.dark-student-card {
+	background-color: $ios-dark-surface;
+}
+.dark-student-name,
+.dark-student-field-value {
+	color: $ios-dark-ink;
+}
+.dark-student-number,
+.dark-student-group-heading,
+.dark-student-field-label {
+	color: $ios-dark-secondary;
+}
+.dark-student-status {
+	color: $ios-dark-blue;
+	background-color: rgba(106, 169, 255, 0.12);
+}
+.dark-student-status-disabled {
+	color: $ios-dark-red;
+	background-color: rgba(255, 133, 141, 0.12);
+}
+.dark-student-field-row {
+	border-bottom-color: $ios-dark-separator;
+}
+.account-actions {
+	flex-direction: row;
+	align-items: center;
+}
 .account-button {
-	background-color: transparent;
-	color: #0066dc;
-	font-size: 16px;
-	padding: 12px;
+	flex: 1;
+	width: 0;
+	height: 48px;
+	margin: 0;
+	padding: 0;
+	border-radius: 12px;
+	background-color: rgba(0, 102, 220, 0.08);
+	color: $ios-blue;
+	font-size: 15px;
+	font-weight: 500;
+	line-height: 48px;
+}
+.account-reset {
+	margin-right: 12px;
 }
 .danger-button {
-	color: #d13b38;
+	background-color: rgba(195, 41, 52, 0.08);
+	color: $ios-red;
+}
+.dark-account-button {
+	background-color: rgba(106, 169, 255, 0.12);
+	color: $ios-dark-blue;
+}
+.dark-danger-button {
+	background-color: rgba(255, 133, 141, 0.12);
+	color: $ios-dark-red;
+}
+.account-button-pressed {
+	opacity: 0.65;
 }
 </style>

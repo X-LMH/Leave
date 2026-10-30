@@ -34,7 +34,7 @@ export interface Overview {
     studentCount: number;
     classCount: number;
     recordCount: number;
-    feedbackCount: number;
+    unhandledFeedbackCount: number;
   };
   weeklyApplications: { weeks: WeeklyApplicationPoint[]; total: number };
   versionUsage: OverviewVersionUsage;
@@ -53,7 +53,7 @@ interface OverviewWire {
     student_count: number;
     class_count: number;
     record_count: number;
-    feedback_count: number;
+    unhandled_feedback_count: number;
   };
   weekly_applications: {
     weeks: { start: string; end: string; count: number; is_current: boolean }[];
@@ -88,7 +88,7 @@ export function adaptOverview(row: OverviewWire): Overview {
       studentCount: row.statistics.student_count,
       classCount: row.statistics.class_count,
       recordCount: row.statistics.record_count,
-      feedbackCount: row.statistics.feedback_count
+      unhandledFeedbackCount: row.statistics.unhandled_feedback_count
     },
     weeklyApplications: {
       weeks: row.weekly_applications.weeks.map(week => ({

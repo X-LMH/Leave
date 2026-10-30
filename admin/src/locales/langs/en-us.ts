@@ -259,7 +259,7 @@ const local: App.I18n.Schema = {
       students: 'Total Students',
       classes: 'Total Classes',
       records: 'Total Leave Records',
-      feedback: 'Total Feedback',
+      feedback: 'Unhandled Feedback',
       peopleUnit: 'students',
       classesUnit: 'classes',
       recordsUnit: 'records',

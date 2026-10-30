@@ -22,7 +22,7 @@ const serialize = value => JSON.parse(JSON.stringify(value));
 function fixture() {
   return {
     generated_at: '2026-10-11T12:00:00+08:00',
-    statistics: { student_count: 72, class_count: 3, record_count: 125, feedback_count: 7 },
+    statistics: { student_count: 72, class_count: 3, record_count: 125, unhandled_feedback_count: 7 },
     weekly_applications: {
       weeks: Array.from({ length: 9 }, (_, index) => ({
         start: new Date(Date.parse('2026-08-10T00:00:00+08:00') + index * 604800000).toISOString(),
@@ -42,7 +42,7 @@ test('adapts real response fields and timestamps without recalculating business 
   const wire = fixture();
   const data = adaptOverview(wire);
   assert.equal(data.generatedAt, Date.parse(wire.generated_at));
-  assert.deepEqual(serialize(data.statistics), { studentCount: 72, classCount: 3, recordCount: 125, feedbackCount: 7 });
+  assert.deepEqual(serialize(data.statistics), { studentCount: 72, classCount: 3, recordCount: 125, unhandledFeedbackCount: 7 });
   assert.equal(data.weeklyApplications.weeks.length, 9);
   assert.equal(data.weeklyApplications.weeks[8].isCurrent, true);
   assert.equal(data.weeklyApplications.weeks[8].start, Date.parse('2026-10-05T00:00:00+08:00'));
@@ -57,7 +57,7 @@ test('adapts real response fields and timestamps without recalculating business 
 
 test('preserves empty database, zero weeks and unavailable release', () => {
   const wire = fixture();
-  wire.statistics = { student_count: 0, class_count: 0, record_count: 0, feedback_count: 0 };
+  wire.statistics = { student_count: 0, class_count: 0, record_count: 0, unhandled_feedback_count: 0 };
   wire.weekly_applications.weeks.forEach(week => { week.count = 0; });
   wire.weekly_applications.total = 0;
   wire.version_usage = { total: 0, latest_count: 0, groups: [] };

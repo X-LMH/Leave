@@ -37,7 +37,9 @@ func (s *DAO) GetOverviewStatistics(tx *gorm.DB, now time.Time) (dto.OverviewSta
 	if err := tx.Model(&models.Record{}).Count(&counts.RecordCount).Error; err != nil {
 		return counts, err
 	}
-	if err := tx.Model(&models.Feedback{}).Count(&counts.FeedbackCount).Error; err != nil {
+	if err := tx.Model(&models.Feedback{}).
+		Where("is_handled = ?", false).
+		Count(&counts.UnhandledFeedbackCount).Error; err != nil {
 		return counts, err
 	}
 	return counts, nil

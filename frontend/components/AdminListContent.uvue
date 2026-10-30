@@ -48,6 +48,7 @@
 			:id="'admin-scroll-' + kind"
 			scroll-y="true"
 			:refresher-enabled="true"
+			:android-refresher-color="themeState.isDark ? '#6aa9ff' : '#0066dc'"
 			:refresher-triggered="refreshing"
 			:scroll-top="scrollTop"
 			@scroll="rememberScroll"
@@ -64,15 +65,37 @@
 				<view
 					v-for="row in rows"
 					:key="row.id"
-					:class="themeClass('admin-card')"
+					:class="themeClass(kind == 'students' ? 'admin-card student-list-card' : 'admin-card')"
 					@click="openDetail(row.id)"
 				>
 					<view class="row-heading"
 						><text :class="themeClass('row-title')">{{ row.title }}</text
-						><text class="badge">{{ row.status }}</text></view
+						><text
+							:class="kind == 'students'
+								? themeClass(row.status == '禁用'
+									? 'student-list-status student-list-status-disabled'
+									: 'student-list-status')
+								: kind == 'feedbacks'
+									? themeClass(row.status == '已处理' ? 'feedback-state feedback-handled' : 'feedback-state feedback-unhandled')
+									: 'badge'"
+						>{{ row.status }}</text></view
 					>
-					<text :class="themeClass('muted')">{{ row.subtitle }}</text
-					><text :class="themeClass('summary')">{{ row.summary }}</text>
+					<template v-if="kind == 'students'">
+						<view class="student-list-meta">
+							<text :class="themeClass('student-list-number')">{{ row.subtitle == '' ? '学号未设置' : row.subtitle }}</text>
+							<text :class="themeClass('student-list-class')">{{ row.summary }}</text>
+						</view>
+						<view class="student-list-version">
+							<text :class="themeClass('student-list-label')">版本</text>
+							<view class="student-list-value-wrap">
+								<AdminStudentVersion :version="row.appVersion" :status="row.appVersionStatus" />
+							</view>
+						</view>
+					</template>
+					<template v-else>
+						<text :class="themeClass('muted')">{{ row.subtitle }}</text>
+						<text :class="themeClass('summary')">{{ row.summary }}</text>
+					</template>
 				</view>
 				<text
 					v-if="!busy && error == '' && rows.length == 0"
@@ -164,7 +187,8 @@
 </template>
 <script setup lang="uts">
 import { ref, watch, onUnmounted, nextTick, computed } from 'vue'
-import { themeClass as resolveThemeClass } from '@/utils/app-theme.uts'
+import { themeClass as resolveThemeClass, themeState } from '@/utils/app-theme.uts'
+import AdminStudentVersion from '@/components/AdminStudentVersion.uvue'
 import {
 	AdminRow,
 	AdminOption,
@@ -190,7 +214,7 @@ const total = ref(0)
 const keyword = ref('')
 const searchModes = ['姓名', '学号']
 const searchMode = ref(0)
-const accountStates = ['全部', '正常', '停用']
+const accountStates = ['全部', '启用', '禁用']
 const schoolStates = ['全部', '离校', '不离校']
 const anonymousStates = ['全部', '匿名', '实名']
 const feedbackTabs = ['未处理', '全部', '已处理']
@@ -279,6 +303,7 @@ async function load(reset: boolean, preserve: boolean = false) {
 	lastReset = reset
 	lastPreserve = preserve
 	const key = adminSession()
+	const dataRevision = adminRevision
 	busy.value = true
 	error.value = ''
 	try {
@@ -318,6 +343,7 @@ async function load(reset: boolean, preserve: boolean = false) {
 				filterQuery +
 				statusQuery,
 		)
+		if (!valid(seq, key)) return
 		let loadedPage = next
 		if (preserve) {
 			for (
@@ -348,7 +374,7 @@ async function load(reset: boolean, preserve: boolean = false) {
 		page = loadedPage
 		total.value = result.total
 		loaded.value = true
-		revision = adminRevision
+		revision = dataRevision
 		if (preserve) nextTick(() => restoreScroll(previousTop))
 	} catch (e) {
 		if (valid(seq, key)) error.value = (e as Error).message
@@ -509,7 +535,9 @@ watch(
 			loaded.value = false
 			session = key
 		}
-		if (!loaded.value || revision != adminRevision) load(true, loaded.value)
+		// 学生详情可修改账号状态，返回时重新校准列表及当前筛选结果。
+		if (kind == 'students' || !loaded.value || revision != adminRevision)
+			load(true, loaded.value)
 	},
 	{ immediate: true },
 )
@@ -519,4 +547,66 @@ onUnmounted(() => {
 </script>
 <style lang="scss">
 @import '@/styles/admin-content.scss';
+.student-list-card {
+	padding: 14px 16px;
+	margin-bottom: 10px;
+}
+.student-list-status {
+	flex-shrink: 0;
+	margin-left: 12px;
+	font-size: 12px;
+	line-height: 24px;
+	color: $ios-blue;
+}
+.student-list-status-disabled {
+	color: $ios-red;
+}
+.student-list-meta {
+	flex-direction: row;
+	align-items: flex-start;
+	margin-top: 2px;
+}
+.student-list-number {
+	font-size: 13px;
+	line-height: 22px;
+	color: $ios-secondary;
+}
+.student-list-class {
+	flex: 1;
+	min-width: 0;
+	margin-left: 14px;
+	font-size: 13px;
+	line-height: 22px;
+	color: $ios-secondary;
+}
+.student-list-version {
+	flex-direction: row;
+	align-items: flex-start;
+	margin-top: 8px;
+}
+.student-list-label {
+	flex-shrink: 0;
+	margin-right: 8px;
+	font-size: 13px;
+	line-height: 22px;
+	color: $ios-secondary;
+}
+.student-list-value-wrap {
+	flex: 1;
+	min-width: 0;
+}
+.dark-student-list-card {
+	background-color: $ios-dark-surface;
+}
+.dark-student-list-status {
+	color: $ios-dark-blue;
+}
+.dark-student-list-status-disabled {
+	color: $ios-dark-red;
+}
+.dark-student-list-number,
+.dark-student-list-class,
+.dark-student-list-label {
+	color: $ios-dark-secondary;
+}
 </style>

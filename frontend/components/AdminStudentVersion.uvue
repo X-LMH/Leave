@@ -1,0 +1,86 @@
+<template>
+	<view class="student-version">
+		<text :class="themeClass(status == 'outdated' && version.trim() != '' ? 'version-number version-outdated' : 'version-number')" selectable>{{
+			version.trim() == '' ? '未上报' : version
+		}}</text>
+		<text v-if="version.trim() != ''" :class="themeClass('version-label version-' + versionState)">{{ versionLabel }}</text>
+	</view>
+</template>
+
+<script setup lang="uts">
+import { computed } from 'vue'
+import { themeClass as resolveThemeClass } from '@/utils/app-theme.uts'
+
+const props = defineProps<{ version: string; status: string }>()
+function themeClass(value: string): string {
+	return resolveThemeClass(value)
+}
+const versionState = computed((): string => {
+	return ['latest', 'previous', 'outdated'].includes(props.status) ? props.status : 'unknown'
+})
+const versionLabel = computed((): string => {
+	if (versionState.value == 'latest') return '最新版'
+	if (versionState.value == 'previous') return '旧版本'
+	if (versionState.value == 'outdated') return '版本过旧'
+	return '版本未知'
+})
+</script>
+
+<style lang="scss">
+@import '@/styles/ios-theme.scss';
+.student-version {
+	flex-direction: row;
+	align-items: center;
+	flex-wrap: wrap;
+}
+.version-number {
+	font-size: 14px;
+	font-weight: 600;
+	line-height: 23px;
+	color: $ios-ink;
+}
+.version-label {
+	margin-left: 8px;
+	padding: 1px 7px;
+	border-radius: 6px;
+	font-size: 11px;
+	line-height: 19px;
+	color: $ios-secondary;
+	background-color: $ios-page;
+}
+.version-latest {
+	color: $ios-green;
+	background-color: rgba(32, 122, 80, 0.08);
+}
+.version-previous {
+	color: #ad6800;
+	background-color: rgba(250, 173, 20, 0.12);
+}
+.version-outdated {
+	color: $ios-red;
+}
+.version-label.version-outdated {
+	background-color: rgba(195, 41, 52, 0.08);
+}
+.dark-version-number {
+	color: $ios-dark-ink;
+}
+.dark-version-label {
+	color: $ios-dark-secondary;
+	background-color: $ios-dark-panel;
+}
+.dark-version-latest {
+	color: $ios-dark-green;
+	background-color: rgba(99, 214, 154, 0.12);
+}
+.dark-version-outdated {
+	color: $ios-dark-red;
+}
+.dark-version-previous {
+	color: #ffc85c;
+	background-color: rgba(250, 173, 20, 0.15);
+}
+.dark-version-label.dark-version-outdated {
+	background-color: rgba(255, 133, 141, 0.12);
+}
+</style>

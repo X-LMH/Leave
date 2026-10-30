@@ -166,7 +166,7 @@ const statistics = computed(() => [
   {
     key: 'feedback',
     title: $t('page.home.feedback'),
-    value: overview.value?.statistics.feedbackCount ?? 0,
+    value: overview.value?.statistics.unhandledFeedbackCount ?? 0,
     unit: $t('page.home.recordsUnit'),
     icon: 'lucide:message-square',
     tone: 'primary',

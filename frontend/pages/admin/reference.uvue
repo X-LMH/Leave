@@ -26,6 +26,7 @@
 				scroll-y="true"
 				:scroll-top="scrollTop"
 				:refresher-enabled="true"
+				:android-refresher-color="themeState.isDark ? '#6aa9ff' : '#0066dc'"
 				:refresher-triggered="refreshing"
 				@scroll="rememberScroll"
 				@scrolltolower="more"
@@ -44,10 +45,12 @@
 				>
 					<view class="reference-row"
 						><text :class="themeClass('reference-title')">{{ item.name }}</text
-						><text
-							:class="item.enabled ? 'reference-status' : 'reference-disabled'"
-							>{{ item.enabled ? '启用' : '停用' }}　›</text
-						></view
+						><view class="reference-accessory">
+							<text :class="item.enabled ? 'reference-status' : 'reference-disabled'">
+								{{ item.enabled ? '启用' : '停用' }}
+							</text>
+							<view :class="item.enabled ? 'reference-chevron' : 'reference-chevron reference-chevron-disabled'"></view>
+						</view></view
 					>
 					<text :class="themeClass('reference-muted')">{{
 						kind == 'classes'
@@ -162,7 +165,7 @@ import {
 	onResize,
 } from '@dcloudio/uni-app'
 import ProfilePageShell from '@/components/ProfilePageShell.uvue'
-import { themeClass as resolveThemeClass } from '@/utils/app-theme.uts'
+import { themeClass as resolveThemeClass, themeState } from '@/utils/app-theme.uts'
 import {
 	AdminReference,
 	adminReferenceList,
@@ -453,12 +456,32 @@ onBackPress((_options: OnBackPressOptions): boolean => {
 .reference-status {
 	color: $ios-blue;
 	font-size: 12px;
-	margin-left: 10px;
+	line-height: 18px;
 }
 .reference-disabled {
 	color: $ios-secondary;
 	font-size: 12px;
+	line-height: 18px;
+}
+.reference-accessory {
+	flex-direction: row;
+	align-items: center;
+	flex-shrink: 0;
 	margin-left: 10px;
+}
+.reference-chevron {
+	width: 4px;
+	height: 4px;
+	margin-left: 12px;
+	border-right-width: 1px;
+	border-bottom-width: 1px;
+	border-right-color: $ios-blue;
+	border-bottom-color: $ios-blue;
+	transform: rotate(-45deg);
+}
+.reference-chevron-disabled {
+	border-right-color: $ios-secondary;
+	border-bottom-color: $ios-secondary;
 }
 .reference-muted {
 	color: $ios-secondary;

@@ -35,7 +35,7 @@
 							>查看学生反馈并更新处理状态</text
 						></view
 					><text v-if="pending > 0" class="more-badge">{{ pending }}</text
-					><text :class="themeClass('more-chevron')">›</text></view
+					><image class="more-feedback-chevron" :src="themeImage('/static/ios/arrow-secondary.svg')" mode="aspectFit" /></view
 				></view
 			>
 			<text v-if="error != ''" class="more-error" @click="refresh"
@@ -46,8 +46,8 @@
 </template>
 <script setup lang="uts">
 import { ref, watch, onUnmounted } from 'vue'
-import { themeClass as resolveThemeClass } from '@/utils/app-theme.uts'
-import { adminList, adminSession, adminRevision } from '@/utils/admin-api.uts'
+import { themeClass as resolveThemeClass, themeImage as resolveThemeImage } from '@/utils/app-theme.uts'
+import { adminOverview, adminSession, adminRevision } from '@/utils/admin-api.uts'
 const props = defineProps<{ height: number; active: boolean }>()
 type MoreTool = { kind: string; label: string; subtitle: string }
 const tools: MoreTool[] = [
@@ -62,10 +62,12 @@ const tools: MoreTool[] = [
 const pending = ref(0)
 const error = ref('')
 let sequence = 0
-let revision = -1
 let session = ''
 function themeClass(value: string): string {
 	return resolveThemeClass(value)
+}
+function themeImage(value: string): string {
+	return resolveThemeImage(value)
 }
 function openTool(kind: string) {
 	uni.navigateTo({ url: '/pages/admin/reference?kind=' + kind })
@@ -76,15 +78,12 @@ function openFeedback() {
 async function refresh() {
 	const seq = ++sequence
 	const key = adminSession()
+	const dataRevision = adminRevision
 	error.value = ''
 	try {
-		const result = await adminList(
-			'feedbacks',
-			'page=1&page_size=1&is_handled=false',
-		)
-		if (!props.active || seq != sequence || key != adminSession()) return
-		pending.value = result.total
-		revision = adminRevision
+		const result = await adminOverview()
+		if (!props.active || seq != sequence || key != adminSession() || dataRevision != adminRevision) return
+		pending.value = result.unhandledFeedbackCount
 		session = key
 	} catch (e) {
 		if (props.active && seq == sequence && key == adminSession())
@@ -99,7 +98,8 @@ watch(
 			return
 		}
 		if (session != adminSession()) pending.value = 0
-		if (revision != adminRevision || session != adminSession()) refresh()
+		// 每次显示同步共享快照；有效缓存不会再次请求接口。
+		refresh()
 	},
 	{ immediate: true },
 )
@@ -155,9 +155,19 @@ onUnmounted(() => {
 .more-badge {
 	color: #ffffff;
 	background-color: $ios-blue;
-	padding: 3px 8px;
+	height: 22px;
+	line-height: 22px;
+	padding: 0 8px;
+	text-align: center;
+	flex-shrink: 0;
 	border-radius: 12px;
 	font-size: 12px;
+}
+.more-feedback-chevron {
+	width: 16px;
+	height: 22px;
+	margin-left: 12px;
+	flex-shrink: 0;
 }
 .more-error {
 	color: $ios-red;

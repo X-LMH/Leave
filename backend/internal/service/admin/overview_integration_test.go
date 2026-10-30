@@ -112,8 +112,12 @@ func TestAdminOverviewIntegration(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	for i := range 2 {
-		feedback := models.Feedback{Content: "隔离测试", IsAnonymous: true}
+	for i := range 3 {
+		feedback := models.Feedback{
+			Content:     "隔离测试",
+			IsAnonymous: true,
+			IsHandled:   i == 2,
+		}
 		if i == 1 {
 			feedback.DeletedAt = gorm.DeletedAt{Time: now.In(time.Local), Valid: true}
 		}
@@ -183,7 +187,12 @@ func TestAdminOverviewIntegration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.Statistics != (dto.OverviewStatistics{StudentCount: 6, ClassCount: 2, RecordCount: 14, FeedbackCount: 1}) {
+	if result.Statistics != (dto.OverviewStatistics{
+		StudentCount:           6,
+		ClassCount:             2,
+		RecordCount:            14,
+		UnhandledFeedbackCount: 1,
+	}) {
 		t.Fatalf("incorrect counts: %+v", result.Statistics)
 	}
 	if result.WeeklyApplications.Total != 13 {
@@ -219,6 +228,23 @@ func TestAdminOverviewIntegration(t *testing.T) {
 	result, err = overviewService.getAdminOverviewAt(now)
 	if err != nil || result.LatestAndroidVersion != nil || result.VersionUsage.LatestCount != 0 {
 		t.Fatalf("incorrect no-published-release state: %+v, %v", result, err)
+	}
+	// 已处理反馈不计入，处理和恢复未处理应立即改变统计。
+	for _, handled := range []bool{true, false} {
+		if err := testDB.Model(&models.Feedback{}).Where("id = ?", 1).Update("is_handled", handled).Error; err != nil {
+			t.Fatal(err)
+		}
+		updated, err := overviewService.getAdminOverviewAt(now)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var want int64 = 1
+		if handled {
+			want = 0
+		}
+		if updated.Statistics.UnhandledFeedbackCount != want {
+			t.Fatalf("handled=%v: got %d, want %d", handled, updated.Statistics.UnhandledFeedbackCount, want)
+		}
 	}
 	// Any failed subquery must fail the entire response, without partial numbers.
 	if err := testDB.Exec("DROP TABLE feedbacks").Error; err != nil {
