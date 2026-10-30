@@ -398,15 +398,17 @@ const selectedCaption = computed((): string => {
 	)
 })
 function versionColor(key: string): string {
+	// 沿用 ios-theme 的主题蓝，以深蓝、蓝灰和中性灰区分其余分类。
+	const dark = themeState.isDark
 	return key == 'latest'
-		? '#408cf2'
+		? (dark ? '#6aa9ff' : '#0066dc')
 		: key == 'previous'
-			? '#87b8f5'
+			? (dark ? '#b3d1ff' : '#254b85')
 			: key == 'older'
-				? '#a8caf2'
+				? (dark ? '#4c75a8' : '#698baa')
 				: key == 'unreported'
-					? '#a3a8b2'
-					: '#737c8c'
+					? (dark ? '#c0c4cc' : '#8a909b')
+					: (dark ? '#8796ac' : '#505c70')
 }
 function versionBarStyle(group: AdminVersionGroup): string {
 	return (
@@ -414,7 +416,9 @@ function versionBarStyle(group: AdminVersionGroup): string {
 		group.count +
 		';background-color:' +
 		versionColor(group.key) +
-		';'
+		// 细分隔线强化同色系边界，零人数分组不产生色段。
+		';border-right-style:solid;border-right-width:' + (group.count > 0 ? '1px' : '0px') +
+		';border-right-color:' + (themeState.isDark ? '#1c1d23' : '#ffffff') + ';'
 	)
 }
 function versionLabel(group: AdminVersionGroup): string {
@@ -707,15 +711,16 @@ onUnmounted(() => {
 	padding-bottom: 9px;
 }
 .version-dot {
-	width: 8px;
-	height: 8px;
-	border-radius: 4px;
+	width: 10px;
+	height: 10px;
+	border-radius: 5px;
+	flex-shrink: 0;
 	margin-right: 8px;
 }
 .version-label {
 	flex: 1;
 	margin-right: 12px;
-	color: $ios-secondary;
+	color: $ios-ink;
 	font-size: 13px;
 }
 .overview-error {
@@ -758,7 +763,6 @@ onUnmounted(() => {
 	background-color: #3b5474;
 }
 .dark-overview-muted,
-.dark-version-label,
 .dark-trend-axis,
 .dark-trend-date {
 	color: $ios-dark-secondary;
@@ -767,6 +771,7 @@ onUnmounted(() => {
 	color: $ios-dark-blue;
 }
 .dark-overview-heading,
+.dark-version-label,
 .dark-overview-total,
 .dark-overview-text {
 	color: $ios-dark-ink;
