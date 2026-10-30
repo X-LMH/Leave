@@ -2,6 +2,7 @@ package middleware
 
 import (
 	requestlog "backend/internal/logger"
+	"backend/internal/request"
 	"backend/internal/response"
 	"errors"
 	"net/http"
@@ -18,7 +19,15 @@ func AccessLogger(logger *zap.Logger) gin.HandlerFunc {
 		started := time.Now()
 		c.Next()
 
-		logger.With(requestlog.RequestFields(c)...).Info("HTTP 请求完成",
+		fields := requestlog.RequestFields(c)
+		// 认证中间件完成校验后才写入身份，在请求结束时读取。
+		if actorID, err := request.GetCurrentStuID(c); err == nil && actorID != "" {
+			fields = append(fields, zap.String("actor_id", actorID))
+			if role, err := request.GetCurrentRole(c); err == nil && role != "" {
+				fields = append(fields, zap.String("actor_role", role))
+			}
+		}
+		logger.With(fields...).Info("HTTP 请求完成",
 			zap.Int("status", c.Writer.Status()),
 			zap.Duration("latency", time.Since(started)),
 			zap.String("client_ip", c.ClientIP()),

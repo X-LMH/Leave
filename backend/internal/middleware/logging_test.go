@@ -3,6 +3,7 @@ package middleware
 import (
 	"backend/internal/config"
 	requestlog "backend/internal/logger"
+	"backend/internal/request"
 	"backend/internal/response"
 	"bytes"
 	"encoding/hex"
@@ -84,6 +85,63 @@ func TestAccessLoggingCorrelationAndPrivacy(t *testing.T) {
 				t.Fatal("request ID must be accessible to web clients")
 			}
 		})
+	}
+}
+
+func TestAccessLoggingAuthenticatedActor(t *testing.T) {
+	core, entries := observer.New(zapcore.InfoLevel)
+	log := zap.New(core)
+	router := gin.New()
+	router.Use(RequestID(), AccessLogger(log), Recovery(log))
+	router.GET("/:scenario", func(c *gin.Context) {
+		scenario := c.Param("scenario")
+		if scenario == "anonymous" {
+			c.Status(http.StatusOK)
+			return
+		}
+		if scenario == "unauthorized" {
+			c.AbortWithStatus(http.StatusUnauthorized)
+			return
+		}
+		c.Set(request.CtxStuID, "202610300001")
+		c.Set(request.CtxRole, "student")
+		if scenario == "panic" {
+			panic("panic-secret")
+		}
+		if scenario == "forbidden" {
+			c.AbortWithStatus(http.StatusForbidden)
+			return
+		}
+		c.Status(http.StatusOK)
+	})
+	for _, scenario := range []string{"authenticated", "anonymous", "forbidden", "unauthorized", "panic"} {
+		t.Run(scenario, func(t *testing.T) {
+			entries.TakeAll()
+			recorder := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodGet, "/"+scenario+"?student_id=untrusted-actor", nil)
+			req.Header.Set("Authorization", "Bearer header-secret")
+			router.ServeHTTP(recorder, req)
+			logs := entries.FilterMessage("HTTP 请求完成").All()
+			if len(logs) != 1 {
+				t.Fatalf("want one access log, got %d", len(logs))
+			}
+			fields := logs[0].ContextMap()
+			if scenario == "anonymous" || scenario == "unauthorized" {
+				if fields["actor_id"] != nil || fields["actor_role"] != nil {
+					t.Fatalf("unauthenticated request must not inherit identity: %v", fields)
+				}
+			} else if fields["actor_id"] != "202610300001" || fields["actor_role"] != "student" {
+				t.Fatalf("missing authenticated identity: %v", fields)
+			}
+			assertNoSecrets(t, fmt.Sprint(fields))
+			if strings.Contains(fmt.Sprint(fields), "untrusted-actor") {
+				t.Fatal("must not use identity from request parameters")
+			}
+		})
+	}
+	log.Info("后台任务")
+	if len(entries.FilterMessage("后台任务").All()[0].Context) != 0 {
+		t.Fatal("access fields must not modify the shared logger")
 	}
 }
 
