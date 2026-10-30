@@ -1,13 +1,15 @@
 // @unocss-include
 import { getColorPalette, getRgb } from '@sa/color';
-import { DARK_CLASS } from '@/constants/app';
 import { localStg } from '@/utils/storage';
-import { toggleHtmlClass } from '@/utils/common';
 import { $t } from '@/locales';
+import { initThemeSettings, toggleCssDarkMode } from '@/store/modules/theme/shared';
 
 export function setupLoading() {
   const themeColor = localStg.get('themeColor') || '#646cff';
-  const darkMode = localStg.get('darkMode') || false;
+  // Preview the same settings as the store without consuming a release override.
+  const { themeScheme } = initThemeSettings(false);
+  const darkMode =
+    themeScheme === 'dark' || (themeScheme === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
   const palette = getColorPalette(themeColor);
 
   const { r, g, b } = getRgb(themeColor);
@@ -20,9 +22,7 @@ export function setupLoading() {
 
   const cssVars = `${primaryColor}; ${svgCssVars}`;
 
-  if (darkMode) {
-    toggleHtmlClass(DARK_CLASS).add();
-  }
+  toggleCssDarkMode(darkMode);
 
   const loadingClasses = [
     'left-0 top-0',

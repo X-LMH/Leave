@@ -7,8 +7,8 @@ import { localStg } from '@/utils/storage';
 import { overrideThemeSettings, themeSettings } from '@/theme/settings';
 import { themeVars } from '@/theme/vars';
 
-/** Init theme settings */
-export function initThemeSettings() {
+/** Init theme settings; loading previews must not mark release overrides as applied. */
+export function initThemeSettings(markOverrideApplied = true) {
   const isProd = import.meta.env.PROD;
 
   // if it is development mode, the theme settings will not be cached, by update `themeSettings` in `src/theme/settings.ts` to update theme settings
@@ -26,7 +26,9 @@ export function initThemeSettings() {
   if (!isOverride) {
     settings = defu(overrideThemeSettings, settings);
 
-    localStg.set('overrideThemeFlag', BUILD_TIME);
+    if (markOverrideApplied) {
+      localStg.set('overrideThemeFlag', BUILD_TIME);
+    }
   }
 
   return settings;
@@ -173,6 +175,7 @@ export function addThemeVarsToGlobal(tokens: App.Theme.BaseToken, darkTokens: Ap
  * @param darkMode Is dark mode
  */
 export function toggleCssDarkMode(darkMode = false) {
+  document.documentElement.style.colorScheme = darkMode ? 'dark' : 'light';
   const { add, remove } = toggleHtmlClass(DARK_CLASS);
 
   if (darkMode) {
