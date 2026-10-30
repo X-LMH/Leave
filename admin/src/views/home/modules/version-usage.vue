@@ -8,7 +8,6 @@ import AnimatedCount from './animated-count.vue';
 
 const props = defineProps<{
   usage: OverviewVersionUsage;
-  latestVersion: string | null;
   animate: boolean;
 }>();
 defineEmits<{ manage: [] }>();
@@ -120,23 +119,6 @@ function color(group: VersionGroup) {
       </ul>
     </template>
     <NEmpty v-else :description="$t('page.home.noStudents')" size="small" />
-    <div class="version-usage__latest">
-      <template v-if="latestVersion">
-        <span>
-          {{ $t('page.home.latestAndroidVersion') }}
-          <strong>v{{ latestVersion }}</strong>
-        </span>
-        <span class="version-usage__adoption">
-          <AnimatedCount
-            :value="usage.latestCount"
-            :animate="animate"
-            :format="count => $t('page.home.versionAdoption', { count })"
-          />
-        </span>
-      </template>
-      <span v-else>{{ $t('page.home.noVersion') }}</span>
-    </div>
-    <p class="version-usage__note">{{ $t('page.home.versionUsageNote') }}</p>
     <NButton class="version-usage__link" text type="primary" @click="$emit('manage')">
       {{ $t('page.home.manageVersions') }}
       <span class="version-usage__arrow"><SvgIcon icon="lucide:arrow-right" /></span>
@@ -148,8 +130,9 @@ function color(group: VersionGroup) {
 .version-usage {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
   min-width: 0;
+  height: 100%;
   &__summary {
     display: flex;
     align-items: baseline;
@@ -189,7 +172,7 @@ function color(group: VersionGroup) {
   &__legend {
     display: flex;
     flex-direction: column;
-    gap: 18px;
+    gap: 14px;
     padding: 0;
     margin: 0;
     list-style: none;
@@ -221,31 +204,8 @@ function color(group: VersionGroup) {
     font-size: 12px;
     font-variant-numeric: tabular-nums;
   }
-  &__latest {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    gap: 8px;
-    padding: 12px;
-    border-radius: 8px;
-    background: color-mix(in srgb, var(--management-accent) 7%, var(--management-surface));
-    font-size: 12px;
-  }
-  &__latest strong {
-    color: var(--management-accent);
-    font-weight: 600;
-    overflow-wrap: anywhere;
-  }
-  &__adoption {
-    color: var(--management-muted);
-  }
-  &__note {
-    margin: 0;
-    color: var(--management-muted);
-    font-size: 12px;
-    line-height: 1.7;
-  }
   &__link {
+    margin-top: auto;
     align-self: flex-end;
   }
   &__arrow {

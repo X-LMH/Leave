@@ -511,7 +511,6 @@ declare namespace App {
           currentApplications: string;
           asOfNow: string;
           weekTotal: string;
-          trendNote: string;
           versionUsage: string;
           versionUsageCaption: string;
           versionSampleTotal: string;
@@ -522,7 +521,6 @@ declare namespace App {
           versionOtherGroup: string;
           latestAndroidVersion: string;
           versionAdoption: string;
-          versionUsageNote: string;
           manageVersions: string;
           noStudents: string;
           recentRecords: string;

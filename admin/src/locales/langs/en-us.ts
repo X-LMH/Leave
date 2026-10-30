@@ -270,8 +270,6 @@ const local: App.I18n.Schema = {
       currentApplications: 'This week',
       asOfNow: 'As of statistics time',
       weekTotal: '{count} applications over the last 9 weeks',
-      trendNote:
-        'Each point counts new leave records by creation time, Monday to Sunday in Beijing time. Current-week data is counted as of the statistics time shown on this page.',
       versionUsage: 'Client Version Usage',
       versionUsageCaption: 'Last version reported by students',
       versionSampleTotal: 'Student accounts counted',
@@ -282,8 +280,6 @@ const local: App.I18n.Schema = {
       versionOtherGroup: 'Other versions',
       latestAndroidVersion: 'Latest Android version',
       versionAdoption: '{count} students reported this version',
-      versionUsageNote:
-        'Includes disabled accounts. Versions are last reported values, not live online or installation status.',
       manageVersions: 'Manage Versions',
       noStudents: 'No student accounts',
       recentRecords: 'Recent Leave Records',

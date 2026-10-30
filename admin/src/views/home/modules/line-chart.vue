@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { watch } from 'vue';
+import type { TooltipComponentFormatterCallbackParams } from 'echarts';
 import { useThemeVars } from 'naive-ui';
 import { useAppStore } from '@/store/modules/app';
 import { useThemeStore } from '@/store/modules/theme';
@@ -22,14 +23,20 @@ function options() {
     month: '2-digit',
     day: '2-digit'
   });
+  const currentIndex = props.weeks.findIndex(week => week.isCurrent);
   return {
     animation: props.animate,
     animationDuration: HOME_CHART_ANIMATION_DURATION,
     tooltip: {
       trigger: 'axis' as const,
-      valueFormatter: (value: unknown) => `${value} ${$t('page.home.recordsUnit')}`
+      formatter: (params: TooltipComponentFormatterCallbackParams) => {
+        const point = Array.isArray(params) ? params[0] : params;
+        const week = props.weeks[point.dataIndex];
+        if (!week) return '';
+        return `${point.name}<br/>${$t('page.home.applications')}: ${week.count} ${$t('page.home.recordsUnit')}`;
+      }
     },
-    grid: { left: 36, right: 20, top: 32, bottom: 48 },
+    grid: { left: 36, right: 20, top: 32, bottom: 36 },
     xAxis: {
       type: 'category' as const,
       boundaryGap: false,
@@ -63,7 +70,7 @@ function options() {
         name: $t('page.home.applications'),
         type: 'line' as const,
         data: props.weeks.map(week => ({
-          value: week.count,
+          value: week.isCurrent ? null : week.count,
           itemStyle: {
             color: week.isCurrent ? themeVars.value.cardColor : themeVars.value.primaryColor,
             borderColor: themeVars.value.primaryColor,
@@ -85,6 +92,25 @@ function options() {
           color: themeVars.value.primaryColor,
           fontSize: 11
         },
+        areaStyle: { color: themeVars.value.primaryColor, opacity: 0.06 }
+      },
+      {
+        name: $t('page.home.applications'),
+        type: 'line' as const,
+        data: props.weeks.map((week, index) => ({
+          value: currentIndex >= 0 && (index === currentIndex - 1 || index === currentIndex) ? week.count : null,
+          symbolSize: week.isCurrent ? 7 : 0,
+          label: { show: week.isCurrent && !appStore.isMobile }
+        })),
+        connectNulls: false,
+        symbol: 'circle',
+        lineStyle: { width: 2.5, color: themeVars.value.primaryColor, type: 'dashed' as const },
+        itemStyle: {
+          color: themeVars.value.cardColor,
+          borderColor: themeVars.value.primaryColor,
+          borderWidth: 2
+        },
+        label: { position: 'top' as const, color: themeVars.value.primaryColor, fontSize: 11 },
         areaStyle: { color: themeVars.value.primaryColor, opacity: 0.06 }
       }
     ]
@@ -128,5 +154,5 @@ watch(
 </script>
 
 <template>
-  <div ref="domRef" class="h-280px min-w-0" role="img" :aria-label="$t('page.home.trend')"></div>
+  <div ref="domRef" class="h-260px min-w-0" role="img" :aria-label="$t('page.home.trend')"></div>
 </template>

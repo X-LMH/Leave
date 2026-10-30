@@ -326,7 +326,7 @@ function navigate(route: string) {
         </button>
       </div>
 
-      <div class="home-grid">
+      <div class="home-grid home-grid--overview">
         <NCard :bordered="false" class="management-card home-panel">
           <template #header>
             <div class="home-panel__heading">
@@ -373,7 +373,6 @@ function navigate(route: string) {
           <div v-else class="home-chart-placeholder" aria-hidden="true">
             <NSkeleton height="100%" :sharp="false" :animated="motionEnabled" />
           </div>
-          <p class="home-panel__note">{{ $t('page.home.trendNote') }}</p>
         </NCard>
         <NCard :bordered="false" class="management-card home-panel">
           <template #header>
@@ -386,7 +385,6 @@ function navigate(route: string) {
             v-if="overview"
             ref="versionUsageRef"
             :usage="overview.versionUsage"
-            :latest-version="overview.latestVersion?.versionName ?? null"
             :animate="motionEnabled"
             @manage="navigate('app-version')"
           />
@@ -404,11 +402,6 @@ function navigate(route: string) {
                 <NSkeleton width="42px" height="18px" :animated="motionEnabled" />
               </div>
             </div>
-            <div class="home-usage-placeholder__latest">
-              <NSkeleton width="170px" height="18px" :animated="motionEnabled" />
-              <NSkeleton width="120px" height="18px" :animated="motionEnabled" />
-            </div>
-            <p class="home-usage-placeholder__note">{{ $t('page.home.versionUsageNote') }}</p>
             <NButton class="home-usage-placeholder__link" text type="primary" @click="navigate('app-version')">
               {{ $t('page.home.manageVersions') }}
               <span class="home-link-arrow"><SvgIcon icon="lucide:arrow-right" /></span>
@@ -642,6 +635,12 @@ function navigate(route: string) {
   align-items: stretch;
   gap: 20px;
 }
+.home-grid--overview {
+  :deep(.n-card__content) {
+    display: flex;
+    flex-direction: column;
+  }
+}
 .home-panel {
   min-width: 0;
 
@@ -664,15 +663,10 @@ function navigate(route: string) {
     font-size: 17px;
     font-weight: 600;
   }
-  &__caption,
-  &__note {
+  &__caption {
     color: var(--management-muted);
     font-size: 12px;
     font-weight: 400;
-  }
-  &__note {
-    margin: 6px 0 0;
-    line-height: 1.6;
   }
 }
 .home-week-toolbar {
@@ -843,14 +837,15 @@ function navigate(route: string) {
   vertical-align: middle;
 }
 .home-chart-placeholder {
-  height: 280px;
-  padding: 32px 20px 48px 36px;
+  height: 260px;
+  padding: 32px 20px 36px 36px;
   box-sizing: border-box;
 }
 .home-usage-placeholder {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  height: 100%;
+  gap: 16px;
 
   &__summary {
     display: flex;
@@ -863,7 +858,7 @@ function navigate(route: string) {
   &__legend {
     display: flex;
     flex-direction: column;
-    gap: 18px;
+    gap: 14px;
   }
   &__group {
     display: grid;
@@ -871,23 +866,9 @@ function navigate(route: string) {
     align-items: center;
     gap: 10px;
   }
-  &__latest {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    gap: 8px;
-    padding: 12px;
-    border-radius: 8px;
-    background: color-mix(in srgb, var(--management-accent) 7%, var(--management-surface));
-  }
   &__link {
+    margin-top: auto;
     align-self: flex-end;
-  }
-  &__note {
-    margin: 0;
-    color: var(--management-muted);
-    font-size: 12px;
-    line-height: 1.7;
   }
 }
 .home-version-placeholder,
