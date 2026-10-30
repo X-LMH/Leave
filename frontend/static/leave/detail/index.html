@@ -9838,7 +9838,8 @@ svg {
   -webkit-tap-highlight-color:transparent
 }
 body {
-  font-family:-apple-system,PingFang SC,Helvetica Neue,sans-serif;
+  /* 字形跟随系统界面字体；字号由页面样式与原生 WebView textZoom 固定。 */
+  font-family:system-ui,-apple-system,PingFang SC,Helvetica Neue,sans-serif;
   background:var(--gray-100);
   color:var(--gray-700);
   font-size:3.7333vmin;
