@@ -15,7 +15,10 @@
 				v-show="activeTab == 'records'"
 				:class="themeClass('tab-panel')"
 			>
-				<RecordsTabContent ref="recordsContent" />
+				<RecordsTabContent
+					ref="recordsContent"
+					:active="pageVisible && activeTab == 'records'"
+				/>
 			</view>
 			<view
 				v-if="profileVisited"
@@ -24,7 +27,7 @@
 			>
 				<ProfileTabContent
 					ref="profileContent"
-					:active="activeTab == 'profile'"
+					:active="pageVisible && activeTab == 'profile'"
 				/>
 			</view>
 			<BottomNavigation
@@ -46,6 +49,7 @@ import ProfileTabContent from '@/components/ProfileTabContent.uvue'
 import PageTransition from '@/components/PageTransition.uvue'
 
 const activeTab = ref('home')
+const pageVisible = ref(true)
 const profileVisited = ref(false)
 const recordsVisited = ref(false)
 const recordsContent = ref<ComponentPublicInstance | null>(null)
@@ -97,7 +101,11 @@ onReady(() => {
 	refreshActiveTab()
 })
 onShow(() => {
-	if (pageReady) refreshActiveTab()
+	pageVisible.value = true
+	if (pageReady) nextTick(() => refreshActiveTab())
+})
+onHide(() => {
+	pageVisible.value = false
 })
 onResize(() => {
 	bottomNavigation.value?.$callMethod('updateLayout')

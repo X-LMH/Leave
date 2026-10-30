@@ -114,8 +114,10 @@
 </template>
 <script setup lang="uts">
 import { themeClass as resolveThemeClass, themeImage as resolveThemeImage } from '@/utils/app-theme.uts'
-import { onUnmounted, ref } from 'vue'
+import { onUnmounted, ref, watch } from 'vue'
 import { deleteRecord, getCurrentUser, getRecords, RecordListItem } from '@/utils/api.uts'
+
+const props = defineProps<{ active: boolean }>()
 
 type RecordCard = {
 	id: number
@@ -199,7 +201,7 @@ function toRecordCard(item: RecordListItem): RecordCard {
 }
 
 async function loadRecords() {
-	if (isLoading.value) return
+	if (!pageActive || isLoading.value) return
 	const sequence = ++requestSequence
 	const studentID = getCurrentUser().student_id
 	isLoading.value = true
@@ -235,7 +237,7 @@ async function loadRecords() {
 }
 
 async function loadMoreRecords() {
-	if (isLoading.value || isLoadingMore.value || !hasMore.value) return
+	if (!pageActive || isLoading.value || isLoadingMore.value || !hasMore.value) return
 
 	const sequence = requestSequence
 	const studentID = getCurrentUser().student_id
@@ -400,6 +402,19 @@ function rememberScroll(event: UniScrollEvent) {
 function refresh() {
 	if (!isDeletePending.value) loadRecords()
 }
+// Tab 保留组件实例；隐藏时停止后续补页，返回后由父页面统一刷新。
+watch(
+	(): boolean => props.active,
+	(active: boolean) => {
+		pageActive = active
+		if (!active) {
+			requestSequence++
+			isLoading.value = false
+			isLoadingMore.value = false
+		}
+	},
+	{ immediate: true },
+)
 onUnmounted(() => {
 	pageActive = false
 	requestSequence++
