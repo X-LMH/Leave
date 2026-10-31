@@ -6,6 +6,7 @@ CREATE TABLE `users`
     `password` VARCHAR(255)     NOT NULL COMMENT '密码',
     `role`          VARCHAR(20)      NOT NULL DEFAULT 'student' COMMENT '角色：student=学生，admin=管理员',
     `status`        TINYINT UNSIGNED NOT NULL DEFAULT 1 COMMENT '账号状态：1=正常，0=停用',
+    `auth_version` BIGINT UNSIGNED NOT NULL DEFAULT 1 COMMENT '认证版本，递增后旧会话失效',
     `last_seen_at` DATETIME         NULL     DEFAULT NULL COMMENT '最近进入软件时间',
     `last_seen_device` VARCHAR(255) NOT NULL DEFAULT '' COMMENT '最近进入软件设备名称',
     `app_version`           VARCHAR(64) NOT NULL DEFAULT '' COMMENT '当前应用版本',
