@@ -1,13 +1,14 @@
 backend:
-  version: 7
+  version: 8
 
 admin:
-  version: 3
+  version: 4
 
 app:
   android:
     apk_directory: deploy/releases
     release_notes:
-      - 修复系统字号变化导致假条详情排版不一致的问题
-      - 保留原有假条字体大小，统一详情页的字号表现
-      - 优化开关开启状态的主题配色
+      - 新增请假审批时间选择，优化请假申请体验
+      - 优化假条详情的字体与字号显示，使用自己手机的字体
+      - 优化页面切换时的请假记录加载与个人资料刷新
+      - 更新后需重新登录
