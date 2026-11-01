@@ -7,7 +7,7 @@ import (
 	"backend/internal/response"
 	appservice "backend/internal/service/app"
 	"backend/internal/testutil"
-	"backend/internal/utils/jwt"
+	"backend/internal/testutil/sessiontest"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -35,7 +35,7 @@ func TestLoginLogsSystemFailureAndExpectedRejection(t *testing.T) {
 		{
 			name:      "database failure is redacted",
 			queryErr:  &drivermysql.MySQLError{Number: 1406, Message: "sensitive database value"},
-			wantCode:  response.CodeServerBusy,
+			wantCode:  response.CodeAuthUnavailable,
 			wantLevel: zapcore.ErrorLevel,
 		},
 		{
@@ -66,7 +66,7 @@ func TestLoginLogsSystemFailureAndExpectedRejection(t *testing.T) {
 			}
 			core, logs := observer.New(zapcore.DebugLevel)
 			log := zap.New(core)
-			handler := NewUserHandler(appservice.NewUserService(mysql.NewDAO(db, log), jwt.NewManager("test-secret", 1), config.StorageConfig{}, log), log, testutil.NewRateLimiter(t))
+			handler := NewUserHandler(appservice.NewUserService(mysql.NewDAO(db, log), sessiontest.NewStore(t), config.StorageConfig{}, log), log, testutil.NewRateLimiter(t))
 			engine := gin.New()
 			engine.Use(func(c *gin.Context) {
 				c.Set(request.CtxRequestID, "login-test-request")

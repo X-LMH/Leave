@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	redisdao "backend/internal/dao/redis"
 	"backend/internal/dto"
 	requestlog "backend/internal/logger"
 	"backend/internal/request"
@@ -16,21 +17,6 @@ import (
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
-
-const counterScript = `
-local count = tonumber(redis.call('GET', KEYS[1]) or '0')
-local ttl = redis.call('PTTL', KEYS[1])
-if count >= tonumber(ARGV[1]) then
- return {0, ttl}
-end
-if count == 0 then
- redis.call('SET', KEYS[1], 1, 'PX', ARGV[2])
- ttl = tonumber(ARGV[2])
-else
- redis.call('INCR', KEYS[1])
-end
-return {1, ttl}
-`
 
 // RateLimiter shares Redis counters across processes and HTTP handlers.
 type RateLimiter struct {
@@ -73,9 +59,9 @@ func (l *RateLimiter) Check(c *gin.Context, side, operation, dimension, identity
 		err = fmt.Errorf("missing or invalid rate limit rule: operation=%q dimension=%q", operation, dimension)
 	} else {
 		// EVAL avoids a separate script-cache miss round trip. The shared client disables retries.
-		result, err = l.client.Eval(ctx, counterScript,
-			[]string{rateLimitKey(side, operation, dimension, identity)},
-			rule.Limit, rule.WindowSeconds*1000).Int64Slice()
+		result, err = redisdao.ConsumeRateLimit(ctx, l.client,
+			rateLimitKey(side, operation, dimension, identity),
+			rule.Limit, rule.WindowSeconds*1000)
 	}
 	if err != nil || len(result) != 2 || (result[0] != 0 && result[0] != 1) || result[1] < 0 {
 		if err == nil {

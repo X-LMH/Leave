@@ -1,14 +1,16 @@
 # APK 不应部署在 Web 服务器的静态目录；此路径可为相对 backend 工作目录的路径。
 log:
-  # debug、info、warn、error、dpanic、panic、fatal；缺省为 info。
+  # debug、info、warn、error、dpanic、panic、fatal；在配置文件中明确填写。
   level: info
-  # stderr 的输出格式 console 或 json，缺省为 console；文件固定为 JSON Lines。
+  # stderr 的输出格式 console 或 json，需明确填写；文件固定为 JSON Lines。
   encoding: console
   # 留空只输出 stderr；相对路径基于进程工作目录。
   dir: ""
 
 app:
-  # HTTP 服务监听端口，未配置时默认为 10000。
+  # 不同环境设置不同 namespace，避免共享 Redis 时登录态串用。
+  namespace: default
+  # HTTP 服务监听端口，必须填写。
   port: 8080
   # 服务器上用于存放已发布 APK 的绝对目录。
   package_dir: "/www/wwwroot/Leave/packages"
@@ -35,8 +37,12 @@ mysql:
   user: root
   password: ""
 
-# JWT 签名密钥；生产环境建议使用 JWT_SECRET 环境变量覆盖
+# JWT 配置仅保留给旧实现，当前服务不再使用。
 jwt:
-  # 生产环境建议通过 JWT_SECRET 环境变量注入；该值为空时程序会启动失败。
+  # 当前服务不要求配置 JWT_SECRET。
   secret: ""
   expiration_days: 30
+
+session:
+  student_ttl: 720h
+  admin_ttl: 8h

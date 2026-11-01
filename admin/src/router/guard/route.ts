@@ -106,9 +106,13 @@ async function initRoute(to: RouteLocationNormalized): Promise<RouteLocationRaw 
     return location;
   }
 
-  if (!routeStore.isInitAuthRoute) {
+  if (!routeStore.isInitAuthRoute && to.name !== '500') {
     // initialize the auth route
     await routeStore.initAuthRoute();
+    if (!routeStore.isInitAuthRoute) {
+      // A temporary auth outage must not initialize empty permissions or discard the token.
+      return { name: localStg.get('token') ? '500' : 'login' };
+    }
 
     // the route is captured by the "not-found" route because the auth route is not initialized
     // after the auth route is initialized, redirect to the original route

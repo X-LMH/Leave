@@ -2,6 +2,7 @@ package mysql
 
 import (
 	"backend/internal/models"
+	"context"
 	"errors"
 	"time"
 
@@ -52,4 +53,19 @@ func (s *DAO) FindUserByStudentID(studentID string) (*models.User, error) {
 		return nil, err
 	}
 	return user, nil
+}
+
+// FindAuthUser reads only the current identity and authorization state.
+func (s *DAO) FindAuthUser(ctx context.Context, id uint) (*models.User, error) {
+	var user models.User
+	err := s.db.WithContext(ctx).
+		Select("id", "student_id", "role", "status", "auth_version").
+		First(&user, id).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, ErrorUserNotExist
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &user, nil
 }

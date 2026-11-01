@@ -29,18 +29,18 @@ export function fetchLogin(userName: string, password: string) {
   });
 }
 
-/**
- * Refresh token
- *
- * @param refreshToken Refresh token
- */
-export function fetchRefreshToken(refreshToken: string) {
-  return request<Api.Auth.LoginToken>({
-    url: '/auth/refreshToken',
+export function fetchAuthIdentity(token: string) {
+  return request<Api.Auth.Identity>({
+    url: '/admin/auth/me',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+}
+
+export function fetchLogout(token: string) {
+  return request<null>({
+    url: '/admin/auth/logout',
     method: 'post',
-    data: {
-      refreshToken
-    }
+    headers: { Authorization: `Bearer ${token}` }
   });
 }
 

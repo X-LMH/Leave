@@ -3,8 +3,7 @@ import { BACKEND_ERROR_CODE, createFlatRequest, createRequest } from '@sa/axios'
 import { useAuthStore } from '@/store/modules/auth';
 import { localStg } from '@/utils/storage';
 import { getServiceBaseURL } from '@/utils/service';
-import { $t } from '@/locales';
-import { getAuthorization, handleExpiredRequest, showErrorMsg } from './shared';
+import { getAuthorization, isCurrentAuthorization, showErrorMsg } from './shared';
 import type { RequestInstanceState } from './type';
 
 const isHttpProxy = import.meta.env.DEV && import.meta.env.VITE_HTTP_PROXY === 'Y';
@@ -16,15 +15,16 @@ export const request = createFlatRequest(
   },
   {
     defaultState: {
-      errMsgStack: [],
-      refreshTokenPromise: null
+      errMsgStack: []
     } as RequestInstanceState,
     transform(response: AxiosResponse<App.Service.Response<any>>) {
       return response.data.data;
     },
     async onRequest(config) {
-      const Authorization = getAuthorization();
-      Object.assign(config.headers, { Authorization });
+      // 会话操作绑定调用时的凭据，不能被排队期间的新登录覆盖。
+      if (config.headers.Authorization === undefined) {
+        Object.assign(config.headers, { Authorization: getAuthorization() });
+      }
 
       return config;
     },
@@ -33,104 +33,25 @@ export const request = createFlatRequest(
       // to change this logic by yourself, you can modify the `VITE_SERVICE_SUCCESS_CODE` in `.env` file
       return String(response.data.code) === import.meta.env.VITE_SERVICE_SUCCESS_CODE;
     },
-    async onBackendFail(response, instance) {
-      const authStore = useAuthStore();
-      if (response.status === 401 && response.config.url?.startsWith('/admin/')) {
-        if (response.config.url !== '/admin/auth/login') await authStore.resetStore();
-        return null;
+    async onBackendFail(response) {
+      if (
+        response.config.url !== '/admin/auth/login' &&
+        (response.status === 401 || [1004, 1005].includes(Number(response.data.code))) &&
+        isCurrentAuthorization(response.config.headers.Authorization)
+      ) {
+        await useAuthStore().resetStore();
       }
-      const responseCode = String(response.data.code);
-
-      function handleLogout() {
-        authStore.resetStore();
-      }
-
-      function logoutAndCleanup() {
-        handleLogout();
-        window.removeEventListener('beforeunload', handleLogout);
-
-        request.state.errMsgStack = request.state.errMsgStack.filter(msg => msg !== response.data.message);
-      }
-
-      // when the backend response code is in `logoutCodes`, it means the user will be logged out and redirected to login page
-      const logoutCodes = import.meta.env.VITE_SERVICE_LOGOUT_CODES?.split(',') || [];
-      if (logoutCodes.includes(responseCode)) {
-        handleLogout();
-        return null;
-      }
-
-      // when the backend response code is in `modalLogoutCodes`, it means the user will be logged out by displaying a modal
-      const modalLogoutCodes = import.meta.env.VITE_SERVICE_MODAL_LOGOUT_CODES?.split(',') || [];
-      if (modalLogoutCodes.includes(responseCode) && !request.state.errMsgStack?.includes(response.data.message)) {
-        request.state.errMsgStack = [...(request.state.errMsgStack || []), response.data.message];
-
-        // prevent the user from refreshing the page
-        window.addEventListener('beforeunload', handleLogout);
-
-        window.$dialog?.error({
-          title: $t('common.error'),
-          content: response.data.message,
-          positiveText: $t('common.confirm'),
-          maskClosable: false,
-          closeOnEsc: false,
-          onPositiveClick() {
-            logoutAndCleanup();
-          },
-          onClose() {
-            logoutAndCleanup();
-          }
-        });
-
-        return null;
-      }
-
-      // when the backend response code is in `expiredTokenCodes`, it means the token is expired, and refresh token
-      // the api `refreshToken` can not return error code in `expiredTokenCodes`, otherwise it will be a dead loop, should return `logoutCodes` or `modalLogoutCodes`
-      const expiredTokenCodes = import.meta.env.VITE_SERVICE_EXPIRED_TOKEN_CODES?.split(',') || [];
-      if (expiredTokenCodes.includes(responseCode)) {
-        const success = await handleExpiredRequest(request.state);
-        if (success) {
-          const Authorization = getAuthorization();
-          Object.assign(response.config.headers, { Authorization });
-
-          return instance.request(response.config) as Promise<AxiosResponse>;
-        }
-      }
-
       return null;
     },
     async onError(error) {
-      // when the request is fail, you can show error message
-
-      let message = error.message;
-      let backendErrorCode = '';
-
-      // Management authentication has no refresh endpoint; never retry an expired admin session.
-      if (error.response?.status === 401 && error.config?.url?.startsWith('/admin/')) {
-        if (error.config.url !== '/admin/auth/login') await useAuthStore().resetStore();
-        showErrorMsg(request.state, error.response.data.message || message);
-        return;
+      const response = error.response;
+      const isAuthFailure = response?.status === 401 || [1004, 1005].includes(Number(response?.data?.code));
+      if (isAuthFailure && error.config?.url !== '/admin/auth/login') {
+        if (!isCurrentAuthorization(error.config?.headers.Authorization)) return;
+        await useAuthStore().resetStore();
       }
-
-      // get backend error message and code
-      if (error.response?.data?.message) {
-        message = error.response?.data?.message || message;
-        backendErrorCode = String(error.response?.data?.code || '');
-      }
-
-      // the error message is displayed in the modal
-      const modalLogoutCodes = import.meta.env.VITE_SERVICE_MODAL_LOGOUT_CODES?.split(',') || [];
-      if (modalLogoutCodes.includes(backendErrorCode)) {
-        return;
-      }
-
-      // when the token is expired, refresh token and retry request, so no need to show error message
-      const expiredTokenCodes = import.meta.env.VITE_SERVICE_EXPIRED_TOKEN_CODES?.split(',') || [];
-      if (expiredTokenCodes.includes(backendErrorCode)) {
-        return;
-      }
-
-      showErrorMsg(request.state, message);
+      // 503 and transport errors preserve the credential and can be retried.
+      showErrorMsg(request.state, response?.data?.message || error.message);
     }
   }
 );

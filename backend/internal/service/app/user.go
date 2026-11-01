@@ -6,9 +6,11 @@ import (
 	"backend/internal/dto"
 	"backend/internal/models"
 	"backend/internal/service"
+	"backend/internal/session"
 	"backend/internal/utils/file"
-	"backend/internal/utils/jwt"
 	passwordutil "backend/internal/utils/password"
+	"context"
+	"errors"
 	"strings"
 	"time"
 
@@ -19,11 +21,11 @@ import (
 type UserService struct {
 	logger  *zap.Logger
 	dao     *mysql.DAO
-	tokens  *jwt.Manager
+	tokens  *session.Store
 	storage config.StorageConfig
 }
 
-func NewUserService(dao *mysql.DAO, tokens *jwt.Manager, storage config.StorageConfig, logger *zap.Logger) *UserService {
+func NewUserService(dao *mysql.DAO, tokens *session.Store, storage config.StorageConfig, logger *zap.Logger) *UserService {
 	return &UserService{
 		logger:  logger,
 		dao:     dao,
@@ -32,9 +34,9 @@ func NewUserService(dao *mysql.DAO, tokens *jwt.Manager, storage config.StorageC
 	}
 }
 
-func (u *UserService) Register(req *dto.RegisterRequest) (*dto.LoginResponse, error) {
+func (u *UserService) Register(ctx context.Context, req *dto.RegisterRequest) (*dto.LoginResponse, error) {
 	studentID := strings.TrimSpace(req.StudentID)
-	// 先准备会话，再一次性写入账号，避免签发失败时留下已创建的账号。
+	// 写入账号前准备资料；账号创建成功后才建立可用会话。
 	data, err := u.newLoginResponse(dto.User{StudentID: studentID}, models.RoleStudent, false)
 	if err != nil {
 		return nil, err
@@ -46,6 +48,7 @@ func (u *UserService) Register(req *dto.RegisterRequest) (*dto.LoginResponse, er
 	now := time.Now()
 	student := &models.User{
 		StudentID:      studentID,
+		AuthVersion:    1,
 		Password:       hash,
 		Role:           models.RoleStudent,
 		Status:         models.UserStatusActive,
@@ -56,10 +59,15 @@ func (u *UserService) Register(req *dto.RegisterRequest) (*dto.LoginResponse, er
 	if err := u.dao.CreateUser(student); err != nil {
 		return nil, err
 	}
+	token, err := u.tokens.Create(ctx, student, session.ClientApp)
+	if err != nil {
+		return nil, errors.Join(session.ErrRegistrationSession, err)
+	}
+	data.Token = token
 	return data, nil
 }
 
-func (u *UserService) Login(req *dto.LoginRequest) (*dto.LoginResponse, error) {
+func (u *UserService) Login(ctx context.Context, req *dto.LoginRequest) (*dto.LoginResponse, error) {
 	studentID := strings.TrimSpace(req.StudentID)
 
 	user, err := u.dao.FindUserByStudentID(studentID)
@@ -91,7 +99,16 @@ func (u *UserService) Login(req *dto.LoginRequest) (*dto.LoginResponse, error) {
 		return nil, err
 	}
 
-	return u.newLoginResponse(loginUser, user.Role, profileCompleted)
+	data, err := u.newLoginResponse(loginUser, user.Role, profileCompleted)
+	if err != nil {
+		return nil, err
+	}
+	token, err := u.tokens.Create(ctx, user, session.ClientApp)
+	if err != nil {
+		return nil, err
+	}
+	data.Token = token
+	return data, nil
 }
 
 func (u *UserService) newLoginResponse(user dto.User, role string, profileCompleted bool) (*dto.LoginResponse, error) {
@@ -106,12 +123,7 @@ func (u *UserService) newLoginResponse(user dto.User, role string, profileComple
 	}
 	user.AvatarURL = avatarURL
 	user.Role = role
-	token, err := u.tokens.GenerateToken(user.StudentID, role)
-	if err != nil {
-		return nil, err
-	}
 	return &dto.LoginResponse{
-		Token:            token,
 		User:             user,
 		ProfileCompleted: profileCompleted,
 	}, nil
@@ -150,6 +162,9 @@ func (u *UserService) ChangePassword(p *dto.PasswordChangeRequest, studentID str
 		if err != nil {
 			return err
 		}
+		if user.Status != models.UserStatusActive {
+			return mysql.ErrorUserDisabled
+		}
 		matched, err := passwordutil.Verify(user.Password, p.Password)
 		if err != nil {
 			return err
@@ -167,4 +182,8 @@ func (u *UserService) ChangePassword(p *dto.PasswordChangeRequest, studentID str
 
 func (u *UserService) UpdateAppInfo(p *dto.ClientInfoRequest, studentID string) error {
 	return u.dao.UpdateAppUsage(studentID, strings.TrimSpace(p.DeviceName), strings.TrimSpace(p.AppVersion))
+}
+
+func (u *UserService) Logout(ctx context.Context, token string) error {
+	return u.tokens.Revoke(ctx, token)
 }

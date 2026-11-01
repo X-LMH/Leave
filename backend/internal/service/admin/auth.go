@@ -4,8 +4,9 @@ import (
 	"backend/internal/dao/mysql"
 	"backend/internal/dto"
 	"backend/internal/models"
-	"backend/internal/utils/jwt"
+	"backend/internal/session"
 	passwordutil "backend/internal/utils/password"
+	"context"
 	"strings"
 
 	"go.uber.org/zap"
@@ -15,10 +16,10 @@ import (
 type AuthService struct {
 	logger *zap.Logger
 	dao    *mysql.DAO
-	tokens *jwt.Manager
+	tokens *session.Store
 }
 
-func NewAuthService(dao *mysql.DAO, tokens *jwt.Manager, logger *zap.Logger) *AuthService {
+func NewAuthService(dao *mysql.DAO, tokens *session.Store, logger *zap.Logger) *AuthService {
 	return &AuthService{
 		logger: logger,
 		dao:    dao,
@@ -26,7 +27,7 @@ func NewAuthService(dao *mysql.DAO, tokens *jwt.Manager, logger *zap.Logger) *Au
 	}
 }
 
-func (a *AuthService) AdminLogin(req *dto.AdminLoginRequest) (*dto.AdminLoginResponse, error) {
+func (a *AuthService) AdminLogin(ctx context.Context, req *dto.AdminLoginRequest) (*dto.AdminLoginResponse, error) {
 	userName := strings.TrimSpace(req.UserName)
 	user, err := a.dao.FindUserByStudentID(userName)
 	if err != nil {
@@ -43,7 +44,7 @@ func (a *AuthService) AdminLogin(req *dto.AdminLoginRequest) (*dto.AdminLoginRes
 		return nil, mysql.ErrorInvalidPassword
 	}
 
-	token, err := a.tokens.GenerateToken(user.StudentID, user.Role)
+	token, err := a.tokens.Create(ctx, user, session.ClientWeb)
 	if err != nil {
 		return nil, err
 	}
@@ -88,4 +89,8 @@ func (a *AuthService) ChangePassword(studentID string, input *dto.PasswordChange
 		}
 		return a.dao.UpdateUserPassword(tx, user.ID, hash)
 	})
+}
+
+func (a *AuthService) Logout(ctx context.Context, token string) error {
+	return a.tokens.Revoke(ctx, token)
 }

@@ -4,14 +4,14 @@ import (
 	"backend/internal/config"
 	"backend/internal/dto"
 	"backend/internal/models"
-	"backend/internal/utils/jwt"
+	"backend/internal/testutil/sessiontest"
 	"testing"
 
 	"go.uber.org/zap"
 )
 
 func TestNewLoginResponse(t *testing.T) {
-	tokens := jwt.NewManager("test-registration-session", 1)
+	tokens := sessiontest.NewStore(t)
 	users := NewUserService(nil, tokens, config.StorageConfig{BaseURL: "https://example.com/uploads"}, zap.NewNop())
 	for _, role := range []string{models.RoleStudent, models.RoleAdmin} {
 		for _, completed := range []bool{false, true} {
@@ -24,13 +24,6 @@ func TestNewLoginResponse(t *testing.T) {
 			data, err := users.newLoginResponse(user, role, completed)
 			if err != nil {
 				t.Fatal(err)
-			}
-			claims, err := tokens.ParseToken(data.Token)
-			if err != nil {
-				t.Fatalf("returned token is unusable: %v", err)
-			}
-			if claims.StudentID != user.StudentID || claims.Role != role {
-				t.Fatalf("wrong session identity: %#v", claims)
 			}
 			expected := user
 			expected.Role = role

@@ -8,8 +8,10 @@ import (
 	"backend/internal/response"
 	adminservice "backend/internal/service/admin"
 	appservice "backend/internal/service/app"
-	"backend/internal/utils/jwt"
+	"backend/internal/session"
+	"backend/internal/testutil/sessiontest"
 	passwordutil "backend/internal/utils/password"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -101,7 +103,7 @@ func TestAdminPasswordIntegration(t *testing.T) {
 		}
 	}
 	t.Run("case sensitive login identities", func(t *testing.T) {
-		auth := adminservice.NewAuthService(dao, jwt.NewManager(settings.JWT.Secret, settings.JWT.ExpirationDays), zap.NewNop())
+		auth := adminservice.NewAuthService(dao, sessiontest.NewStore(t), zap.NewNop())
 		otherHash, err := passwordutil.Hash("other-pass")
 		if err != nil {
 			t.Fatal(err)
@@ -119,7 +121,7 @@ func TestAdminPasswordIntegration(t *testing.T) {
 			{"ADMIN", "old-pass", false}, {"ádmin", "old-pass", false},
 			{" admin ", "old-pass", true},
 		} {
-			_, err := auth.AdminLogin(&dto.AdminLoginRequest{UserName: input.name, Password: input.password})
+			_, err := auth.AdminLogin(context.Background(), &dto.AdminLoginRequest{UserName: input.name, Password: input.password})
 			if input.valid && err != nil {
 				t.Fatalf("login %q: %v", input.name, err)
 			}
@@ -128,7 +130,7 @@ func TestAdminPasswordIntegration(t *testing.T) {
 			}
 		}
 	})
-	token, err := jwt.NewManager(settings.JWT.Secret, settings.JWT.ExpirationDays).GenerateToken("admin", models.RoleAdmin)
+	token, err := issueSession(t, dao, "admin")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -154,7 +156,7 @@ func TestAdminPasswordIntegration(t *testing.T) {
 		return result
 	}
 	validBody := `{"password":"old-pass","new_password":"new-pass","re_password":"new-pass"}`
-	if got := call("", validBody); got.Code != response.CodeNeedLogin {
+	if got := call("", validBody); got.Code != response.CodeNeedLogin && got.Code != response.CodeInvalidToken {
 		t.Fatal("anonymous password change allowed")
 	}
 	for _, account := range []struct{ id, role string }{
@@ -163,11 +165,11 @@ func TestAdminPasswordIntegration(t *testing.T) {
 		{"disabled", models.RoleAdmin},
 		{"missing", models.RoleAdmin},
 	} {
-		auth, err := jwt.NewManager(settings.JWT.Secret, settings.JWT.ExpirationDays).GenerateToken(account.id, account.role)
+		auth, err := issueSession(t, dao, account.id, account.role)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if got := call(auth, validBody); got.Code != response.CodeNeedLogin {
+		if got := call(auth, validBody); got.Code != response.CodeNeedLogin && got.Code != response.CodeInvalidToken {
 			t.Fatalf("account %s accepted", account.id)
 		}
 	}
@@ -189,16 +191,23 @@ func TestAdminPasswordIntegration(t *testing.T) {
 	if err != nil || user.Password != initialHash {
 		t.Fatal("failed request modified password")
 	}
-	// No App version headers are sent, and the same token remains valid after success.
+	// No App version headers are required; password changes invalidate all old sessions.
 	if got := call(token, validBody); got.Code != response.CodeSuccess {
 		t.Fatalf("change failed: %d", got.Code)
 	}
-	authService := adminservice.NewAuthService(dao, jwt.NewManager(settings.JWT.Secret, settings.JWT.ExpirationDays), zap.NewNop())
-	if _, err := authService.AdminLogin(&dto.AdminLoginRequest{UserName: "admin", Password: "old-pass"}); !errors.Is(err, mysql.ErrorInvalidPassword) {
+	authService := adminservice.NewAuthService(dao, sessiontest.NewStore(t), zap.NewNop())
+	if _, err := authService.AdminLogin(context.Background(), &dto.AdminLoginRequest{UserName: "admin", Password: "old-pass"}); !errors.Is(err, mysql.ErrorInvalidPassword) {
 		t.Fatal("old password still accepted for login")
 	}
-	if _, err := authService.AdminLogin(&dto.AdminLoginRequest{UserName: "admin", Password: "new-pass"}); err != nil {
+	if _, err := authService.AdminLogin(context.Background(), &dto.AdminLoginRequest{UserName: "admin", Password: "new-pass"}); err != nil {
 		t.Fatal("new password cannot log in")
+	}
+	if got := call(token, validBody); got.Code != response.CodeInvalidToken {
+		t.Fatal("old session survived password change")
+	}
+	token, err = issueSession(t, dao, "admin")
+	if err != nil {
+		t.Fatal(err)
 	}
 	if got := call(token, `{"password":"new-pass","new_password":" pass ","re_password":" pass "}`); got.Code != response.CodeSuccess {
 		t.Fatal("current session or password spaces were not preserved")
@@ -237,8 +246,12 @@ func TestAdminPasswordIntegration(t *testing.T) {
 	if firstErr != nil || secondErr != nil || first == second || user.Role != models.RoleAdmin || user.Status != models.UserStatusActive {
 		t.Fatal("unexpected persisted account state")
 	}
-	userService := appservice.NewUserService(dao, jwt.NewManager(settings.JWT.Secret, settings.JWT.ExpirationDays), settings.Storage, zap.NewNop())
+	userService := appservice.NewUserService(dao, sessiontest.NewStore(t), settings.Storage, zap.NewNop())
 	t.Run("student password reset", func(t *testing.T) {
+		token, err := issueSession(t, dao, "admin")
+		if err != nil {
+			t.Fatal(err)
+		}
 		router := SetupRouter(testDependencies(t, dao, settings))
 		definition, err := os.ReadFile(filepath.Join("..", "..", "database", "tables", "profiles.sql"))
 		if err != nil {
@@ -270,7 +283,7 @@ func TestAdminPasswordIntegration(t *testing.T) {
 			t.Fatal(err)
 		}
 		id := strconv.FormatUint(uint64(student.ID), 10)
-		if got := callReset("", id); got.Code != response.CodeNeedLogin {
+		if got := callReset("", id); got.Code != response.CodeNeedLogin && got.Code != response.CodeInvalidToken {
 			t.Fatal("anonymous reset allowed")
 		}
 		for _, account := range []struct{ id, role string }{
@@ -279,11 +292,11 @@ func TestAdminPasswordIntegration(t *testing.T) {
 			{"disabled", models.RoleAdmin},
 			{"missing", models.RoleAdmin},
 		} {
-			auth, err := jwt.NewManager(settings.JWT.Secret, settings.JWT.ExpirationDays).GenerateToken(account.id, account.role)
+			auth, err := issueSession(t, dao, account.id, account.role)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if got := callReset(auth, id); got.Code != response.CodeNeedLogin {
+			if got := callReset(auth, id); got.Code != response.CodeNeedLogin && got.Code != response.CodeInvalidToken {
 				t.Fatalf("account %s reset allowed", account.id)
 			}
 		}
@@ -355,16 +368,20 @@ func TestAdminPasswordIntegration(t *testing.T) {
 					t.Fatal("old password still valid")
 				}
 			}
+			if !deleted && after.AuthVersion != before.AuthVersion+1 {
+				t.Fatal("password reset did not invalidate sessions")
+			}
+			after.AuthVersion = before.AuthVersion
 			after.Password, after.UpdatedAt = before.Password, before.UpdatedAt
 			if !reflect.DeepEqual(after, before) {
 				t.Fatal("reset changed unrelated account fields")
 			}
 		}
 
-		if _, err := userService.Login(&dto.LoginRequest{StudentID: "student", Password: "old-pass"}); !errors.Is(err, mysql.ErrorInvalidPassword) {
+		if _, err := userService.Login(context.Background(), &dto.LoginRequest{StudentID: "student", Password: "old-pass"}); !errors.Is(err, mysql.ErrorInvalidPassword) {
 			t.Fatal("old student password can still log in")
 		}
-		if _, err := userService.Login(&dto.LoginRequest{StudentID: "student", Password: "12345678"}); err != nil {
+		if _, err := userService.Login(context.Background(), &dto.LoginRequest{StudentID: "student", Password: "12345678"}); err != nil {
 			t.Fatalf("default password cannot log in: %v", err)
 		}
 		var unchangedAdmin models.User
@@ -382,4 +399,18 @@ func TestAdminPasswordIntegration(t *testing.T) {
 			t.Fatal("unrelated password changed")
 		}
 	})
+}
+
+func issueSession(t *testing.T, dao *mysql.DAO, studentID string, role ...string) (string, error) {
+	t.Helper()
+	user, err := dao.FindUserByStudentID(studentID)
+	if errors.Is(err, mysql.ErrorUserNotExist) {
+		user = &models.User{ID: ^uint(0), StudentID: studentID, Role: models.RoleAdmin, AuthVersion: 1}
+	} else if err != nil {
+		return "", err
+	}
+	if len(role) > 0 {
+		user.Role = role[0]
+	}
+	return sessiontest.NewStore(t).Create(context.Background(), user, session.ClientApp)
 }

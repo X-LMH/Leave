@@ -106,7 +106,8 @@ test('management HTTP 401 clears authentication without refreshing tokens', asyn
       if (name.includes('/locales')) return { $t: value => value };
       if (name === './shared')
         return {
-          getAuthorization: () => null,
+          getAuthorization: () => 'Bearer current-session',
+          isCurrentAuthorization: value => value === 'Bearer current-session',
           handleExpiredRequest: async () => {
             refreshes++;
             return true;
@@ -119,7 +120,7 @@ test('management HTTP 401 clears authentication without refreshing tokens', asyn
   vm.runInNewContext(compile(read('src/service/request/index.ts').replaceAll('import.meta.env', 'testEnv')), context);
   await options.onError({
     message: 'HTTP 401',
-    config: { url: '/admin/classes' },
+    config: { url: '/admin/classes', headers: { Authorization: 'Bearer current-session' } },
     response: { status: 401, data: { code: 1005, message: 'Token expired' } }
   });
   assert.equal(resets, 1);
@@ -134,14 +135,14 @@ test('management HTTP 401 clears authentication without refreshing tokens', asyn
   assert.equal(messages[1], 'Invalid password');
   await options.onError({
     message: 'HTTP 401',
-    config: { url: '/admin/auth/password' },
+    config: { url: '/admin/auth/password', headers: { Authorization: 'Bearer current-session' } },
     response: { status: 401, data: { code: 1005, message: 'Token expired' } }
   });
   assert.equal(resets, 2);
   assert.equal(refreshes, 0);
   await options.onBackendFail({
     status: 401,
-    config: { url: '/admin/auth/password' },
+    config: { url: '/admin/auth/password', headers: { Authorization: 'Bearer current-session' } },
     data: { code: 1005, message: 'Token expired' }
   });
   assert.equal(resets, 3);

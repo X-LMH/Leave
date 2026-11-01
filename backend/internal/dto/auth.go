@@ -10,3 +10,9 @@ type AdminLoginRequest struct {
 type AdminLoginResponse struct {
 	Token string `json:"token"`
 }
+
+// AuthIdentity is the current, database-verified management identity.
+type AuthIdentity struct {
+	StudentID string `json:"student_id"`
+	Role      string `json:"role"`
+}

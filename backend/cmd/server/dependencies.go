@@ -5,12 +5,13 @@ import (
 	admincontroller "backend/internal/controller/admin"
 	appcontroller "backend/internal/controller/app"
 	"backend/internal/dao/mysql"
+	redisdao "backend/internal/dao/redis"
 	"backend/internal/middleware"
 	"backend/internal/router"
 	adminservice "backend/internal/service/admin"
 	appservice "backend/internal/service/app"
 	commonservice "backend/internal/service/common"
-	"backend/internal/utils/jwt"
+	"backend/internal/session"
 
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
@@ -19,7 +20,7 @@ import (
 // buildDependencies 组装当前应用实例的服务、Handler 和中间件。
 func buildDependencies(cfg config.Config, dao *mysql.DAO, logger *zap.Logger, redisClient *redis.Client) router.Dependencies {
 	limiter := middleware.NewRateLimiter(redisClient, logger)
-	tokens := jwt.NewManager(cfg.JWT.Secret, cfg.JWT.ExpirationDays)
+	tokens := session.NewStore(redisdao.NewDAO(redisClient, cfg.App.Namespace), cfg.Session)
 	commonOptionsService := commonservice.NewOptionsService(dao, logger)
 	appVersionService := appservice.NewAppVersionService(dao, logger)
 	appAvatarService := appservice.NewAvatarService(dao, cfg.Storage, logger)
@@ -74,7 +75,7 @@ func buildDependencies(cfg config.Config, dao *mysql.DAO, logger *zap.Logger, re
 		AdminOverview:        adminOverviewHandler,
 		AdminRecord:          adminRecordHandler,
 		AdminStudent:         adminStudentHandler,
-		AuthMiddleware:       middleware.JWTAuthMiddleware(tokens, dao, logger),
+		AuthMiddleware:       middleware.SessionAuthMiddleware(tokens, dao, logger),
 		AppVersionMiddleware: middleware.AppVersionMiddleware(appVersionService, logger),
 	}
 }

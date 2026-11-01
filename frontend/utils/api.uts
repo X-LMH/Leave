@@ -453,9 +453,9 @@ export function request<T>(path: string, method: 'GET' | 'POST' | 'PUT' | 'DELET
 		const header = { 'Content-Type': 'application/json' } as UTSJSONObject
 		header['X-App-Platform'] = APP_PLATFORM
 		header['X-App-Version-Code'] = getAppVersionCode().toString()
+		const storedToken = uni.getStorageSync(STORAGE_TOKEN_KEY)
+		const token = typeof storedToken == 'string' ? storedToken : ''
 		if (requiresAuth) {
-			const storedToken = uni.getStorageSync(STORAGE_TOKEN_KEY)
-			const token = typeof storedToken == 'string' ? storedToken : ''
 			if (token == '') {
 				handleUnauthorized()
 				reject(new Error('请先登录'))
@@ -483,7 +483,7 @@ export function request<T>(path: string, method: 'GET' | 'POST' | 'PUT' | 'DELET
 					resolve(body['data'] as T)
 					return
 				}
-				if (code == 1004 || code == 1005) {
+				if ((code == 1004 || code == 1005) && requiresAuth && uni.getStorageSync(STORAGE_TOKEN_KEY) == token) {
 					handleUnauthorized()
 				}
 				if (code == 5002) {
@@ -618,7 +618,7 @@ function uploadAppFiles(endpoint: string, files: UploadFileOptionFiles[], formDa
 					}
 					const code = body['code'] as number
 					if (code == 1004 || code == 1005) {
-						handleUnauthorized()
+						if (uni.getStorageSync(STORAGE_TOKEN_KEY) == token) handleUnauthorized()
 						reject(new AvatarUploadError('请重新登录'))
 						return
 					}

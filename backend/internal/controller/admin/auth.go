@@ -5,9 +5,11 @@ import (
 	"backend/internal/dto"
 	logutil "backend/internal/logger"
 	"backend/internal/middleware"
+	"backend/internal/models"
 	"backend/internal/request"
 	"backend/internal/response"
 	adminservice "backend/internal/service/admin"
+	"backend/internal/session"
 	"errors"
 	"strings"
 
@@ -41,7 +43,7 @@ func (a *AuthHandler) LoginHandler(c *gin.Context) {
 	if !a.limiter.Check(c, middleware.SideAdmin, middleware.OperationLogin, middleware.DimensionAccount, strings.TrimSpace(p.UserName)) {
 		return
 	}
-	data, err := a.auth.AdminLogin(p)
+	data, err := a.auth.AdminLogin(c.Request.Context(), p)
 	if err != nil {
 		switch {
 		case errors.Is(err, mysql.ErrorUserNotExist), errors.Is(err, mysql.ErrorInvalidPassword):
@@ -49,7 +51,7 @@ func (a *AuthHandler) LoginHandler(c *gin.Context) {
 			response.Error(c, response.CodeInvalidPassword)
 		default:
 			log.Error("账号操作失败", logutil.Error(err))
-			response.Error(c, response.CodeServerBusy)
+			response.Error(c, response.CodeAuthUnavailable)
 		}
 		return
 	}
@@ -81,10 +83,46 @@ func (a *AuthHandler) ChangePasswordHandler(c *gin.Context) {
 			response.Error(c, response.CodeNeedLogin)
 		default:
 			log.Error("账号操作失败", logutil.Error(err))
-			response.Error(c, response.CodeServerBusy)
+			response.Error(c, response.CodeAuthUnavailable)
 		}
 		return
 	}
 	log.Info("修改密码成功")
+	response.Success(c, nil)
+}
+
+func (a *AuthHandler) MeHandler(c *gin.Context) {
+	studentID, err := request.GetCurrentStuID(c)
+	if err != nil {
+		response.Error(c, response.CodeNeedLogin)
+		return
+	}
+	role, err := request.GetCurrentRole(c)
+	if err != nil || role != models.RoleAdmin {
+		response.Error(c, response.CodeNeedLogin)
+		return
+	}
+	response.Success(c, dto.AuthIdentity{
+		StudentID: studentID,
+		Role:      role,
+	})
+}
+
+func (a *AuthHandler) LogoutHandler(c *gin.Context) {
+	token, err := session.Bearer(c.GetHeader(session.AuthorizationHeader))
+	if err == nil {
+		err = a.auth.Logout(c.Request.Context(), token)
+	}
+	if err != nil {
+		if !errors.Is(err, session.ErrInvalid) {
+			a.logger.With(logutil.OperationFields(c, "admin.auth.logout")...).Error("退出登录失败", logutil.Error(err))
+		}
+		code := response.CodeAuthUnavailable
+		if errors.Is(err, session.ErrInvalid) {
+			code = response.CodeInvalidToken
+		}
+		response.Error(c, code)
+		return
+	}
 	response.Success(c, nil)
 }

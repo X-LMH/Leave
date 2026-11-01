@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/spf13/viper"
 	"github.com/subosito/gotenv"
@@ -11,43 +12,51 @@ import (
 
 // 配置按启动时加载的实例传递，各组件只接收需要的部分。
 type JWTConfig struct {
-	Secret         string `yaml:"secret"`
-	ExpirationDays int    `yaml:"expiration_days"`
+	Secret         string `mapstructure:"secret"`
+	ExpirationDays int    `mapstructure:"expiration_days"`
 }
+
+type SessionConfig struct {
+	StudentTTL time.Duration `mapstructure:"student_ttl"`
+	AdminTTL   time.Duration `mapstructure:"admin_ttl"`
+}
+
 type MySQLConfig struct {
-	Host     string `yaml:"host"`
-	Port     int    `yaml:"port"`
-	Database string `yaml:"database"`
-	User     string `yaml:"user"`
-	Password string `yaml:"password"`
+	Host     string `mapstructure:"host"`
+	Port     int    `mapstructure:"port"`
+	Database string `mapstructure:"database"`
+	User     string `mapstructure:"user"`
+	Password string `mapstructure:"password"`
 }
 type RedisConfig struct {
-	Host     string `yaml:"host"`
-	Port     int    `yaml:"port"`
-	Username string `yaml:"username"`
-	Password string `yaml:"password"`
-	DB       int    `yaml:"db"`
+	Host     string `mapstructure:"host"`
+	Port     int    `mapstructure:"port"`
+	Username string `mapstructure:"username"`
+	Password string `mapstructure:"password"`
+	DB       int    `mapstructure:"db"`
 }
 type AppConfig struct {
-	PackageDir string `yaml:"package_dir"`
-	Port       int    `yaml:"port"`
+	Namespace  string `mapstructure:"namespace"`
+	PackageDir string `mapstructure:"package_dir"`
+	Port       int    `mapstructure:"port"`
 }
 type StorageConfig struct {
-	RootDir string `yaml:"root_dir"`
-	BaseURL string `yaml:"base_url"`
+	RootDir string `mapstructure:"root_dir"`
+	BaseURL string `mapstructure:"base_url"`
 }
 type LogConfig struct {
-	Level    string `yaml:"level"`
-	Encoding string `yaml:"encoding"`
-	Dir      string `yaml:"dir"`
+	Level    string `mapstructure:"level"`
+	Encoding string `mapstructure:"encoding"`
+	Dir      string `mapstructure:"dir"`
 }
 type Config struct {
-	Redis   RedisConfig   `yaml:"redis"`
-	Log     LogConfig     `yaml:"log"`
-	JWT     JWTConfig     `yaml:"jwt"`
-	Mysql   MySQLConfig   `yaml:"mysql"`
-	App     AppConfig     `yaml:"app"`
-	Storage StorageConfig `yaml:"storage"`
+	Session SessionConfig `mapstructure:"session"`
+	Redis   RedisConfig   `mapstructure:"redis"`
+	Log     LogConfig     `mapstructure:"log"`
+	JWT     JWTConfig     `mapstructure:"jwt"`
+	Mysql   MySQLConfig   `mapstructure:"mysql"`
+	App     AppConfig     `mapstructure:"app"`
+	Storage StorageConfig `mapstructure:"storage"`
 }
 
 // Load 读取并校验配置，不维护包级配置实例。
@@ -64,12 +73,15 @@ func Load() (Config, error) {
 	}
 	v.SetConfigFile(configPath)
 	v.AllowEmptyEnv(true)
-	v.SetDefault("app.port", 10000)
-	v.BindEnv("redis.password", "REDIS_PASSWORD")
-	v.SetDefault("log.level", "info")
-	v.SetDefault("log.encoding", "console")
-	v.BindEnv("mysql.password", "MYSQL_PASSWORD")
-	v.BindEnv("jwt.secret", "JWT_SECRET")
+	for _, binding := range [][2]string{
+		{"mysql.password", "MYSQL_PASSWORD"},
+		{"redis.password", "REDIS_PASSWORD"},
+		{"jwt.secret", "JWT_SECRET"},
+	} {
+		if err := v.BindEnv(binding[0], binding[1]); err != nil {
+			return Config{}, fmt.Errorf("绑定环境变量失败: %w", err)
+		}
+	}
 
 	// 读取配置文件
 	if err := v.ReadInConfig(); err != nil {
@@ -80,15 +92,12 @@ func Load() (Config, error) {
 	if err := v.Unmarshal(&cfg); err != nil {
 		return Config{}, fmt.Errorf("解析配置失败: %w", err)
 	}
-	cfg.JWT.Secret = strings.TrimSpace(v.GetString("jwt.secret"))
-	cfg.JWT.ExpirationDays = v.GetInt("jwt.expiration_days")
-	cfg.Mysql.Password = v.GetString("mysql.password")
+	cfg.JWT.Secret = strings.TrimSpace(cfg.JWT.Secret)
 	cfg.Redis.Host = strings.TrimSpace(cfg.Redis.Host)
-	cfg.Redis.Password = v.GetString("redis.password")
-	cfg.App.PackageDir = strings.TrimSpace(v.GetString("app.package_dir"))
-	cfg.App.Port = v.GetInt("app.port")
-	cfg.Storage.RootDir = strings.TrimSpace(v.GetString("storage.root_dir"))
-	cfg.Storage.BaseURL = strings.TrimSpace(v.GetString("storage.base_url"))
+	cfg.App.Namespace = strings.TrimSpace(cfg.App.Namespace)
+	cfg.App.PackageDir = strings.TrimSpace(cfg.App.PackageDir)
+	cfg.Storage.RootDir = strings.TrimSpace(cfg.Storage.RootDir)
+	cfg.Storage.BaseURL = strings.TrimSpace(cfg.Storage.BaseURL)
 
 	if cfg.Redis.Host == "" {
 		return Config{}, fmt.Errorf("redis.host cannot be empty")
@@ -102,11 +111,11 @@ func Load() (Config, error) {
 	if cfg.Mysql.Password == "" {
 		return Config{}, fmt.Errorf("MySQL password cannot be empty; configure MYSQL_PASSWORD")
 	}
-	if cfg.JWT.Secret == "" {
-		return Config{}, fmt.Errorf("JWT secret cannot be empty; configure jwt.secret or JWT_SECRET")
+	if cfg.App.Namespace == "" || strings.ContainsAny(cfg.App.Namespace, ": \t\r\n") {
+		return Config{}, fmt.Errorf("app.namespace must be nonempty and contain no colon or whitespace")
 	}
-	if cfg.JWT.ExpirationDays <= 0 {
-		return Config{}, fmt.Errorf("jwt.expiration_days must be greater than 0")
+	if cfg.Session.StudentTTL <= 0 || cfg.Session.AdminTTL <= 0 {
+		return Config{}, fmt.Errorf("session TTLs must be positive durations")
 	}
 	if cfg.App.Port <= 0 || cfg.App.Port > 65535 {
 		return Config{}, fmt.Errorf("app.port must be between 1 and 65535")

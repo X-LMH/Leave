@@ -172,7 +172,18 @@ func (s *StudentService) UpdateAdminStudentStatus(id uint, input *dto.StudentSta
 	if input.Status == nil || *input.Status > models.UserStatusActive {
 		return nil, ErrorInvalidAdminInput
 	}
-	if err := s.dao.UpdateStudentStatus(id, *input.Status); err != nil {
+	if err := s.dao.Transaction(func(tx *gorm.DB) error {
+		user, err := s.dao.GetStudentForUpdate(tx, id)
+		if err != nil {
+			return err
+		}
+		authVersion := user.AuthVersion
+		// 仅在启用转为停用时撤销旧会话，重新启用不恢复旧版本。
+		if user.Status != *input.Status && *input.Status == models.UserStatusDisabled {
+			authVersion++
+		}
+		return s.dao.UpdateStudentStatus(tx, user.ID, *input.Status, authVersion)
+	}); err != nil {
 		return nil, err
 	}
 	return s.GetAdminStudent(id)

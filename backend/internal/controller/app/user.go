@@ -8,6 +8,7 @@ import (
 	"backend/internal/request"
 	"backend/internal/response"
 	appservice "backend/internal/service/app"
+	"backend/internal/session"
 	"errors"
 	"strings"
 	"unicode/utf8"
@@ -56,15 +57,19 @@ func (u *UserHandler) RegisterHandler(c *gin.Context) {
 		return
 	}
 	// 业务逻辑
-	data, err := u.user.Register(p)
+	data, err := u.user.Register(c.Request.Context(), p)
 	if err != nil {
 		switch {
+		case errors.Is(err, session.ErrRegistrationSession):
+			log.Error("账号已创建但会话建立失败", logutil.Error(err))
+			response.Error(c, response.CodeRegistrationSessionUnavailable)
+			return
 		case errors.Is(err, mysql.ErrorUserExist):
 			response.Error(c, response.CodeUserExist)
 			return
 		default:
 			log.Error("注册失败", logutil.Error(err))
-			response.Error(c, response.CodeServerBusy)
+			response.Error(c, response.CodeAuthUnavailable)
 			return
 		}
 	}
@@ -99,7 +104,7 @@ func (u *UserHandler) LoginHandler(c *gin.Context) {
 		return
 	}
 	// 业务逻辑
-	data, err := u.user.Login(p)
+	data, err := u.user.Login(c.Request.Context(), p)
 	if err != nil {
 		switch {
 		case errors.Is(err, mysql.ErrorUserNotExist), errors.Is(err, mysql.ErrorInvalidPassword):
@@ -111,7 +116,7 @@ func (u *UserHandler) LoginHandler(c *gin.Context) {
 			return
 		default:
 			log.Error("登录失败", logutil.Error(err))
-			response.Error(c, response.CodeServerBusy)
+			response.Error(c, response.CodeAuthUnavailable)
 			return
 		}
 	}
@@ -122,9 +127,23 @@ func (u *UserHandler) LoginHandler(c *gin.Context) {
 	response.Success(c, data)
 }
 
-// LogoutHandler 退出登录。
-// 当前使用无状态 JWT，客户端在收到成功响应后清除本地 Token。
+// LogoutHandler 撤销当前会话，过期或重复退出也成功。
 func (u *UserHandler) LogoutHandler(c *gin.Context) {
+	token, err := session.Bearer(c.GetHeader(session.AuthorizationHeader))
+	if err == nil {
+		err = u.user.Logout(c.Request.Context(), token)
+	}
+	if err != nil {
+		if !errors.Is(err, session.ErrInvalid) {
+			u.logger.With(logutil.OperationFields(c, "app.logout")...).Error("退出登录失败", logutil.Error(err))
+		}
+		code := response.CodeAuthUnavailable
+		if errors.Is(err, session.ErrInvalid) {
+			code = response.CodeInvalidToken
+		}
+		response.Error(c, code)
+		return
+	}
 	response.Success(c, nil)
 }
 
@@ -172,12 +191,15 @@ func (u *UserHandler) ChangePasswordHandler(c *gin.Context) {
 	}
 	if err := u.user.ChangePassword(p, studentID); err != nil {
 		switch {
+		case errors.Is(err, mysql.ErrorUserNotExist), errors.Is(err, mysql.ErrorUserDisabled):
+			response.Error(c, response.CodeNeedLogin)
+			return
 		case errors.Is(err, mysql.ErrorNotRightPassword):
 			response.Error(c, response.CodeNotRightPassword)
 			return
 		default:
 			log.Error("修改密码失败", logutil.Error(err))
-			response.Error(c, response.CodeServerBusy)
+			response.Error(c, response.CodeAuthUnavailable)
 			return
 		}
 	}

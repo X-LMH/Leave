@@ -7,7 +7,7 @@ import (
 	"backend/internal/response"
 	appservice "backend/internal/service/app"
 	"backend/internal/testutil"
-	"backend/internal/utils/jwt"
+	"backend/internal/testutil/sessiontest"
 	"bytes"
 	"encoding/json"
 	"net/http"
@@ -47,7 +47,7 @@ func TestRegisterRejectsInvalidRequests(t *testing.T) {
 			c, _ := gin.CreateTestContext(w)
 			c.Request = httptest.NewRequest(http.MethodPost, "/api/v1/auth/register", bytes.NewReader(body))
 			c.Request.Header.Set("Content-Type", "application/json")
-			NewUserHandler(appservice.NewUserService(dao, jwt.NewManager(settings.JWT.Secret, settings.JWT.ExpirationDays), settings.Storage, zap.NewNop()), zap.NewNop(), testutil.NewRateLimiter(t)).RegisterHandler(c)
+			NewUserHandler(appservice.NewUserService(dao, sessiontest.NewStore(t), settings.Storage, zap.NewNop()), zap.NewNop(), testutil.NewRateLimiter(t)).RegisterHandler(c)
 			var result response.Response
 			if err := json.Unmarshal(w.Body.Bytes(), &result); err != nil {
 				t.Fatal(err)

@@ -7,6 +7,7 @@ import type { FormInst, FormRules } from 'naive-ui';
 import { useAuthStore } from '@/store/modules/auth';
 import { changeAdminPassword } from '@/service/api/auth';
 import { $t } from '@/locales';
+import { localStg } from '@/utils/storage';
 
 const authStore = useAuthStore();
 const narrowScreen = useMediaQuery('(max-width: 720px)');
@@ -88,9 +89,10 @@ async function submit() {
       return;
     }
     if (sequence !== submitSequence) return;
+    const expectedToken = localStg.get('token');
     const { error } = await changeAdminPassword(model.currentPassword, model.newPassword, model.confirmPassword);
-    if (error) return;
-    // 密码已修改成功，即使表单已重置或页面已离开，也必须退出当前登录。
+    if (error || localStg.get('token') !== expectedToken) return;
+    // 仅清理本次改密对应的会话，不能退出随后建立的新登录。
     resetForm();
     window.$message?.success('密码修改成功，请重新登录');
     await authStore.resetStore();

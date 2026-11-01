@@ -8,17 +8,19 @@ import (
 
 func TestLoadRedisConfig(t *testing.T) {
 	for _, tt := range []struct {
-		name      string
-		yaml      string
-		password  string
-		want      RedisConfig
-		wantError string
+		name         string
+		yaml         string
+		password     string
+		keepEmptyEnv bool
+		want         RedisConfig
+		wantError    string
 	}{
 		{name: "missing redis", wantError: "redis.host"},
 		{name: "missing host", yaml: "redis:\n  port: 6379\n", wantError: "redis.host"},
 		{name: "missing port", yaml: "redis:\n  host: localhost\n", wantError: "redis.port"},
 		{name: "yaml", yaml: "redis:\n  host: localhost\n  port: 6380\n  username: app\n  password: yaml-secret\n  db: 2\n", want: RedisConfig{Host: "localhost", Port: 6380, Username: "app", Password: "yaml-secret", DB: 2}},
 		{name: "environment", yaml: "redis:\n  host: localhost\n  port: 6379\n  password: yaml-secret\n", password: "env-secret", want: RedisConfig{Host: "localhost", Port: 6379, Password: "env-secret"}},
+		{name: "empty environment overrides YAML", yaml: "redis:\n  host: localhost\n  port: 6379\n  password: yaml-secret\n", keepEmptyEnv: true, want: RedisConfig{Host: "localhost", Port: 6379}},
 		{name: "empty host", yaml: "redis:\n  host: ' '\n", wantError: "redis.host"},
 		{name: "invalid port", yaml: "redis:\n  host: localhost\n  port: 65536\n", wantError: "redis.port"},
 		{name: "zero port", yaml: "redis:\n  host: localhost\n  port: 0\n", wantError: "redis.port"},
@@ -29,7 +31,7 @@ func TestLoadRedisConfig(t *testing.T) {
 			t.Setenv("MYSQL_PASSWORD", "test-password")
 			t.Setenv("JWT_SECRET", "test-secret")
 			t.Setenv("REDIS_PASSWORD", tt.password)
-			if tt.password == "" {
+			if tt.password == "" && !tt.keepEmptyEnv {
 				if err := os.Unsetenv("REDIS_PASSWORD"); err != nil {
 					t.Fatal(err)
 				}
@@ -37,7 +39,7 @@ func TestLoadRedisConfig(t *testing.T) {
 			if err := os.Mkdir("config", 0755); err != nil {
 				t.Fatal(err)
 			}
-			content := "jwt:\n  expiration_days: 30\nstorage:\n  root_dir: ./uploads\n  base_url: /uploads\n" + tt.yaml
+			content := "jwt:\n  expiration_days: 30\nstorage:\n  root_dir: ./uploads\n  base_url: /uploads\napp:\n  namespace: test\n  port: 10000\nsession:\n  student_ttl: 720h\n  admin_ttl: 8h\n" + tt.yaml
 			if err := os.WriteFile("config/config.local.yaml", []byte(content), 0600); err != nil {
 				t.Fatal(err)
 			}

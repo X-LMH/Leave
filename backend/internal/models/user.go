@@ -19,6 +19,7 @@ type User struct {
 	Password       string         `gorm:"column:password"`
 	Role           string         `gorm:"column:role"`   // RoleStudent 或 RoleAdmin
 	Status         uint8          `gorm:"column:status"` // UserStatusDisabled 或 UserStatusActive
+	AuthVersion    uint64         `gorm:"column:auth_version;default:1"`
 	LastSeenAt     *time.Time     `gorm:"column:last_seen_at"`
 	LastSeenDevice string         `gorm:"column:last_seen_device"`
 	AppVersion     string         `gorm:"column:app_version"`

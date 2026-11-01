@@ -195,6 +195,12 @@ async function submit() {
 			if (error.code == 1004 || error.code == 1005 || error.code == 5002) return
 		}
 		status.value = ''
+		if (registering && error instanceof ApiError && error.code == 1008) {
+			isRegister.value = false
+			studentID.value = submittedStudentID
+			password.value = ''
+			rePassword.value = ''
+		}
 		if (!registering && error instanceof ApiError) {
 			if (error.code == 1003) {
 				password.value = ''

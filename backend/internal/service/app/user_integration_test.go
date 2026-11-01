@@ -5,8 +5,9 @@ import (
 	"backend/internal/dao/mysql"
 	"backend/internal/dto"
 	"backend/internal/models"
-	"backend/internal/utils/jwt"
+	"backend/internal/testutil/sessiontest"
 	passwordutil "backend/internal/utils/password"
+	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -105,12 +106,12 @@ func TestRegisterIntegration(t *testing.T) {
 		DeviceName: " Android 测试机 ",
 		AppVersion: " 1.0.0 ",
 	}
-	userService := NewUserService(dao, jwt.NewManager(settings.JWT.Secret, settings.JWT.ExpirationDays), settings.Storage, zap.NewNop())
-	data, err := userService.Register(req)
+	userService := NewUserService(dao, sessiontest.NewStore(t), settings.Storage, zap.NewNop())
+	data, err := userService.Register(context.Background(), req)
 	if err != nil {
 		t.Fatal(err)
 	}
-	claims, err := jwt.NewManager(settings.JWT.Secret, settings.JWT.ExpirationDays).ParseToken(data.Token)
+	claims, err := sessiontest.NewStore(t).Get(context.Background(), data.Token)
 	if err != nil || claims.StudentID != "202410201016" || claims.Role != models.RoleStudent {
 		t.Fatalf("unusable registration session: %v", err)
 	}
@@ -137,11 +138,11 @@ func TestRegisterIntegration(t *testing.T) {
 		}
 	}
 	login := &dto.LoginRequest{StudentID: "202410201016", Password: req.Password}
-	if _, err := userService.Login(login); err != nil {
+	if _, err := userService.Login(context.Background(), login); err != nil {
 		t.Fatalf("registered user cannot log in: %v", err)
 	}
 	login.Password = "wrong-password"
-	if _, err := userService.Login(login); !errors.Is(err, mysql.ErrorInvalidPassword) {
+	if _, err := userService.Login(context.Background(), login); !errors.Is(err, mysql.ErrorInvalidPassword) {
 		t.Fatalf("wrong password accepted: %v", err)
 	}
 	change := &dto.PasswordChangeRequest{Password: "wrong-password", NewPassword: "new-pass", RePassword: "new-pass"}
@@ -153,11 +154,11 @@ func TestRegisterIntegration(t *testing.T) {
 		t.Fatal(err)
 	}
 	login.Password = req.Password
-	if _, err := userService.Login(login); !errors.Is(err, mysql.ErrorInvalidPassword) {
+	if _, err := userService.Login(context.Background(), login); !errors.Is(err, mysql.ErrorInvalidPassword) {
 		t.Fatalf("old password still works: %v", err)
 	}
 	login.Password = change.NewPassword
-	if _, err := userService.Login(login); err != nil {
+	if _, err := userService.Login(context.Background(), login); err != nil {
 		t.Fatalf("new password cannot log in: %v", err)
 	}
 	updated, err := dao.FindUserByStudentID(login.StudentID)
@@ -170,13 +171,13 @@ func TestRegisterIntegration(t *testing.T) {
 	if user.LastSeenAt == nil || user.LastSeenDevice != "Android 测试机" || user.AppVersion != "1.0.0" || user.Status != models.UserStatusActive {
 		t.Fatalf("registration usage metadata missing: %#v", user)
 	}
-	if duplicate, err := userService.Register(req); !errors.Is(err, mysql.ErrorUserExist) || duplicate != nil {
+	if duplicate, err := userService.Register(context.Background(), req); !errors.Is(err, mysql.ErrorUserExist) || duplicate != nil {
 		t.Fatalf("duplicate registration returned a session: data=%#v err=%v", duplicate, err)
 	}
 	if err := server.Exec("DROP TABLE `" + schema + "`.`users`").Error; err != nil {
 		t.Fatal(err)
 	}
-	if data, err := userService.Register(req); err == nil || data != nil {
+	if data, err := userService.Register(context.Background(), req); err == nil || data != nil {
 		t.Fatalf("failed insert returned a session: data=%#v err=%v", data, err)
 	}
 }

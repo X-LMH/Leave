@@ -54,7 +54,7 @@
 
 ```text
 config/                             # 服务器 YAML，不随发布覆盖
-.env                                # MYSQL_PASSWORD、REDIS_PASSWORD、JWT_SECRET，不上传
+.env                                # MYSQL_PASSWORD、REDIS_PASSWORD（JWT_SECRET 仅旧实现使用），不上传
 admin/current -> releases/vN/
 admin/releases/vN/                  # index.html、assets 等
 packages/android/                   # 保留历史 APK
@@ -186,3 +186,11 @@ admin 入口先检查同域健康接口，再发布 admin；或发布 APK / 结�
 Actions 重试生成新尝试目录，优先重新运行失败 job 以复用原构建产物。重新构建可能改变 admin 构建时间，导致同版本字节不同，此时应复用原产物或递增版本。已有旧目录缺合法 release.json 或后端文件不完整时不自动补齐。
 
 恢复程序或页面时将各自 current 指向本环境保留的旧版本，再通过对应宝塔项目重启。恢复旧生产目录 Leave_old 时，需同步核对宝塔启动路径及持久文件路径；程序恢复不撤销 migration 或客户端版本记录，数据库恢复需结合备份、已执行迁移及独立授权处理。
+
+## Redis 登录会话
+
+当前 App 和 Web 管理端使用随机 Bearer Token，Redis 是唯一会话存储，不创建 MySQL 会话表，也不降级到 JWT。认证设计及接口见 [认证说明](../docs/authentication.md)。
+
+发布前必须先执行 `000013_add_user_auth_version.up.sql`，再启动新服务；源码提交不会自动对现有业务数据库执行迁移。旧 JWT 在新服务中全部失效，需要重新登录。不同环境配置独立的 `app.namespace`。数据库 migration 操作遵循前文现有部署流程。
+
+Redis 故障返回 HTTP 503，客户端保留 Token，恢复后可重试；Redis 会话数据丢失或被淘汰后需要重新登录。会话由 TTL 自动过期，不运行 MySQL 会话清理任务。回滚认证版本字段后如需再次升级，必须换用新的 namespace 或明确清除旧会话，避免认证版本重置后恢复旧会话。

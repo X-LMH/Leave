@@ -63,7 +63,7 @@ func testAdminStudents(t *testing.T, dao *DAO) {
 		if err := saveTestStudent(dao, id, &input); !errors.Is(err, gorm.ErrRecordNotFound) {
 			t.Fatalf("edit scope %d: %v", id, err)
 		}
-		if err := dao.UpdateStudentStatus(id, 0); !errors.Is(err, gorm.ErrRecordNotFound) {
+		if err := saveTestStudentStatus(dao, id, 0); !errors.Is(err, gorm.ErrRecordNotFound) {
 			t.Fatalf("status scope %d: %v", id, err)
 		}
 	}
@@ -131,13 +131,13 @@ func testAdminStudents(t *testing.T, dao *DAO) {
 	if err != nil || len(apartments) != 0 {
 		t.Fatalf("apartment gender filter: %v %+v", err, apartments)
 	}
-	if err := dao.UpdateStudentStatus(users[2].ID, 0); err != nil {
+	if err := saveTestStudentStatus(dao, users[2].ID, 0); err != nil {
 		t.Fatal(err)
 	}
 	if err := dao.EnsureUserActive(users[2].StudentID); !errors.Is(err, ErrorUserDisabled) {
 		t.Fatalf("disabled authentication: %v", err)
 	}
-	if err := dao.UpdateStudentStatus(users[2].ID, 1); err != nil {
+	if err := saveTestStudentStatus(dao, users[2].ID, 1); err != nil {
 		t.Fatal(err)
 	}
 	if err := dao.EnsureUserActive(users[2].StudentID); err != nil {
@@ -211,5 +211,16 @@ func saveTestStudent(dao *DAO, id uint, input *dto.ProfileRequest) error {
 			ApartmentID:     input.ApartmentID,
 			DormitoryNumber: input.DormitoryNumber,
 		})
+	})
+}
+
+// DAO 测试由调用方显式提供事务及版本，不在持久化层隐含会话策略。
+func saveTestStudentStatus(dao *DAO, id uint, status uint8) error {
+	return dao.Transaction(func(tx *gorm.DB) error {
+		user, err := dao.GetStudentForUpdate(tx, id)
+		if err != nil {
+			return err
+		}
+		return dao.UpdateStudentStatus(tx, user.ID, status, user.AuthVersion)
 	})
 }

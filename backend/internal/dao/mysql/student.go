@@ -114,12 +114,12 @@ func (s *DAO) SaveStudentProfile(tx *gorm.DB, profile *models.Profile) error {
 	}).Create(profile).Error
 }
 
-func (s *DAO) UpdateStudentStatus(id uint, status uint8) error {
-	return s.db.Transaction(func(tx *gorm.DB) error {
-		var user models.User
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("role = ?", models.RoleStudent).First(&user, id).Error; err != nil {
-			return err
-		}
-		return tx.Model(&user).Update("status", status).Error
-	})
+// UpdateStudentStatus 保存 Service 在同一事务中校验后的状态和认证版本。
+func (s *DAO) UpdateStudentStatus(tx *gorm.DB, id uint, status uint8, authVersion uint64) error {
+	return tx.Model(&models.User{}).
+		Where("id = ?", id).
+		Updates(map[string]any{
+			"status":       status,
+			"auth_version": authVersion,
+		}).Error
 }

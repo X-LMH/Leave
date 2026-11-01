@@ -215,7 +215,8 @@ import {
 	uploadAvatar,
 	AvatarUploadError,
 	logout as clearSession,
-	logoutRequest
+	logoutRequest,
+	STORAGE_TOKEN_KEY
 } from '@/utils/api.uts'
 import { chooseAvatarImage } from '@/utils/avatar-picker.uts'
 
@@ -406,19 +407,21 @@ function openSettings() {
 }
 
 async function handleLogout() {
+	const expectedToken = uni.getStorageSync(STORAGE_TOKEN_KEY)
 	try {
 		await logoutRequest()
+		if (uni.getStorageSync(STORAGE_TOKEN_KEY) != expectedToken) return
+		clearSession()
+		uni.reLaunch({ url: '/pages/auth/login' })
 	} catch (error) {
 		const message = (error as Error).message
 		uni.showToast({
-			title: message == null || message == '' ? '退出登录失败' : message,
+			title: message == null || message == '' ? '退出登录失败，请重试' : message,
 			icon: 'none'
 		})
-	} finally {
-		clearSession()
-		uni.reLaunch({ url: '/pages/auth/login' })
 	}
 }
+
 function refresh() {
 	const user = getCurrentUser()
 	adminRole.value = user.role == 'admin'

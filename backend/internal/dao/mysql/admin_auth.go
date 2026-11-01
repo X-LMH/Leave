@@ -25,5 +25,10 @@ func (s *DAO) GetUserForUpdate(tx *gorm.DB, studentID string) (*models.User, err
 func (s *DAO) UpdateUserPassword(tx *gorm.DB, id uint, password string) error {
 	// Failed SQL must not write the new password into database logs.
 	return tx.Session(&gorm.Session{Logger: tx.Logger.LogMode(logger.Silent)}).
-		Model(&models.User{}).Where("id = ?", id).Update("password", password).Error
+		Model(&models.User{}).
+		Where("id = ?", id).
+		Updates(map[string]any{
+			"password":     password,
+			"auth_version": gorm.Expr("auth_version + 1"),
+		}).Error
 }

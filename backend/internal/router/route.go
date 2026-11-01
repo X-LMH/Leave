@@ -69,10 +69,12 @@ func SetupRouter(deps Dependencies) *gin.Engine {
 		auth.POST("/login", deps.AppUser.LoginHandler)
 	}
 
+	// Logout deliberately bypasses session validity checks for idempotent revocation.
+	app.POST("/logout", deps.AppUser.LogoutHandler)
+
 	user := app.Group("")
 	user.Use(deps.AuthMiddleware, deps.RateLimiter.Account(middleware.SideApp, middleware.OperationGeneral))
 	{
-		user.POST("/logout", deps.AppUser.LogoutHandler)
 		user.POST("/client-info", deps.AppUser.UpdateAppInfoHandler)
 		user.POST("/profile", deps.AppProfile.ProfileHandler)
 		user.POST("/profile/avatar", deps.RateLimiter.Account(middleware.SideApp, middleware.OperationAvatarUpload), deps.AppAvatar.UploadAvatarHandler)
@@ -105,8 +107,10 @@ func SetupRouter(deps Dependencies) *gin.Engine {
 	adminAuth := admin.Group("/auth")
 	{
 		adminAuth.POST("/login", deps.AdminAuth.LoginHandler)
+		adminAuth.POST("/logout", deps.AdminAuth.LogoutHandler)
 
 		adminAuth.Use(deps.AuthMiddleware, middleware.AdminAuthMiddleware(), deps.RateLimiter.Account(middleware.SideAdmin, middleware.OperationGeneral))
+		adminAuth.GET("/me", deps.AdminAuth.MeHandler)
 		adminAuth.POST("/password", deps.RateLimiter.Account(middleware.SideAdmin, middleware.OperationPasswordChange), deps.AdminAuth.ChangePasswordHandler)
 	}
 

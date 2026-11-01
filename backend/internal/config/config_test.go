@@ -50,9 +50,9 @@ func TestLoadLogConfig(t *testing.T) {
 		logYAML string
 		want    LogConfig
 	}{
-		{name: "defaults", want: LogConfig{Level: "info", Encoding: "console"}},
+		{name: "omitted values stay empty", want: LogConfig{}},
 		{name: "override", logYAML: "log:\n  level: debug\n  encoding: json\n  dir: ./logs\n", want: LogConfig{Level: "debug", Encoding: "json", Dir: "./logs"}},
-		{name: "partial", logYAML: "log:\n  encoding: json\n", want: LogConfig{Level: "info", Encoding: "json"}},
+		{name: "partial", logYAML: "log:\n  encoding: json\n", want: LogConfig{Encoding: "json"}},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Chdir(t.TempDir())
@@ -61,7 +61,7 @@ func TestLoadLogConfig(t *testing.T) {
 			if err := os.Mkdir("config", 0755); err != nil {
 				t.Fatal(err)
 			}
-			content := "redis:\n  host: localhost\n  port: 6379\njwt:\n  expiration_days: 30\nstorage:\n  root_dir: ./uploads\n  base_url: /uploads\n" + tt.logYAML
+			content := "redis:\n  host: localhost\n  port: 6379\njwt:\n  expiration_days: 30\nstorage:\n  root_dir: ./uploads\n  base_url: /uploads\napp:\n  namespace: test\n  port: 10000\nsession:\n  student_ttl: 720h\n  admin_ttl: 8h\n" + tt.logYAML
 			if err := os.WriteFile("config/config.local.yaml", []byte(content), 0600); err != nil {
 				t.Fatal(err)
 			}
@@ -84,7 +84,7 @@ func TestInitReadsTestConfig(t *testing.T) {
 	if err := os.Mkdir("config", 0755); err != nil {
 		t.Fatal(err)
 	}
-	content := "redis:\n  host: localhost\n  port: 6379\napp:\n  port: 9000\nmysql:\n  database: leave_list_test\njwt:\n  expiration_days: 30\nstorage:\n  root_dir: ./uploads\n  base_url: /api/v1/uploads\n"
+	content := "redis:\n  host: localhost\n  port: 6379\napp:\n  namespace: test\n  port: 9000\nmysql:\n  database: leave_list_test\njwt:\n  expiration_days: 30\nstorage:\n  root_dir: ./uploads\n  base_url: /api/v1/uploads\nsession:\n  student_ttl: 720h\n  admin_ttl: 8h\n"
 	if err := os.WriteFile("config/config.test.yaml", []byte(content), 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -105,7 +105,7 @@ func TestInitFromReleaseDirectory(t *testing.T) {
 			if err := os.Mkdir(filepath.Join(root, "config"), 0755); err != nil {
 				t.Fatal(err)
 			}
-			content := "redis:\n  host: localhost\n  port: 6379\napp:\n  port: 9000\nmysql:\n  database: leave_list_test\njwt:\n  expiration_days: 30\nstorage:\n  root_dir: /test/uploads\n  base_url: /api/v1/uploads\n"
+			content := "redis:\n  host: localhost\n  port: 6379\napp:\n  namespace: test\n  port: 9000\nmysql:\n  database: leave_list_test\njwt:\n  expiration_days: 30\nstorage:\n  root_dir: /test/uploads\n  base_url: /api/v1/uploads\nsession:\n  student_ttl: 720h\n  admin_ttl: 8h\n"
 			if err := os.WriteFile(filepath.Join(root, "config/config.test.yaml"), []byte(content), 0600); err != nil {
 				t.Fatal(err)
 			}
@@ -156,7 +156,7 @@ func TestInitValidatesStorage(t *testing.T) {
 			if err := os.Mkdir("config", 0755); err != nil {
 				t.Fatal(err)
 			}
-			content := fmt.Sprintf("redis:\n  host: localhost\n  port: 6379\njwt:\n  expiration_days: 30\nstorage:\n  root_dir: %q\n  base_url: %q\n", tt.root, tt.base)
+			content := fmt.Sprintf("app:\n  namespace: test\n  port: 10000\nsession:\n  student_ttl: 720h\n  admin_ttl: 8h\nredis:\n  host: localhost\n  port: 6379\njwt:\n  expiration_days: 30\nstorage:\n  root_dir: %q\n  base_url: %q\n", tt.root, tt.base)
 			if err := os.WriteFile("config/config.local.yaml", []byte(content), 0600); err != nil {
 				t.Fatal(err)
 			}
@@ -182,7 +182,7 @@ func TestLoadKeepsIndependentConfiguration(t *testing.T) {
 		t.Fatal(err)
 	}
 	path := "config/config.local.yaml"
-	firstYAML := "redis:\n  host: localhost\n  port: 6379\napp:\n  port: 9001\n  package_dir: ./first-apks\nmysql:\n  password: yaml-password\njwt:\n  secret: yaml-secret\n  expiration_days: 1\nstorage:\n  root_dir: ./first\n  base_url: /first\n"
+	firstYAML := "redis:\n  host: localhost\n  port: 6379\napp:\n  namespace: test\n  port: 9001\n  package_dir: ./first-apks\nmysql:\n  password: yaml-password\njwt:\n  secret: yaml-secret\n  expiration_days: 1\nstorage:\n  root_dir: ./first\n  base_url: /first\nsession:\n  student_ttl: 720h\n  admin_ttl: 8h\n"
 	if err := os.WriteFile(path, []byte(firstYAML), 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -190,7 +190,7 @@ func TestLoadKeepsIndependentConfiguration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	secondYAML := "redis:\n  host: localhost\n  port: 6379\njwt:\n  expiration_days: 7\nstorage:\n  root_dir: ./second\n  base_url: /second\n"
+	secondYAML := "redis:\n  host: localhost\n  port: 6379\njwt:\n  expiration_days: 7\nstorage:\n  root_dir: ./second\n  base_url: /second\napp:\n  namespace: test\n  port: 10000\nsession:\n  student_ttl: 720h\n  admin_ttl: 8h\n"
 	if err := os.WriteFile(path, []byte(secondYAML), 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -198,7 +198,7 @@ func TestLoadKeepsIndependentConfiguration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if first.App.Port != 9001 || first.Storage.RootDir != "./first" || first.JWT.ExpirationDays != 1 {
+	if first.App.Port != 9001 || first.App.PackageDir != "./first-apks" || first.Storage.RootDir != "./first" || first.Storage.BaseURL != "/first" || first.JWT.ExpirationDays != 1 {
 		t.Fatal("loading another configuration changed the first instance")
 	}
 	if second.App.Port != 10000 || second.App.PackageDir != "" || second.Storage.RootDir != "./second" || second.JWT.ExpirationDays != 7 {

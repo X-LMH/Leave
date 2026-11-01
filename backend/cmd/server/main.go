@@ -3,8 +3,8 @@ package main
 import (
 	"backend/internal/config"
 	"backend/internal/dao/mysql"
+	"backend/internal/dao/redis"
 	"backend/internal/logger"
-	"backend/internal/redis"
 	"backend/internal/router"
 	"errors"
 	"flag"

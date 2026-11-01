@@ -10,7 +10,7 @@ import (
 	appservice "backend/internal/service/app"
 	commonservice "backend/internal/service/common"
 	"backend/internal/testutil"
-	"backend/internal/utils/jwt"
+	"backend/internal/testutil/sessiontest"
 	"testing"
 
 	"go.uber.org/zap"
@@ -18,7 +18,7 @@ import (
 
 func testDependencies(t *testing.T, dao *mysql.DAO, settings config.Config) Dependencies {
 	limiter := testutil.NewRateLimiter(t)
-	tokens := jwt.NewManager(settings.JWT.Secret, settings.JWT.ExpirationDays)
+	tokens := sessiontest.NewStore(t)
 	commonOptionsService := commonservice.NewOptionsService(dao, zap.NewNop())
 	appVersionService := appservice.NewAppVersionService(dao, zap.NewNop())
 	appAvatarService := appservice.NewAvatarService(dao, settings.Storage, zap.NewNop())
@@ -73,7 +73,7 @@ func testDependencies(t *testing.T, dao *mysql.DAO, settings config.Config) Depe
 		AdminOverview:        adminOverviewHandler,
 		AdminRecord:          adminRecordHandler,
 		AdminStudent:         adminStudentHandler,
-		AuthMiddleware:       middleware.JWTAuthMiddleware(tokens, dao, zap.NewNop()),
+		AuthMiddleware:       middleware.SessionAuthMiddleware(tokens, dao, zap.NewNop()),
 		AppVersionMiddleware: middleware.AppVersionMiddleware(appVersionService, zap.NewNop()),
 	}
 }

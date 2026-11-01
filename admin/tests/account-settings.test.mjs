@@ -9,6 +9,7 @@ function setup() {
   const hooks = [];
   const messages = [];
   const logouts = [];
+  let token = 'current-session';
   const context = {
     exports: {},
     TextEncoder,
@@ -29,6 +30,7 @@ function setup() {
       if (name.includes('store/modules/auth')) return {
         useAuthStore: () => ({ userInfo: { userName: 'admin' }, resetStore: async () => logouts.push('logout') })
       };
+      if (name === '@/utils/storage') return { localStg: { get: () => token } };
       if (name.includes('service/api/auth')) {
         return { changeAdminPassword: (...args) => new Promise(resolve => calls.push({ args, resolve })) };
       }
@@ -52,7 +54,7 @@ function setup() {
     },
     restoreValidation() { clears++; }
   };
-  return { state, calls, hooks, messages, logouts, get clears() { return clears; } };
+  return { state, calls, hooks, messages, logouts, setToken(value) { token = value; }, get clears() { return clears; } };
 }
 
 const tick = () => new Promise(resolve => setImmediate(resolve));
@@ -72,6 +74,13 @@ test('API uses the protected admin endpoint and preserves password bytes', async
   assert.deepEqual(JSON.parse(JSON.stringify(config)), {
     url: '/admin/auth/login', method: 'post', data: { user_name: 'admin', password: ' password ' }
   });
+  await context.exports.fetchAuthIdentity('captured-session');
+  assert.equal(config.headers.Authorization, 'Bearer captured-session');
+  assert.equal(config.url, '/admin/auth/me');
+  await context.exports.fetchLogout('captured-session');
+  assert.equal(config.headers.Authorization, 'Bearer captured-session');
+  assert.equal(config.url, '/admin/auth/logout');
+
 });
 
 test('password boundaries use UTF-8 bytes and Go-compatible whitespace rules', async () => {
@@ -164,4 +173,15 @@ test('leaving during validation prevents a request, and late failures do not log
   assert.equal(state.saving.value, false);
   assert.equal(messages.length, 0);
   assert.equal(logouts.length, 0);
+});
+
+test('late password change success cannot log out a newer session', async () => {
+  const fixture = setup();
+  fill(fixture.state);
+  const pending = fixture.state.submit();
+  await tick();
+  fixture.setToken('new-session');
+  fixture.calls[0].resolve({ error: null });
+  await pending;
+  assert.deepEqual(fixture.logouts, []);
 });
