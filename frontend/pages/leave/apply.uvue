@@ -40,6 +40,7 @@
 						id="apply-type"
 						:class="themeClass(errorField == 'type' ? 'form-card field-invalid' : 'form-card')"
 					>
+						<text v-if="errorField == 'type'" :class="themeClass('apply-field-error')">{{ formError }}</text>
 						<ThemedPicker title="请假类型"
 							:disabled="isSubmitting || createdRecordID > 0"
 							:range="leaveTypeNames"
@@ -61,17 +62,12 @@
 								</view>
 							</view>
 						</ThemedPicker>
-						<text
-							v-if="errorField == 'type'"
-							:class="themeClass('field-error')"
-						>
-							{{ formError }}
-						</text>
 					</view>
 					<view
 						id="apply-time"
 						:class="themeClass(errorField == 'time' ? 'form-card field-invalid' : 'form-card')"
 					>
+						<text v-if="errorField == 'time'" :class="themeClass('apply-field-error')">{{ formError }}</text>
 						<view
 							:class="themeClass('time-row')"
 							@click="openDatePicker('start')"
@@ -120,12 +116,6 @@
 							<text :class="themeClass('field-label')">请假时长</text>
 							<text :class="themeClass('computed-value')">{{ hasDuration ? durationText : '—' }}</text>
 						</view>
-						<text
-							v-if="errorField == 'time'"
-							:class="themeClass('field-error')"
-						>
-							{{ formError }}
-						</text>
 					</view>
 					<view :class="themeClass('form-card')">
 						<view :class="themeClass('field-row')">
@@ -171,6 +161,7 @@
 								? 'form-card destination-card field-invalid'
 								: 'form-card destination-card')"
 					>
+						<text v-if="errorField == 'destination'" :class="themeClass('apply-field-error')">{{ formError }}</text>
 						<view :class="themeClass('label-wrap')">
 							<text :class="themeClass('destination-label')">请假去向</text>
 							<text :class="themeClass('required')">*</text>
@@ -179,14 +170,9 @@
 							<text :class="themeClass('region-summary')">{{ destination == '' ? '请选择省 / 市 / 区' : destination.replaceAll(',', ' / ') }}</text>
 							<image :class="themeClass('picker-arrow')" :src="themeImage('/static/ios/back-ink.svg')" mode="aspectFit"></image>
 						</view>
-						<text
-							v-if="errorField == 'destination'"
-							:class="themeClass('field-error')"
-						>
-							{{ formError }}
-						</text>
 					</view>
 					<view id="apply-reason">
+						<text v-if="errorField == 'reason'" :class="themeClass('apply-field-error')">{{ formError }}</text>
 						<view :class="themeClass('reason-label')">
 							<text :class="themeClass('destination-label')">请假理由</text>
 							<text :class="themeClass('required')">*</text>
@@ -205,12 +191,6 @@
 							/>
 							<text :class="themeClass('word-count')">{{ reason.length }}/200</text>
 						</view>
-						<text
-							v-if="errorField == 'reason'"
-							:class="themeClass('field-error')"
-						>
-							{{ formError }}
-						</text>
 					</view>
 					<view :class="themeClass('form-card travel-card')">
 						<view :class="themeClass('field-row')">
@@ -224,6 +204,29 @@
 								:placeholder-class="themeClass('input-placeholder')"
 								:cursor-spacing="24"
 							/>
+						</view>
+					</view>
+					<view id="apply-approval" :class="themeClass(errorField == 'approval' ? 'form-card approval-card field-invalid' : 'form-card approval-card')">
+						<text v-if="errorField == 'approval'" :class="themeClass('apply-field-error')">{{ formError }}</text>
+						<view :class="themeClass('time-row')" @click="openDatePicker('applied')">
+							<view class="approval-heading">
+								<text :class="themeClass('field-label')">提交时间</text>
+								<text v-if="appliedAt != defaultAppliedAt" :class="themeClass('approval-reset')" @click.stop="resetApprovalTime('applied')">恢复默认</text>
+							</view>
+							<view :class="themeClass('date-line')">
+								<text :class="themeClass('date-value')">{{ localTime(appliedAt).replaceAll('-', '/') }}</text>
+								<image :class="themeClass('calendar-icon')" :src="themeImage('/static/ios/calendar-secondary.svg')" mode="aspectFit"></image>
+							</view>
+						</view>
+						<view :class="themeClass('time-row')" @click="openDatePicker('approved')">
+							<view class="approval-heading">
+								<text :class="themeClass('field-label')">通过时间</text>
+								<text v-if="approvalManual" :class="themeClass('approval-reset')" @click.stop="resetApprovalTime('approved')">恢复默认</text>
+							</view>
+							<view :class="themeClass('date-line')">
+								<text :class="themeClass('date-value')">{{ localTime(approvedAt).replaceAll('-', '/') }}</text>
+								<image :class="themeClass('calendar-icon')" :src="themeImage('/static/ios/calendar-secondary.svg')" mode="aspectFit"></image>
+							</view>
 						</view>
 					</view>
 					<text
@@ -289,7 +292,7 @@
 						>
 							{{ datePickerStep == 'date' ? '取消' : '上一步' }}
 						</text>
-						<text :class="themeClass('destination-panel-title')">{{ editingDate == 'start' ? '开始时间' : '结束时间' }} · {{ datePickerStep == 'date' ? '日期' : '时间' }}</text>
+						<text :class="themeClass('destination-panel-title')">{{ datePickerTitle }} · {{ datePickerStep == 'date' ? '日期' : '时间' }}</text>
 						<text
 							:class="themeClass('destination-panel-confirm')"
 							@click="advanceDatePicker"
@@ -464,8 +467,44 @@ const isSubmitting = ref(false)
 const createdRecordID = ref(0)
 const openingDetail = ref(false)
 const appliedAt = ref('')
+const approvedAt = ref('')
+const defaultAppliedAt = ref('')
+const approvalManual = ref(false)
+const defaultApprovedAt = ref('')
+const datePickerTitle = computed((): string => {
+	if (editingDate.value == 'start') return '开始时间'
+	if (editingDate.value == 'end') return '结束时间'
+	return editingDate.value == 'applied' ? '提交时间' : '通过时间'
+})
 function twoDigits(value: number): string {
 	return value < 10 ? `0${value}` : `${value}`
+}
+
+function toRFC3339(value: string): string {
+	return new Date(value.replace(' ', 'T')).toISOString()
+}
+
+function localTime(value: string): string {
+	if (value == '') return ''
+	const date = new Date(value)
+	return `${date.getFullYear()}-${twoDigits(date.getMonth() + 1)}-${twoDigits(date.getDate())} ${twoDigits(date.getHours())}:${twoDigits(date.getMinutes())}:${twoDigits(date.getSeconds())}`
+}
+function resetApprovalTime(field: string) {
+	if (isSubmitting.value || createdRecordID.value > 0) return
+	const applied = field == 'applied' ? defaultAppliedAt.value : appliedAt.value
+	const approved = field == 'approved' ? defaultApprovedAt.value : approvedAt.value
+	if (new Date(approved).getTime() <= new Date(applied).getTime()) {
+		showFieldError('approval', '通过时间必须晚于提交时间')
+		uni.showToast({ title: '通过时间必须晚于提交时间', icon: 'none' })
+		return
+	}
+	if (field == 'applied') {
+		appliedAt.value = applied
+	} else {
+		approvalManual.value = false
+		approvedAt.value = approved
+	}
+	clearError()
 }
 function randomInteger(min: number, max: number): number {
 	return Math.floor(Math.random() * (max - min + 1)) + min
@@ -490,6 +529,7 @@ function leaveTypeChange(index: number) {
 	if (selected == null) return
 	leaveType.value = selected.name
 	leaveTypeID.value = selected.id
+	if (errorField.value == 'type') clearError()
 }
 
 function updateDateDays(yearIndex: number, monthIndex: number) {
@@ -502,7 +542,7 @@ function updateDateDays(yearIndex: number, monthIndex: number) {
 function openDatePicker(field: string) {
 	if (isSubmitting.value || createdRecordID.value > 0) return
 	editingDate.value = field
-	const saved = field == 'start' ? startDate.value : endDate.value
+	const saved = field == 'start' ? startDate.value : field == 'end' ? endDate.value : localTime(field == 'applied' ? appliedAt.value : approvedAt.value)
 	const now = new Date()
 	const year = saved == '' ? now.getFullYear() : parseInt(saved.slice(0, 4))
 	const month = saved == '' ? now.getMonth() + 1 : parseInt(saved.slice(5, 7))
@@ -559,7 +599,7 @@ function timeViewChange(e: UniPickerViewChangeEvent) {
 }
 
 function advanceDatePicker() {
-	if (dateRolling.value) return
+	if (dateRolling.value || isSubmitting.value || createdRecordID.value > 0) return
 	const date = pendingDateIndex.value
 	const selectedDate = `${dateYears[date[0]]}-${twoDigits(date[1] + 1)}-${twoDigits(date[2] + 1)}`
 	if (datePickerStep.value == 'date') {
@@ -591,13 +631,34 @@ function advanceDatePicker() {
 			return
 		}
 		startDate.value = value
-	} else {
+	} else if (editingDate.value == 'end') {
 		if (startDate.value != '' && value <= startDate.value) {
 			uni.showToast({ title: '结束时间必须晚于开始时间', icon: 'none' })
 			return
 		}
 		endDate.value = value
+	} else {
+		const selected = toRFC3339(value)
+		const applied = editingDate.value == 'applied' ? selected : appliedAt.value
+		const approved = editingDate.value == 'approved' ? selected : approvedAt.value
+		if (new Date(approved).getTime() <= new Date(applied).getTime()) {
+			showFieldError('approval', '通过时间必须晚于提交时间')
+			uni.showToast({ title: '通过时间必须晚于提交时间', icon: 'none' })
+			return
+		}
+		if (new Date(approved).getTime() > Date.now()) {
+			showFieldError('approval', '通过时间不能晚于当前时间')
+			uni.showToast({ title: '通过时间不能晚于当前时间', icon: 'none' })
+			return
+		}
+		if (editingDate.value == 'applied') appliedAt.value = selected
+		else {
+			approvedAt.value = selected
+			approvalManual.value = true
+		}
+		clearError()
 	}
+	if ((editingDate.value == 'start' || editingDate.value == 'end') && errorField.value == 'time') clearError()
 	showDatePicker.value = false
 }
 
@@ -710,7 +771,9 @@ function formSnapshot(): string {
 		reason.value,
 		leaveSchool.value,
 		destination.value,
-		travel.value
+		travel.value,
+		appliedAt.value,
+		approvalManual.value ? approvedAt.value : ''
 	])
 }
 function leavePage() {
@@ -727,6 +790,7 @@ function leavePage() {
 	})
 }
 function goHome() {
+	if (showDatePicker.value) { cancelDatePicker(); return }
 	if (showRegionPicker.value) {
 		cancelRegionPicker()
 		return
@@ -749,9 +813,6 @@ function goHome() {
 			confirmingLeave = false
 		}
 	})
-}
-function toRFC3339(value: string): string {
-	return new Date(value.replace(' ', 'T')).toISOString()
 }
 
 async function loadLeaveTypes() {
@@ -823,11 +884,20 @@ async function submit() {
 		showFieldError('destination', '请选择请假去向')
 		return
 	}
+	const approvalTime = approvedAt.value
+	if (new Date(approvalTime).getTime() <= new Date(appliedAt.value).getTime()) {
+		showFieldError('approval', '通过时间必须晚于提交时间')
+		return
+	}
+	if (new Date(approvalTime).getTime() > Date.now()) {
+		showFieldError('approval', '通过时间不能晚于当前时间')
+		return
+	}
 	clearError()
 	uni.hideKeyboard()
 	isSubmitting.value = true
+	approvedAt.value = approvalTime
 	try {
-		const now = new Date().toISOString()
 		const record = await createRecord({
 			leave_type_id: leaveTypeID.value,
 			start_time: toRFC3339(startDate.value),
@@ -838,7 +908,7 @@ async function submit() {
 			travel_way: travel.value,
 			destination: leaveSchool.value == '是' ? destination.value : '',
 			applied_at: appliedAt.value,
-			approved_at: now
+			approved_at: approvalTime
 		})
 		createdRecordID.value = record.id
 		openCreatedRecord()
@@ -855,8 +925,11 @@ async function submit() {
 }
 
 onLoad(() => {
-	initialForm = formSnapshot()
 	appliedAt.value = new Date(Date.now() - advanceMilliseconds).toISOString()
+	defaultAppliedAt.value = appliedAt.value
+	approvedAt.value = new Date().toISOString()
+	defaultApprovedAt.value = approvedAt.value
+	initialForm = formSnapshot()
 	loadLeaveTypes()
 })
 
@@ -883,6 +956,32 @@ function pickerBottomInset(): number {
 </script>
 <style lang="scss">
 @import '@/styles/ios-controls.scss';
+.apply-field-error {
+	font-size: 12px;
+	line-height: 18px;
+	color: $ios-red;
+	padding: 10px 0 4px;
+}
+.dark-apply-field-error {
+	color: $ios-dark-red;
+}
+.approval-card {
+	padding-bottom: 8px;
+}
+.approval-heading {
+	height: 36px;
+	flex-direction: row;
+	align-items: center;
+	justify-content: space-between;
+}
+.approval-reset {
+	font-size: 12px;
+	color: $ios-blue;
+	height: 36px;
+	line-height: 36px;
+	padding-left: 12px;
+}
+.dark-approval-reset { color: $ios-dark-blue; }
 .submit-page {
 	flex: 1;
 	background-color: $ios-page;
@@ -921,13 +1020,13 @@ function pickerBottomInset(): number {
 }
 .form-content {
 	box-sizing: border-box;
-	padding: 13px 21px 38px;
+	padding: 13px 18px 38px;
 }
 .form-card {
 	box-sizing: border-box;
 	padding: 0 16px;
 	background-color: $ios-surface;
-	border-radius: 23px;
+	border-radius: 18px;
 	margin-bottom: 14px;
 }
 .field-row {
@@ -1033,10 +1132,10 @@ function pickerBottomInset(): number {
 	margin: 7px 2px 10px;
 }
 .reason-box {
-	height: 170px;
+	height: 148px;
 	box-sizing: border-box;
 	position: relative;
-	border-radius: 23px;
+	border-radius: 18px;
 	padding: 16px 16px 35px;
 	background-color: $ios-surface;
 }
