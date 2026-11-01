@@ -32,6 +32,7 @@ backend/*.exe
 backend/*.test
 backend/main
 backend/local.air.toml
+backend/cmd/test/
 
 # JavaScript 依赖和工具缓存（包含 workspace 子包）
 node_modules/
