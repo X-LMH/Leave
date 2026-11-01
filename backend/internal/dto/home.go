@@ -21,7 +21,7 @@ type HomeUser struct {
 	Role      string `json:"role"`
 	StudentID string `json:"student_id"`
 	Name      string `json:"name"`
-	ClassName string `json:"classname"`
+	ClassName string `json:"class_name"`
 	AvatarURL string `json:"avatar_url"`
 }
 

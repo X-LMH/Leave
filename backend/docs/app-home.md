@@ -10,7 +10,7 @@
   "user": {
     "student_id": "20260001",
     "name": "张三",
-    "classname": "计算机科学与技术1班",
+    "class_name": "计算机科学与技术1班",
     "avatar_url": "https://example.com/api/v1/uploads/avatars/student-a.png"
   },
   "statistics": {
@@ -52,7 +52,7 @@
 首页首先使用登录缓存展示姓名和头像，再通过 `/home` 更新；不再单独请求 `/profile`。
 “我的”页优先使用当前账号缓存的学号、姓名、班级和头像，缓存字段缺失时才请求 `/home`，不再请求 `/profile`。
 登录、首页请求、资料保存和头像上传沿用现有缓存更新流程；姓名或班级为空字符串是有效缓存，不因此重复请求。
-`user.classname` 为当前班级名称，无班级时为空字符串。
+`user.class_name` 为当前班级名称，无班级时为空字符串。
 `user.student_id` 来自当前登录身份，即使尚未填写个人资料也会返回学号。
 个人资料查看及编辑页面继续使用资料接口，校园提醒继续使用固定文案。
 

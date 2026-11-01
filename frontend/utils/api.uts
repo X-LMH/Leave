@@ -770,7 +770,7 @@ async function fetchHome(version: number): Promise<HomeData> {
 		role: (userData['role'] as string | null) ?? '',
 		student_id: userData['student_id'] as string,
 		name: userData['name'] as string,
-		classname: userData['classname'] as string,
+		classname: userData['class_name'] as string,
 		avatar_url: userData['avatar_url'] as string
 	}
 	if (
