@@ -1,5 +1,7 @@
 # Leave · 假条模拟程序
 
+[GitHub 仓库](https://github.com/X-LMH/Leave) · [GitHub Actions](https://github.com/X-LMH/Leave/actions)
+
 Leave 是一个模仿假条界面与请假流程的程序，围绕请假申请、假条展示和请假记录等场景开发，包含 Android 客户端、Web 管理端和 Go 后端。
 
 项目用于学习与演示移动端页面交互、前后端接口开发和管理后台搭建。

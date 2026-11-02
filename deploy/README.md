@@ -1,5 +1,7 @@
 # Leave 测试与生产环境 CI/CD
 
+项目仓库：[X-LMH/Leave](https://github.com/X-LMH/Leave)。构建与发布运行记录见 [GitHub Actions](https://github.com/X-LMH/Leave/actions)。
+
 ## Windows 本地开发
 
 如果本地开发需要连接远端 MySQL、Redis，可以在项目根目录运行 `make air`，自动建立连接并启动 Air；按 `Ctrl+C` 退出时自动清理连接。直接运行 Air 的方式仍可照常使用。
@@ -178,6 +180,8 @@ admin 入口先检查同域健康接口，再发布 admin；或发布 APK / 结�
 服务端调用为 `bash deploy-release.sh RUN_ID-RUN_ATTEMPT prod`；省略环境只进入 test。非法环境名、跨环境发布包均拒绝。发布脚本测试仅用临时夹具和 mock，不部署业务服务。
 
 ## 版本冲突、重试与恢复
+
+若部署加载服务器 `.env` 时出现 `$'\r': command not found`，说明文件含 Windows CRLF 换行符。服务器 `.env` 会由 Bash 加载，应保存为 UTF-8（无 BOM）、LF 换行。经服务器修改授权后，先备份对应环境的 `.env`，再仅转换换行格式，保留变量值和文件权限；不要输出凭据或将文件提交到 Git。修正服务器文件后，重新运行失败的部署 job 即可，无需移动标签或重新构建。此错误发生在版本安装、迁移和停服之前。
 
 产物不覆盖：不存在则创建；已有且文件完整、SHA-256 相同则复用；不同或不完整则在迁移和停服前中止。后端比较 Leave 和版本元数据，不按整个仓库提交号或组合标签判断相同。迁移工具由发布包 SHA-256 清单校验，部署时更新 scripts/migrate。现有后端元数据还必须属于同一环境。相同产物重试仍迁移、重启及健康检查。App 数据按 platform+version_code 幂等更新，其他已发布 Android 版本归档。
 
