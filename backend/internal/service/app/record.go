@@ -32,7 +32,7 @@ var (
 )
 
 func (r *RecordService) CreateRecord(studentID string, request *dto.RecordCreateRequest) (*dto.RecordResponse, error) {
-	if !validateAndNormalizeRecordRequest(request) {
+	if !validateAndNormalizeRecordRequest(request, time.Now()) {
 		return nil, ErrorInvalidRecord
 	}
 
@@ -115,7 +115,7 @@ func (r *RecordService) DeleteRecord(studentID string, recordID int) error {
 	return r.dao.DeleteRecordByID(studentID, recordID)
 }
 
-func validateAndNormalizeRecordRequest(request *dto.RecordCreateRequest) bool {
+func validateAndNormalizeRecordRequest(request *dto.RecordCreateRequest, now time.Time) bool {
 	request.AffectedCourse = strings.TrimSpace(request.AffectedCourse)
 	request.LeaveReason = strings.TrimSpace(request.LeaveReason)
 	request.TravelWay = strings.TrimSpace(request.TravelWay)
@@ -130,7 +130,11 @@ func validateAndNormalizeRecordRequest(request *dto.RecordCreateRequest) bool {
 	if request.StartTime.IsZero() || request.EndTime.IsZero() || request.AppliedAt.IsZero() || request.ApprovedAt.IsZero() {
 		return false
 	}
-	if !request.EndTime.After(request.StartTime) || request.ApprovedAt.Before(request.AppliedAt) {
+	if !request.EndTime.After(request.StartTime) {
+		return false
+	}
+	// 与 App 表单保持一致：提交时间 < 通过时间 ≤ 服务端当前时间。
+	if !request.ApprovedAt.After(request.AppliedAt) || request.ApprovedAt.After(now) {
 		return false
 	}
 	return true

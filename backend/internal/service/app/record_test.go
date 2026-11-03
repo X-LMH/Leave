@@ -10,6 +10,7 @@ import (
 func TestValidateAndNormalizeRecordRequest(t *testing.T) {
 	leaveSchool := false
 	start := time.Date(2026, time.September, 7, 8, 0, 0, 0, time.FixedZone("CST", 8*60*60))
+	now := start.Add(24 * time.Hour)
 	request := &dto.RecordCreateRequest{
 		LeaveTypeID:    1,
 		StartTime:      start,
@@ -21,7 +22,7 @@ func TestValidateAndNormalizeRecordRequest(t *testing.T) {
 		AppliedAt:      start.Add(-time.Hour),
 		ApprovedAt:     start,
 	}
-	if !validateAndNormalizeRecordRequest(request) {
+	if !validateAndNormalizeRecordRequest(request, now) {
 		t.Fatal("expected valid record request")
 	}
 	if request.LeaveReason != "身体不适" || request.AffectedCourse != "高等数学" || request.TravelWay != "步行" {
@@ -29,19 +30,58 @@ func TestValidateAndNormalizeRecordRequest(t *testing.T) {
 	}
 
 	request.EndTime = request.StartTime
-	if validateAndNormalizeRecordRequest(request) {
+	if validateAndNormalizeRecordRequest(request, now) {
 		t.Fatal("expected equal start and end time to be invalid")
 	}
 
 	request.EndTime = request.StartTime.Add(time.Hour)
 	request.ApprovedAt = request.AppliedAt.Add(-time.Nanosecond)
-	if validateAndNormalizeRecordRequest(request) {
+	if validateAndNormalizeRecordRequest(request, now) {
 		t.Fatal("expected approval before application to be invalid")
 	}
 
 	request.ApprovedAt = request.EndTime
-	if !validateAndNormalizeRecordRequest(request) {
+	if !validateAndNormalizeRecordRequest(request, now) {
 		t.Fatal("expected valid request without a duration snapshot")
+	}
+}
+
+func TestValidateRecordApprovalTime(t *testing.T) {
+	now := time.Date(2026, time.September, 7, 8, 0, 0, 0, time.UTC)
+	appliedAt := now.Add(-time.Hour)
+	tests := []struct {
+		name       string
+		appliedAt  time.Time
+		approvedAt time.Time
+		want       bool
+	}{
+		{name: "approval before application", appliedAt: appliedAt, approvedAt: appliedAt.Add(-time.Nanosecond)},
+		{name: "approval equals application", appliedAt: appliedAt, approvedAt: appliedAt},
+		{name: "approval just after application", appliedAt: appliedAt, approvedAt: appliedAt.Add(time.Nanosecond), want: true},
+		{name: "approval just before now", appliedAt: appliedAt, approvedAt: now.Add(-time.Nanosecond), want: true},
+		{name: "approval equals now", appliedAt: appliedAt, approvedAt: now, want: true},
+		{name: "approval in future", appliedAt: appliedAt, approvedAt: now.Add(time.Nanosecond)},
+		{name: "application and approval in future", appliedAt: now.Add(time.Hour), approvedAt: now.Add(2 * time.Hour)},
+		{name: "missing application", approvedAt: now},
+		{name: "missing approval", appliedAt: appliedAt},
+		{name: "same instant in another timezone", appliedAt: appliedAt, approvedAt: now.In(time.FixedZone("CST", 8*60*60)), want: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			leaveSchool := false
+			request := &dto.RecordCreateRequest{
+				LeaveTypeID:   1,
+				StartTime:     now.Add(time.Hour),
+				EndTime:       now.Add(2 * time.Hour),
+				IsLeaveSchool: &leaveSchool,
+				LeaveReason:   "就医",
+				AppliedAt:     tt.appliedAt,
+				ApprovedAt:    tt.approvedAt,
+			}
+			if got := validateAndNormalizeRecordRequest(request, now); got != tt.want {
+				t.Fatalf("validateAndNormalizeRecordRequest() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }
 
