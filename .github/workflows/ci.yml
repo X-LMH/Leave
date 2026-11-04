@@ -24,6 +24,7 @@ jobs:
   test:
     name: Check, test and build backend
     runs-on: ubuntu-22.04
+    timeout-minutes: 30
     services:
       redis:
         image: redis:7.4
@@ -75,6 +76,7 @@ jobs:
           MYSQL_TEST_DSN: root:password@tcp(127.0.0.1:3306)/leave_ci?multiStatements=true
           ADMIN_TEST_MYSQL_DSN: root:password@tcp(127.0.0.1:3306)/leave_ci?multiStatements=true
           RATE_LIMIT_TEST_REDIS_ADDR: 127.0.0.1:6379
+          SESSION_TEST_REDIS_ADDR: 127.0.0.1:6379
         run: go test ./...
 
       - name: Test release metadata and shell coordination

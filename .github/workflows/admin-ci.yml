@@ -19,6 +19,7 @@ jobs:
   check:
     name: Check, test and build admin
     runs-on: ubuntu-22.04
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: admin
@@ -32,8 +33,10 @@ jobs:
           node-version: 22
           cache: pnpm
           cache-dependency-path: admin/pnpm-lock.yaml
-      - name: Prepare example build environment
-        run: cp .env.prod.example .env.prod
+      - name: Prepare example build environments
+        run: |
+          cp .env.prod.example .env.prod
+          cp .env.test.example .env.test
       - name: Install locked dependencies
         run: pnpm install --frozen-lockfile
       - name: Check types
@@ -44,3 +47,5 @@ jobs:
         run: node --test tests/*.test.mjs
       - name: Build admin
         run: pnpm build
+      - name: Build admin for test environment
+        run: pnpm build:test
