@@ -1,0 +1,46 @@
+name: Leave Admin CI
+
+on:
+  pull_request:
+    branches:
+      - master
+  push:
+    branches:
+      - master
+
+permissions:
+  contents: read
+
+concurrency:
+  group: admin-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Check, test and build admin
+    runs-on: ubuntu-22.04
+    defaults:
+      run:
+        working-directory: admin
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v5
+        with:
+          version: 10
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: admin/pnpm-lock.yaml
+      - name: Prepare example build environment
+        run: cp .env.prod.example .env.prod
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Check types
+        run: pnpm typecheck
+      - name: Lint without modifying source
+        run: pnpm exec oxlint && pnpm exec eslint .
+      - name: Run existing Node tests
+        run: node --test tests/*.test.mjs
+      - name: Build admin
+        run: pnpm build
