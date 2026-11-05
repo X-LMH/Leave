@@ -1,18 +1,24 @@
 package main
 
 import (
+	"context"
+	"errors"
+	"flag"
+	"fmt"
+	"log"
+	"net"
+	"net/http"
+	"os"
+	"os/signal"
+	"runtime"
+	"syscall"
+	"time"
+
 	"backend/internal/config"
 	"backend/internal/dao/mysql"
 	"backend/internal/dao/redis"
 	"backend/internal/logger"
 	"backend/internal/router"
-	"errors"
-	"flag"
-	"fmt"
-	"log"
-	"os"
-	"runtime"
-	"syscall"
 
 	"go.uber.org/zap"
 )
@@ -20,6 +26,7 @@ import (
 func main() {
 	checkRedis := flag.Bool("check-redis", false, "检查配置及 Redis 连接后退出，不启动 HTTP 服务")
 	flag.Parse()
+
 	if *checkRedis {
 		if err := checkRedisConnection(); err != nil {
 			log.Print(err)
@@ -28,6 +35,7 @@ func main() {
 		log.Print("Redis 连接检查通过")
 		return
 	}
+
 	if err := run(); err != nil {
 		os.Exit(1)
 	}
@@ -38,20 +46,26 @@ func checkRedisConnection() error {
 	if err != nil {
 		return fmt.Errorf("初始化配置失败: %w", err)
 	}
+
 	client, err := redis.Open(cfg.Redis)
 	if err != nil {
 		return fmt.Errorf("Redis 连接检查失败: %w", err)
 	}
+
 	return client.Close()
 }
 
 func run() (err error) {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
 	cfg, err := config.Load()
 	if err != nil {
 		// 配置和日志尚未就绪时，只能使用标准错误输出。
 		log.Print("初始化配置失败: ", err)
 		return fmt.Errorf("初始化配置失败: %w", err)
 	}
+
 	appLogger, err := logger.NewLogger(cfg.Log)
 	if err != nil {
 		log.Print("日志初始化失败: ", err)
@@ -68,11 +82,14 @@ func run() (err error) {
 			err = errors.Join(err, fmt.Errorf("同步日志失败: %w", syncErr))
 		}
 	}()
+
 	appLogger.Info("服务初始化开始")
+
 	db, err := mysql.Open(cfg.Mysql)
 	if err != nil {
 		return fmt.Errorf("数据库初始化失败: %w", err)
 	}
+
 	connection, err := db.DB()
 	if err != nil {
 		return err
@@ -83,6 +100,7 @@ func run() (err error) {
 		}
 	}()
 	appLogger.Info("MySQL 初始化成功")
+
 	redisClient, err := redis.Open(cfg.Redis)
 	if err != nil {
 		return fmt.Errorf("Redis 初始化失败: %w", err)
@@ -93,14 +111,23 @@ func run() (err error) {
 		}
 	}()
 	appLogger.Info("Redis 初始化成功")
+
 	dao := mysql.NewDAO(db, appLogger)
 	r := router.SetupRouter(buildDependencies(cfg, dao, appLogger, redisClient))
-	// Run 成功后会阻塞；此日志只表示即将尝试监听。
-	appLogger.Info("准备监听 HTTP 请求", zap.Int("port", cfg.App.Port))
-	if err := r.Run(fmt.Sprintf(":%d", cfg.App.Port)); err != nil {
-		return fmt.Errorf("HTTP 服务运行失败: %w", err)
+	server := &http.Server{
+		Addr:    fmt.Sprintf(":%d", cfg.App.Port),
+		Handler: r,
 	}
-	return nil
+
+	listener, err := net.Listen("tcp", server.Addr)
+	if err != nil {
+		return fmt.Errorf("HTTP 服务监听失败: %w", err)
+	}
+
+	appLogger.Info("开始监听 HTTP 请求", zap.Int("port", cfg.App.Port))
+
+	// 部署脚本最多等待 20 秒，预留 5 秒用于资源清理和进程退出。
+	return serveHTTP(ctx, server, listener, 15*time.Second, appLogger)
 }
 
 func syncLogger(logger *zap.Logger) error {
