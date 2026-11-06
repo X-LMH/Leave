@@ -1,10 +1,21 @@
-# Leave
+<p align="center">
+  <img src="frontend/static/manifest/app.png" width="112" height="112" alt="Leave app icon" />
+</p>
 
-A leave-slip simulator with an Android app, a web admin panel and a Go backend. Built for learning and demonstrating mobile interactions, API development and admin workflows.
+<h1 align="center">Leave</h1>
 
-**English** · [简体中文](README_zh_CN.md)
+<p align="center">
+  A leave-slip simulator with an Android app, a web admin panel and a Go backend.
+</p>
 
-[Repository](https://github.com/X-LMH/Leave) · [GitHub Actions](https://github.com/X-LMH/Leave/actions) · [Run from source](#run-from-source) · [Documentation](#documentation)
+<p align="center">
+  <strong>English</strong> · <a href="README_zh_CN.md">简体中文</a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/avery-my/Leave/releases/latest"><img src="https://img.shields.io/github/v/release/avery-my/Leave?style=flat-square&amp;label=release" alt="Release" /></a>
+  <a href="https://github.com/avery-my/Leave/releases"><img src="https://img.shields.io/github/downloads/avery-my/Leave/total?style=flat-square&amp;logo=github" alt="Downloads" /></a>
+</p>
 
 ## Features
 
@@ -15,6 +26,16 @@ A leave-slip simulator with an Android app, a web admin panel and a Go backend. 
 - Server-side login sessions and request rate limiting backed by Redis.
 
 Development is ongoing. Some features still use mock or placeholder data, and integration progress varies by module.
+
+## Download
+
+Get the latest Android package from [GitHub Releases](https://github.com/avery-my/Leave/releases/latest), or browse [previous releases](https://github.com/avery-my/Leave/releases).
+
+| Platform | Package | Download |
+| --- | --- | --- |
+| Android | APK | [Leave 1.1.0](https://github.com/avery-my/Leave/releases/download/app-v1.1.0/leave-android-16-1.1.0.apk) |
+
+The web admin and Go backend require your own deployment. See [Run from source](#run-from-source) below and the [deployment guide](deploy/README.md).
 
 ## Tech stack
 

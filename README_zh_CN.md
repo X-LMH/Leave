@@ -1,10 +1,21 @@
-# Leave
+<p align="center">
+  <img src="frontend/static/manifest/app.png" width="112" height="112" alt="Leave app icon" />
+</p>
 
-一个假条模拟程序，包含 Android 客户端、Web 管理端和 Go 后端，用于学习与演示移动端页面交互、接口开发和管理后台业务流程。
+<h1 align="center">Leave</h1>
 
-[English](README.md) · **简体中文**
+<p align="center">
+  一个假条模拟程序，包含 Android 客户端、Web 管理端和 Go 后端。
+</p>
 
-[项目仓库](https://github.com/X-LMH/Leave) · [GitHub Actions](https://github.com/X-LMH/Leave/actions) · [从源码运行](#从源码运行) · [相关文档](#相关文档)
+<p align="center">
+  <a href="README.md">English</a> · <strong>简体中文</strong>
+</p>
+
+<p align="center">
+  <a href="https://github.com/avery-my/Leave/releases/latest"><img src="https://img.shields.io/github/v/release/avery-my/Leave?style=flat-square&amp;label=release" alt="Release" /></a>
+  <a href="https://github.com/avery-my/Leave/releases"><img src="https://img.shields.io/github/downloads/avery-my/Leave/total?style=flat-square&amp;logo=github" alt="Downloads" /></a>
+</p>
 
 ## 功能
 
@@ -15,6 +26,16 @@
 - 基于 Redis 的服务端登录会话和请求限流。
 
 项目持续开发中，部分功能仍使用 Mock 或占位数据，各模块的接口联调进度不同。
+
+## 下载
+
+从 [GitHub Releases](https://github.com/avery-my/Leave/releases/latest) 获取最新 Android 安装包，或查看[历史版本](https://github.com/avery-my/Leave/releases)。
+
+| 平台 | 安装包 | 下载 |
+| --- | --- | --- |
+| Android | APK | [Leave 1.1.0](https://github.com/avery-my/Leave/releases/download/app-v1.1.0/leave-android-16-1.1.0.apk) |
+
+Web 管理端和 Go 后端需自行部署，参见下方的[从源码运行](#从源码运行)和[部署说明](deploy/README.md)。
 
 ## 技术栈
 
