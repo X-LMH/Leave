@@ -1,18 +1,19 @@
 package app
 
 import (
-	"backend/internal/config"
-	"backend/internal/dao/mysql"
-	"backend/internal/request"
-	appservice "backend/internal/service/app"
 	"bytes"
 	"fmt"
-	"github.com/gin-gonic/gin"
 	"mime/multipart"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
+	"backend/internal/config"
+	"backend/internal/dao/mysql"
+	"backend/internal/request"
+	appservice "backend/internal/service/app"
+
+	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
 

@@ -1,12 +1,6 @@
 package admin
 
 import (
-	"backend/internal/config"
-	"backend/internal/dao/mysql"
-	"backend/internal/dto"
-	"backend/internal/models"
-	appservice "backend/internal/service/app"
-	commonservice "backend/internal/service/common"
 	"errors"
 	"fmt"
 	"net"
@@ -14,6 +8,13 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"backend/internal/config"
+	"backend/internal/dao/mysql"
+	"backend/internal/dto"
+	"backend/internal/models"
+	appservice "backend/internal/service/app"
+	commonservice "backend/internal/service/common"
 
 	driver "github.com/go-sql-driver/mysql"
 	"go.uber.org/zap"

@@ -1,9 +1,10 @@
 package mysql
 
 import (
+	"errors"
+
 	"backend/internal/dto"
 	"backend/internal/models"
-	"errors"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -55,7 +56,9 @@ func (s *DAO) GetClassList(query dto.ClassListQuery) ([]*models.Class, int64, er
 	return classes, total, err
 }
 
-func (s *DAO) CreateClass(row *models.Class) error { return s.db.Create(row).Error }
+func (s *DAO) CreateClass(row *models.Class) error {
+	return s.db.Create(row).Error
+}
 
 func (s *DAO) UpdateClass(row *models.Class) error {
 	return s.db.Transaction(func(tx *gorm.DB) error {
@@ -63,7 +66,13 @@ func (s *DAO) UpdateClass(row *models.Class) error {
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&current, row.ID).Error; err != nil {
 			return err
 		}
-		if err := tx.Model(&current).Updates(map[string]any{"college": row.College, "major": row.Major, "class_name": row.ClassName, "is_enabled": row.IsEnabled}).Error; err != nil {
+		if err := tx.Model(&current).
+			Updates(map[string]any{
+				"college":    row.College,
+				"major":      row.Major,
+				"class_name": row.ClassName,
+				"is_enabled": row.IsEnabled,
+			}).Error; err != nil {
 			return err
 		}
 		return tx.First(row, row.ID).Error

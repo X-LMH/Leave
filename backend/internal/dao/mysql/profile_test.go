@@ -1,9 +1,10 @@
 package mysql
 
 import (
-	"backend/internal/models"
 	"testing"
 	"time"
+
+	"backend/internal/models"
 
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"

@@ -1,8 +1,9 @@
 package common
 
 import (
-	"backend/internal/dao/mysql"
 	"testing"
+
+	"backend/internal/dao/mysql"
 
 	"go.uber.org/zap"
 )

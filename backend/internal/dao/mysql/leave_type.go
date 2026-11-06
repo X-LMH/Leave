@@ -3,6 +3,7 @@ package mysql
 import (
 	"backend/internal/dto"
 	"backend/internal/models"
+
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -26,14 +27,21 @@ func (s *DAO) GetLeaveTypeList(query dto.LeaveTypeListQuery) ([]*models.LeaveTyp
 	return rows, total, err
 }
 
-func (s *DAO) CreateLeaveType(row *models.LeaveType) error { return s.db.Create(row).Error }
+func (s *DAO) CreateLeaveType(row *models.LeaveType) error {
+	return s.db.Create(row).Error
+}
 func (s *DAO) UpdateLeaveType(row *models.LeaveType) error {
 	return s.db.Transaction(func(tx *gorm.DB) error {
 		var current models.LeaveType
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&current, row.ID).Error; err != nil {
 			return err
 		}
-		if err := tx.Model(&current).Updates(map[string]any{"name": row.Name, "sort_order": row.SortOrder, "is_enabled": row.IsEnabled}).Error; err != nil {
+		if err := tx.Model(&current).
+			Updates(map[string]any{
+				"name":       row.Name,
+				"sort_order": row.SortOrder,
+				"is_enabled": row.IsEnabled,
+			}).Error; err != nil {
 			return err
 		}
 		return tx.First(row, row.ID).Error

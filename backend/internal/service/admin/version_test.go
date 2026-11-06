@@ -1,9 +1,10 @@
 package admin
 
 import (
-	"backend/internal/models"
 	"fmt"
 	"testing"
+
+	"backend/internal/models"
 )
 
 func TestAppVersionState(t *testing.T) {

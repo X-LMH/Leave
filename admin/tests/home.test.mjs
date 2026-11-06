@@ -32,9 +32,28 @@ function fixture() {
       })),
       total: 2
     },
-    version_usage: { total: 72, latest_count: 48, groups: [{ key: 'latest', version: '0.0.10', count: 48, percentage: 66.666666 }] },
-    recent_records: [{ id: 3, name: '李欣然', student_id: '202624000001', class_name: '计24-1', leave_type_id: 1, leave_type_name: '事假-本科生', applied_at: '2026-10-11T11:00:00+08:00' }],
-    latest_android_version: { version_name: '0.0.10', version_code: 10, published_at: '2026-10-05T08:00:00+08:00', release_notes: [] }
+    version_usage: {
+      total: 72,
+      latest_count: 48,
+      groups: [{ key: 'latest', version: '0.0.10', count: 48, percentage: 66.666666 }]
+    },
+    recent_records: [
+      {
+        id: 3,
+        name: '李欣然',
+        student_id: '202624000001',
+        class_name: '计24-1',
+        leave_type_id: 1,
+        leave_type_name: '事假-本科生',
+        applied_at: '2026-10-11T11:00:00+08:00'
+      }
+    ],
+    latest_android_version: {
+      version_name: '0.0.10',
+      version_code: 10,
+      published_at: '2026-10-05T08:00:00+08:00',
+      release_notes: []
+    }
   };
 }
 
@@ -42,7 +61,12 @@ test('adapts real response fields and timestamps without recalculating business 
   const wire = fixture();
   const data = adaptOverview(wire);
   assert.equal(data.generatedAt, Date.parse(wire.generated_at));
-  assert.deepEqual(serialize(data.statistics), { studentCount: 72, classCount: 3, recordCount: 125, unhandledFeedbackCount: 7 });
+  assert.deepEqual(serialize(data.statistics), {
+    studentCount: 72,
+    classCount: 3,
+    recordCount: 125,
+    unhandledFeedbackCount: 7
+  });
   assert.equal(data.weeklyApplications.weeks.length, 9);
   assert.equal(data.weeklyApplications.weeks[8].isCurrent, true);
   assert.equal(data.weeklyApplications.weeks[8].start, Date.parse('2026-10-05T00:00:00+08:00'));
@@ -58,7 +82,9 @@ test('adapts real response fields and timestamps without recalculating business 
 test('preserves empty database, zero weeks and unavailable release', () => {
   const wire = fixture();
   wire.statistics = { student_count: 0, class_count: 0, record_count: 0, unhandled_feedback_count: 0 };
-  wire.weekly_applications.weeks.forEach(week => { week.count = 0; });
+  wire.weekly_applications.weeks.forEach(week => {
+    week.count = 0;
+  });
   wire.weekly_applications.total = 0;
   wire.version_usage = { total: 0, latest_count: 0, groups: [] };
   wire.recent_records = [];
@@ -66,7 +92,10 @@ test('preserves empty database, zero weeks and unavailable release', () => {
   const data = adaptOverview(wire);
   assert.equal(data.latestVersion, null);
   assert.equal(data.weeklyApplications.weeks.length, 9);
-  assert.equal(data.weeklyApplications.weeks.every(week => week.count === 0), true);
+  assert.equal(
+    data.weeklyApplications.weeks.every(week => week.count === 0),
+    true
+  );
   assert.deepEqual(serialize(data.recentRecords), []);
   assert.deepEqual(serialize(data.versionUsage.groups), []);
 });
@@ -74,7 +103,12 @@ test('preserves empty database, zero weeks and unavailable release', () => {
 test('request uses overview endpoint and passes errors without fake data', async () => {
   const calls = [];
   let response = { data: fixture(), error: null };
-  const { getOverview } = loadModule('../src/service/api/overview.ts', () => ({ request: async options => { calls.push(options); return response; } }));
+  const { getOverview } = loadModule('../src/service/api/overview.ts', () => ({
+    request: async options => {
+      calls.push(options);
+      return response;
+    }
+  }));
   assert.equal((await getOverview()).data.statistics.recordCount, 125);
   assert.equal(calls[0].url, '/admin/overview');
   response = { data: null, error: new Error('failed') };
@@ -84,7 +118,10 @@ test('request uses overview endpoint and passes errors without fake data', async
 function deferred() {
   let resolve;
   let reject;
-  const promise = new Promise((yes, no) => { resolve = yes; reject = no; });
+  const promise = new Promise((yes, no) => {
+    resolve = yes;
+    reject = no;
+  });
   return { promise, resolve, reject };
 }
 const initialState = () => ({ data: null, loading: false, failed: false });
@@ -110,7 +147,10 @@ test('deduplicates mount and initial activation and replaces data on refresh', a
   const state = initialState();
   const pending = deferred();
   let calls = 0;
-  const loader = createOverviewLoader(state, () => { calls += 1; return pending.promise; });
+  const loader = createOverviewLoader(state, () => {
+    calls += 1;
+    return pending.promise;
+  });
   const first = loader.reload();
   await loader.reload();
   assert.equal(calls, 1);
@@ -142,7 +182,9 @@ test('initial failure stays null and retry can succeed', async () => {
 test('refresh failure keeps the last successful snapshot and statistics time', async () => {
   const snapshot = adaptOverview(fixture());
   const state = { ...initialState(), data: snapshot };
-  const loader = createOverviewLoader(state, async () => { throw new Error('network'); });
+  const loader = createOverviewLoader(state, async () => {
+    throw new Error('network');
+  });
   await loader.reload();
   assert.equal(state.failed, true);
   assert.equal(state.data, snapshot);

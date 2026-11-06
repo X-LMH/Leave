@@ -1,12 +1,6 @@
 package app
 
 import (
-	"backend/internal/config"
-	"backend/internal/dao/mysql"
-	"backend/internal/dto"
-	"backend/internal/models"
-	"backend/internal/testutil/sessiontest"
-	passwordutil "backend/internal/utils/password"
 	"context"
 	"errors"
 	"fmt"
@@ -17,6 +11,13 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"backend/internal/config"
+	"backend/internal/dao/mysql"
+	"backend/internal/dto"
+	"backend/internal/models"
+	"backend/internal/testutil/sessiontest"
+	passwordutil "backend/internal/utils/password"
 
 	driver "github.com/go-sql-driver/mysql"
 	"go.uber.org/zap"

@@ -1,16 +1,6 @@
 package router
 
 import (
-	"backend/internal/config"
-	"backend/internal/dao/mysql"
-	"backend/internal/dto"
-	"backend/internal/models"
-	"backend/internal/response"
-	adminservice "backend/internal/service/admin"
-	appservice "backend/internal/service/app"
-	"backend/internal/session"
-	"backend/internal/testutil/sessiontest"
-	passwordutil "backend/internal/utils/password"
 	"context"
 	"encoding/json"
 	"errors"
@@ -24,6 +14,17 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"backend/internal/config"
+	"backend/internal/dao/mysql"
+	"backend/internal/dto"
+	"backend/internal/models"
+	"backend/internal/response"
+	adminservice "backend/internal/service/admin"
+	appservice "backend/internal/service/app"
+	"backend/internal/session"
+	"backend/internal/testutil/sessiontest"
+	passwordutil "backend/internal/utils/password"
 
 	driver "github.com/go-sql-driver/mysql"
 	"go.uber.org/zap"

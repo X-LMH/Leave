@@ -1,11 +1,12 @@
 package middleware
 
 import (
+	"strconv"
+	"strings"
+
 	requestlog "backend/internal/logger"
 	"backend/internal/response"
 	appservice "backend/internal/service/app"
-	"strconv"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"

@@ -1,6 +1,10 @@
 package app
 
 import (
+	"context"
+	"errors"
+	"testing"
+
 	"backend/internal/config"
 	"backend/internal/dao/mysql"
 	redisdao "backend/internal/dao/redis"
@@ -8,9 +12,6 @@ import (
 	"backend/internal/models"
 	"backend/internal/session"
 	"backend/internal/testutil/sessiontest"
-	"context"
-	"errors"
-	"testing"
 
 	"go.uber.org/zap"
 	gormmysql "gorm.io/driver/mysql"

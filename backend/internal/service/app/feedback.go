@@ -1,12 +1,6 @@
 package app
 
 import (
-	"backend/internal/config"
-	"backend/internal/dao/mysql"
-	"backend/internal/dto"
-	logutil "backend/internal/logger"
-	"backend/internal/models"
-	"backend/internal/utils/file"
 	"bytes"
 	"encoding/json"
 	"errors"
@@ -14,6 +8,13 @@ import (
 	"mime/multipart"
 	"strings"
 	"unicode/utf8"
+
+	"backend/internal/config"
+	"backend/internal/dao/mysql"
+	"backend/internal/dto"
+	logutil "backend/internal/logger"
+	"backend/internal/models"
+	"backend/internal/utils/file"
 
 	"go.uber.org/zap"
 )

@@ -1,12 +1,13 @@
 package app
 
 import (
-	"backend/internal/dao/mysql"
-	"backend/internal/dto"
-	"backend/internal/models"
 	"errors"
 	"strings"
 	"time"
+
+	"backend/internal/dao/mysql"
+	"backend/internal/dto"
+	"backend/internal/models"
 
 	"go.uber.org/zap"
 )

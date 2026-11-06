@@ -1,12 +1,13 @@
 package app
 
 import (
+	"errors"
+	"net/http"
+
 	logutil "backend/internal/logger"
 	"backend/internal/request"
 	"backend/internal/response"
 	appservice "backend/internal/service/app"
-	"errors"
-	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"

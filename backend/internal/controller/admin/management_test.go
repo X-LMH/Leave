@@ -1,6 +1,11 @@
 package admin
 
 import (
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+
 	"backend/internal/config"
 	"backend/internal/dao/mysql"
 	"backend/internal/middleware"
@@ -8,14 +13,10 @@ import (
 	"backend/internal/response"
 	adminservice "backend/internal/service/admin"
 	commonservice "backend/internal/service/common"
-	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
-	"net/http"
-	"net/http/httptest"
-	"strings"
-	"testing"
 
+	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
+	"gorm.io/gorm"
 )
 
 func TestManagementRejectsInvalidRequests(t *testing.T) {

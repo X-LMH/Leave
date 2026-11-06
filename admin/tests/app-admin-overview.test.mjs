@@ -13,15 +13,27 @@ function setup() {
     uni: { getStorageSync: () => token },
     require: () => ({
       getCurrentUser: () => ({ student_id: 'admin' }),
-      registerSessionCleanup: callback => { cleanup = callback; },
+      registerSessionCleanup: callback => {
+        cleanup = callback;
+      },
       request: path => new Promise((resolve, reject) => calls.push({ path, resolve, reject }))
     })
   };
   const source = readFileSync(new URL('../../frontend/utils/admin-api.uts', import.meta.url), 'utf8');
-  vm.runInNewContext(ts.transpileModule(source, {
-    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }
-  }).outputText, context);
-  return { api: context.exports, calls, switchSession: () => { token = 'second'; }, cleanup: () => cleanup() };
+  vm.runInNewContext(
+    ts.transpileModule(source, {
+      compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }
+    }).outputText,
+    context
+  );
+  return {
+    api: context.exports,
+    calls,
+    switchSession: () => {
+      token = 'second';
+    },
+    cleanup: () => cleanup()
+  };
 }
 
 function response(count) {

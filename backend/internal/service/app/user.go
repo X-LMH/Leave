@@ -1,6 +1,11 @@
 package app
 
 import (
+	"context"
+	"errors"
+	"strings"
+	"time"
+
 	"backend/internal/config"
 	"backend/internal/dao/mysql"
 	"backend/internal/dto"
@@ -9,10 +14,6 @@ import (
 	"backend/internal/session"
 	"backend/internal/utils/file"
 	passwordutil "backend/internal/utils/password"
-	"context"
-	"errors"
-	"strings"
-	"time"
 
 	"go.uber.org/zap"
 	"gorm.io/gorm"

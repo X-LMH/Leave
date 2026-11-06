@@ -1,9 +1,10 @@
 package app
 
 import (
+	"testing"
+
 	"backend/internal/dto"
 	"backend/internal/models"
-	"testing"
 )
 
 func TestValidateAndNormalizeProfile(t *testing.T) {

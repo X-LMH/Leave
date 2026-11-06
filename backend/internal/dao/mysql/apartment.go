@@ -30,7 +30,9 @@ func (s *DAO) GetApartmentList(query dto.ApartmentListQuery) ([]*models.Apartmen
 	return rows, total, err
 }
 
-func (s *DAO) CreateApartment(row *models.Apartment) error { return s.db.Create(row).Error }
+func (s *DAO) CreateApartment(row *models.Apartment) error {
+	return s.db.Create(row).Error
+}
 
 func (s *DAO) GetApartmentForUpdate(tx *gorm.DB, id uint) (*models.Apartment, error) {
 	var row models.Apartment

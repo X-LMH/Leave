@@ -1,9 +1,6 @@
 package app
 
 import (
-	logutil "backend/internal/logger"
-	"backend/internal/response"
-	appservice "backend/internal/service/app"
 	"errors"
 	"fmt"
 	"mime"
@@ -12,6 +9,10 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	logutil "backend/internal/logger"
+	"backend/internal/response"
+	appservice "backend/internal/service/app"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"

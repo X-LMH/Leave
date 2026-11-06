@@ -1,13 +1,14 @@
 package middleware
 
 import (
-	requestlog "backend/internal/logger"
-	"backend/internal/request"
-	"backend/internal/response"
 	"errors"
 	"net/http"
 	"syscall"
 	"time"
+
+	requestlog "backend/internal/logger"
+	"backend/internal/request"
+	"backend/internal/response"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"

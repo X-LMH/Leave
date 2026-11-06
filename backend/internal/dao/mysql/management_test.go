@@ -1,13 +1,8 @@
 package mysql
 
 import (
-	"backend/internal/dto"
-	"backend/internal/models"
 	"errors"
 	"fmt"
-	driver "github.com/go-sql-driver/mysql"
-	gormmysql "gorm.io/driver/mysql"
-	"gorm.io/gorm"
 	"net"
 	"os"
 	"path/filepath"
@@ -15,7 +10,13 @@ import (
 	"testing"
 	"time"
 
+	"backend/internal/dto"
+	"backend/internal/models"
+
+	driver "github.com/go-sql-driver/mysql"
 	"go.uber.org/zap"
+	gormmysql "gorm.io/driver/mysql"
+	"gorm.io/gorm"
 )
 
 // The integration suite creates and drops its own schema on a loopback MySQL server.

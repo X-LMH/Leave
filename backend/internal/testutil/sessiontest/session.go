@@ -1,14 +1,15 @@
 package sessiontest
 
 import (
-	"backend/internal/config"
-	redisdao "backend/internal/dao/redis"
-	"backend/internal/session"
 	"context"
 	"errors"
 	"sync"
 	"testing"
 	"time"
+
+	"backend/internal/config"
+	redisdao "backend/internal/dao/redis"
+	"backend/internal/session"
 
 	"github.com/redis/go-redis/v9"
 )

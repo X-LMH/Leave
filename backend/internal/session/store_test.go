@@ -1,12 +1,6 @@
 package session_test
 
 import (
-	"backend/internal/config"
-	redisdao "backend/internal/dao/redis"
-	"backend/internal/models"
-	"backend/internal/session"
-	"backend/internal/testutil/sessiontest"
-	"backend/internal/utils/jwt"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -15,6 +9,13 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"backend/internal/config"
+	redisdao "backend/internal/dao/redis"
+	"backend/internal/models"
+	"backend/internal/session"
+	"backend/internal/testutil/sessiontest"
+	"backend/internal/utils/jwt"
 )
 
 func TestSessionLifecycle(t *testing.T) {

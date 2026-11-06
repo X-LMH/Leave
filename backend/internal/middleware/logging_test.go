@@ -1,10 +1,6 @@
 package middleware
 
 import (
-	"backend/internal/config"
-	requestlog "backend/internal/logger"
-	"backend/internal/request"
-	"backend/internal/response"
 	"bytes"
 	"encoding/hex"
 	"encoding/json"
@@ -17,6 +13,11 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	"backend/internal/config"
+	requestlog "backend/internal/logger"
+	"backend/internal/request"
+	"backend/internal/response"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"

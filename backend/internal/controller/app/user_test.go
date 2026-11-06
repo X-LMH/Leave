@@ -1,6 +1,13 @@
 package app
 
 import (
+	"bytes"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+
 	"backend/internal/config"
 	"backend/internal/dao/mysql"
 	"backend/internal/dto"
@@ -8,12 +15,6 @@ import (
 	appservice "backend/internal/service/app"
 	"backend/internal/testutil"
 	"backend/internal/testutil/sessiontest"
-	"bytes"
-	"encoding/json"
-	"net/http"
-	"net/http/httptest"
-	"strings"
-	"testing"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"

@@ -1,11 +1,12 @@
 package response
 
 import (
-	"backend/internal/request"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"backend/internal/request"
 
 	"github.com/gin-gonic/gin"
 )

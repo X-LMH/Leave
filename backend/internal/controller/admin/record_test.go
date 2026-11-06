@@ -1,11 +1,12 @@
 package admin
 
 import (
-	"github.com/gin-gonic/gin"
 	"net/http/httptest"
 	"net/url"
 	"testing"
 	"time"
+
+	"github.com/gin-gonic/gin"
 )
 
 func TestAdminRecordQuery(t *testing.T) {

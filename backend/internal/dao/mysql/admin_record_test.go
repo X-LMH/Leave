@@ -1,9 +1,10 @@
 package mysql
 
 import (
-	"backend/internal/models"
 	"strings"
 	"testing"
+
+	"backend/internal/models"
 
 	"go.uber.org/zap"
 	gormmysql "gorm.io/driver/mysql"

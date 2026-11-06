@@ -1,10 +1,11 @@
 package logger
 
 import (
-	"backend/internal/config"
 	"fmt"
 	"strconv"
 	"strings"
+
+	"backend/internal/config"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"

@@ -17,7 +17,11 @@ function setup() {
     require(name) {
       if (name === 'vue') {
         return {
-          computed: fn => ({ get value() { return fn(); } }),
+          computed: fn => ({
+            get value() {
+              return fn();
+            }
+          }),
           reactive: value => value,
           ref: value => ({ value }),
           onDeactivated: fn => hooks.push(fn),
@@ -27,9 +31,10 @@ function setup() {
       if (name === 'vue-router') return { onBeforeRouteLeave: fn => hooks.push(fn) };
       if (name === '@vueuse/core') return { useMediaQuery: () => ({ value: false }) };
       if (name === 'naive-ui') return { useThemeVars: () => ({ value: {} }) };
-      if (name.includes('store/modules/auth')) return {
-        useAuthStore: () => ({ userInfo: { userName: 'admin' }, resetStore: async () => logouts.push('logout') })
-      };
+      if (name.includes('store/modules/auth'))
+        return {
+          useAuthStore: () => ({ userInfo: { userName: 'admin' }, resetStore: async () => logouts.push('logout') })
+        };
       if (name === '@/utils/storage') return { localStg: { get: () => token } };
       if (name.includes('service/api/auth')) {
         return { changeAdminPassword: (...args) => new Promise(resolve => calls.push({ args, resolve })) };
@@ -37,11 +42,15 @@ function setup() {
       return {};
     }
   };
-  const source = readFileSync(new URL('../src/views/account-settings/index.vue', import.meta.url), 'utf8')
-    .match(/<script setup lang="ts">([\s\S]*?)<\/script>/)[1];
-  vm.runInNewContext(ts.transpileModule(`${source}\nexports.state = { model, saving, rules, formRef, submit, resetForm };`, {
-    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }
-  }).outputText, context);
+  const source = readFileSync(new URL('../src/views/account-settings/index.vue', import.meta.url), 'utf8').match(
+    /<script setup lang="ts">([\s\S]*?)<\/script>/
+  )[1];
+  vm.runInNewContext(
+    ts.transpileModule(`${source}\nexports.state = { model, saving, rules, formRef, submit, resetForm };`, {
+      compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }
+    }).outputText,
+    context
+  );
   const state = context.exports.state;
   let clears = 0;
   state.formRef.value = {
@@ -52,27 +61,57 @@ function setup() {
         }
       }
     },
-    restoreValidation() { clears++; }
+    restoreValidation() {
+      clears++;
+    }
   };
-  return { state, calls, hooks, messages, logouts, setToken(value) { token = value; }, get clears() { return clears; } };
+  return {
+    state,
+    calls,
+    hooks,
+    messages,
+    logouts,
+    setToken(value) {
+      token = value;
+    },
+    get clears() {
+      return clears;
+    }
+  };
 }
 
 const tick = () => new Promise(resolve => setImmediate(resolve));
-const fill = state => Object.assign(state.model, { currentPassword: 'old-pass', newPassword: ' pass ', confirmPassword: ' pass ' });
+const fill = state =>
+  Object.assign(state.model, { currentPassword: 'old-pass', newPassword: ' pass ', confirmPassword: ' pass ' });
 const assertEmpty = state => assert.ok(Object.values(state.model).every(value => value === ''));
 
 test('API uses the protected admin endpoint and preserves password bytes', async () => {
   let config;
-  const context = { exports: {}, require: () => ({ request: input => { config = input; return Promise.resolve({ error: null, data: null }); } }) };
+  const context = {
+    exports: {},
+    require: () => ({
+      request: input => {
+        config = input;
+        return Promise.resolve({ error: null, data: null });
+      }
+    })
+  };
   const source = readFileSync(new URL('../src/service/api/auth.ts', import.meta.url), 'utf8');
-  vm.runInNewContext(ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText, context);
+  vm.runInNewContext(
+    ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText,
+    context
+  );
   await context.exports.changeAdminPassword(' old ', ' 密码 ', ' 密码 ');
   assert.deepEqual(JSON.parse(JSON.stringify(config)), {
-    url: '/admin/auth/password', method: 'post', data: { password: ' old ', new_password: ' 密码 ', re_password: ' 密码 ' }
+    url: '/admin/auth/password',
+    method: 'post',
+    data: { password: ' old ', new_password: ' 密码 ', re_password: ' 密码 ' }
   });
   await context.exports.fetchLogin('admin', ' password ');
   assert.deepEqual(JSON.parse(JSON.stringify(config)), {
-    url: '/admin/auth/login', method: 'post', data: { user_name: 'admin', password: ' password ' }
+    url: '/admin/auth/login',
+    method: 'post',
+    data: { user_name: 'admin', password: ' password ' }
   });
   await context.exports.fetchAuthIdentity('captured-session');
   assert.equal(config.headers.Authorization, 'Bearer captured-session');
@@ -80,14 +119,22 @@ test('API uses the protected admin endpoint and preserves password bytes', async
   await context.exports.fetchLogout('captured-session');
   assert.equal(config.headers.Authorization, 'Bearer captured-session');
   assert.equal(config.url, '/admin/auth/logout');
-
 });
 
 test('password boundaries use UTF-8 bytes and Go-compatible whitespace rules', async () => {
   for (const [password, valid] of [
-    ['12345', false], ['123456', true], ['a'.repeat(30), true], ['a'.repeat(31), false],
-    ['密码', true], ['密'.repeat(10), true], ['密'.repeat(11), false],
-    ['      ', false], ['\u3000\u3000', false], ['\u0085'.repeat(3), false], ['\ufeff\ufeff', true], [' pass ', true]
+    ['12345', false],
+    ['123456', true],
+    ['a'.repeat(30), true],
+    ['a'.repeat(31), false],
+    ['密码', true],
+    ['密'.repeat(10), true],
+    ['密'.repeat(11), false],
+    ['      ', false],
+    ['\u3000\u3000', false],
+    ['\u0085'.repeat(3), false],
+    ['\ufeff\ufeff', true],
+    [' pass ', true]
   ]) {
     const { state, calls } = setup();
     Object.assign(state.model, { currentPassword: 'old-pass', newPassword: password, confirmPassword: password });
@@ -98,8 +145,11 @@ test('password boundaries use UTF-8 bytes and Go-compatible whitespace rules', a
     await pending;
   }
   for (const values of [
-    ['', '123456', '123456'], ['old', '', ''], ['old', '123456', ''],
-    ['old', '123456', 'different'], ['123456', '123456', '123456']
+    ['', '123456', '123456'],
+    ['old', '', ''],
+    ['old', '123456', ''],
+    ['old', '123456', 'different'],
+    ['123456', '123456', '123456']
   ]) {
     const { state, calls } = setup();
     [state.model.currentPassword, state.model.newPassword, state.model.confirmPassword] = values;

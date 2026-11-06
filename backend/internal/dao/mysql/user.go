@@ -1,10 +1,11 @@
 package mysql
 
 import (
-	"backend/internal/models"
 	"context"
 	"errors"
 	"time"
+
+	"backend/internal/models"
 
 	"gorm.io/gorm"
 )

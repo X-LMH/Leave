@@ -1,11 +1,12 @@
 package app
 
 import (
+	"testing"
+
 	"backend/internal/config"
 	"backend/internal/dto"
 	"backend/internal/models"
 	"backend/internal/testutil/sessiontest"
-	"testing"
 
 	"go.uber.org/zap"
 )

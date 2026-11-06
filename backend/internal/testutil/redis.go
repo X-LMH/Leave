@@ -2,7 +2,6 @@
 package testutil
 
 import (
-	"backend/internal/middleware"
 	"context"
 	"fmt"
 	"net"
@@ -10,6 +9,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"backend/internal/middleware"
 
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"

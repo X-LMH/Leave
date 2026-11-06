@@ -1,8 +1,9 @@
 package middleware
 
 import (
-	"backend/internal/request"
 	"crypto/rand"
+
+	"backend/internal/request"
 
 	"github.com/gin-gonic/gin"
 )

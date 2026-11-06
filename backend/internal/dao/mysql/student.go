@@ -1,9 +1,10 @@
 package mysql
 
 import (
+	"errors"
+
 	"backend/internal/dto"
 	"backend/internal/models"
-	"errors"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -12,7 +13,9 @@ import (
 func studentQuery(tx *gorm.DB) *gorm.DB {
 	// Start from accounts so students without profiles remain visible. Apply the
 	// same role and deletion scope to counts, details and paginated rows.
-	return tx.Model(&models.User{}).Table("users AS u").Joins("LEFT JOIN profiles AS p ON p.student_id = u.student_id AND p.deleted_at IS NULL").
+	return tx.Model(&models.User{}).
+		Table("users AS u").
+		Joins("LEFT JOIN profiles AS p ON p.student_id = u.student_id AND p.deleted_at IS NULL").
 		Where("u.role = ? AND u.deleted_at IS NULL", models.RoleStudent)
 }
 
@@ -69,7 +72,10 @@ func (s *DAO) Transaction(fn func(*gorm.DB) error) error {
 
 func (s *DAO) GetStudentForUpdate(tx *gorm.DB, id uint) (*models.User, error) {
 	var user models.User
-	if err := tx.Omit("password").Clauses(clause.Locking{Strength: "UPDATE"}).Where("role = ?", models.RoleStudent).First(&user, id).Error; err != nil {
+	if err := tx.Omit("password").
+		Clauses(clause.Locking{Strength: "UPDATE"}).
+		Where("role = ?", models.RoleStudent).
+		First(&user, id).Error; err != nil {
 		return nil, err
 	}
 	return &user, nil

@@ -1,7 +1,6 @@
 package app
 
 import (
-	"backend/internal/service"
 	"bytes"
 	"errors"
 	"image"
@@ -12,6 +11,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"backend/internal/service"
 )
 
 func TestReadAvatar(t *testing.T) {

@@ -1,6 +1,9 @@
 package app
 
 import (
+	"errors"
+	"strings"
+
 	"backend/internal/dto"
 	logutil "backend/internal/logger"
 	"backend/internal/models"
@@ -8,8 +11,6 @@ import (
 	"backend/internal/response"
 	appservice "backend/internal/service/app"
 	"backend/internal/utils/validator"
-	"errors"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"

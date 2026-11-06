@@ -1,6 +1,12 @@
 package admin_test
 
 import (
+	"context"
+	"encoding/json"
+	"errors"
+	"net/http/httptest"
+	"testing"
+
 	"backend/internal/config"
 	admincontroller "backend/internal/controller/admin"
 	appcontroller "backend/internal/controller/app"
@@ -12,11 +18,6 @@ import (
 	appservice "backend/internal/service/app"
 	"backend/internal/session"
 	"backend/internal/testutil/sessiontest"
-	"context"
-	"encoding/json"
-	"errors"
-	"net/http/httptest"
-	"testing"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"

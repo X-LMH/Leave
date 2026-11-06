@@ -1,6 +1,10 @@
 package app
 
 import (
+	"errors"
+	"strings"
+	"unicode/utf8"
+
 	"backend/internal/dao/mysql"
 	"backend/internal/dto"
 	logutil "backend/internal/logger"
@@ -9,9 +13,6 @@ import (
 	"backend/internal/response"
 	appservice "backend/internal/service/app"
 	"backend/internal/session"
-	"errors"
-	"strings"
-	"unicode/utf8"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"

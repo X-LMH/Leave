@@ -46,7 +46,16 @@ test('student list accepts only table fields without fabricating detail data', a
   assert.equal(row.createdAt, Date.parse(listRow.created_at));
   assert.equal(row.appVersionStatus, listRow.app_version_status);
   assert.equal(Object.keys(row).length, 11);
-  for (const field of ['parentName', 'parentPhone', 'teacherName', 'avatarUrl', 'apartmentId', 'dormitoryNumber', 'lastSeenDevice', 'updatedAt']) {
+  for (const field of [
+    'parentName',
+    'parentPhone',
+    'teacherName',
+    'avatarUrl',
+    'apartmentId',
+    'dormitoryNumber',
+    'lastSeenDevice',
+    'updatedAt'
+  ]) {
     assert.equal(Object.hasOwn(row, field), false);
   }
 });
@@ -81,7 +90,6 @@ test('student detail continues to load complete profile fields by account id', a
   assert.equal(data.updatedAt, Date.parse(listRow.created_at));
 });
 
-
 test('reset password sends only the selected account ID', async () => {
   const { api, calls } = setup();
   const pending = api.resetStudentPassword(7);
@@ -93,19 +101,33 @@ test('reset password sends only the selected account ID', async () => {
 });
 
 function setupReset() {
-  const calls = [], dialogs = [], messages = [];
+  const calls = [],
+    dialogs = [],
+    messages = [];
   const source = readFileSync(new URL('../src/views/student/index.vue', import.meta.url), 'utf8');
-  const handler = source.slice(source.indexOf('function confirmResetPassword('), source.indexOf('function confirmStatus('));
-  const state = Object.fromEntries(['editing', 'opening', 'saving', 'resettingPassword'].map(key => [key, { value: false }]));
+  const handler = source.slice(
+    source.indexOf('function confirmResetPassword('),
+    source.indexOf('function confirmStatus(')
+  );
+  const state = Object.fromEntries(
+    ['editing', 'opening', 'saving', 'resettingPassword'].map(key => [key, { value: false }])
+  );
   state.changingId = { value: null };
   const context = {
     ...state,
     resetStudentPassword: id => new Promise((resolve, reject) => calls.push({ id, resolve, reject })),
-    window: { $dialog: { warning: config => dialogs.push(config) }, $message: {
-      success: value => messages.push(value), error: value => messages.push(value)
-    } }
+    window: {
+      $dialog: { warning: config => dialogs.push(config) },
+      $message: {
+        success: value => messages.push(value),
+        error: value => messages.push(value)
+      }
+    }
   };
-  vm.runInNewContext(ts.transpileModule(handler, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText, context);
+  vm.runInNewContext(
+    ts.transpileModule(handler, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText,
+    context
+  );
   return { state, calls, dialogs, messages, confirm: context.confirmResetPassword };
 }
 

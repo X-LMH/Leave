@@ -1,14 +1,6 @@
 package middleware_test
 
 import (
-	admincontroller "backend/internal/controller/admin"
-	appcontroller "backend/internal/controller/app"
-	"backend/internal/dao/mysql"
-	"backend/internal/middleware"
-	"backend/internal/models"
-	"backend/internal/request"
-	"backend/internal/router"
-	adminservice "backend/internal/service/admin"
 	"context"
 	"encoding/json"
 	"errors"
@@ -19,6 +11,15 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	admincontroller "backend/internal/controller/admin"
+	appcontroller "backend/internal/controller/app"
+	"backend/internal/dao/mysql"
+	"backend/internal/middleware"
+	"backend/internal/models"
+	"backend/internal/request"
+	"backend/internal/router"
+	adminservice "backend/internal/service/admin"
 
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"

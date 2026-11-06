@@ -1,11 +1,12 @@
 package logger
 
 import (
-	"backend/internal/request"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"backend/internal/request"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"

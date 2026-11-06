@@ -1,12 +1,13 @@
 package router
 
 import (
-	"backend/internal/config"
-	"backend/internal/dao/mysql"
-	"github.com/gin-gonic/gin"
 	"net/http/httptest"
 	"testing"
 
+	"backend/internal/config"
+	"backend/internal/dao/mysql"
+
+	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
 

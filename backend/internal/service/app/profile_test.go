@@ -1,10 +1,11 @@
 package app
 
 import (
-	"backend/internal/dto"
-	"backend/internal/models"
 	"errors"
 	"testing"
+
+	"backend/internal/dto"
+	"backend/internal/models"
 )
 
 func TestProfileClassReferences(t *testing.T) {

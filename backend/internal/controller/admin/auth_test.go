@@ -1,6 +1,11 @@
 package admin
 
 import (
+	"encoding/json"
+	"net/http/httptest"
+	"strings"
+	"testing"
+
 	"backend/internal/dao/mysql"
 	"backend/internal/middleware"
 	"backend/internal/models"
@@ -9,10 +14,6 @@ import (
 	adminservice "backend/internal/service/admin"
 	"backend/internal/testutil"
 	"backend/internal/testutil/sessiontest"
-	"encoding/json"
-	"net/http/httptest"
-	"strings"
-	"testing"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"

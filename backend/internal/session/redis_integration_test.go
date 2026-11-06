@@ -1,10 +1,6 @@
 package session_test
 
 import (
-	"backend/internal/config"
-	redisdao "backend/internal/dao/redis"
-	"backend/internal/models"
-	"backend/internal/session"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -14,6 +10,11 @@ import (
 	"os"
 	"testing"
 	"time"
+
+	"backend/internal/config"
+	redisdao "backend/internal/dao/redis"
+	"backend/internal/models"
+	"backend/internal/session"
 
 	"github.com/redis/go-redis/v9"
 )

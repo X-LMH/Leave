@@ -448,7 +448,12 @@ export function getAppDownloadURL(): string {
 	return API_BASE_URL + '/app-download?platform=' + APP_PLATFORM
 }
 
-export function request<T>(path: string, method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' = 'GET', data: object | null = null, requiresAuth: boolean = false): Promise<T> {
+export function request<T>(
+	path: string,
+	method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' = 'GET',
+	data: object | null = null,
+	requiresAuth: boolean = false
+): Promise<T> {
 	return new Promise((resolve, reject) => {
 		const header = { 'Content-Type': 'application/json' } as UTSJSONObject
 		header['X-App-Platform'] = APP_PLATFORM
@@ -499,7 +504,13 @@ export function request<T>(path: string, method: 'GET' | 'POST' | 'PUT' | 'DELET
 	})
 }
 
-export async function register(studentID: string, password: string, rePassword: string, deviceName: string, appVersion: string): Promise<LoginData> {
+export async function register(
+	studentID: string,
+	password: string,
+	rePassword: string,
+	deviceName: string,
+	appVersion: string
+): Promise<LoginData> {
 	const data = await request<UTSJSONObject>('/auth/register', 'POST', {
 		student_id: studentID,
 		password: password,

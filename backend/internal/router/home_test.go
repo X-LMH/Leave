@@ -1,14 +1,15 @@
 package router
 
 import (
-	"backend/internal/config"
-	"backend/internal/dao/mysql"
-	"go.uber.org/zap"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"backend/internal/config"
+	"backend/internal/dao/mysql"
+
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 func TestHomeRequiresLogin(t *testing.T) {

@@ -1,9 +1,10 @@
 package app
 
 import (
-	"backend/internal/dto"
 	"strings"
 	"testing"
+
+	"backend/internal/dto"
 )
 
 func TestValidateAndNormalizeFeedbackRequest(t *testing.T) {

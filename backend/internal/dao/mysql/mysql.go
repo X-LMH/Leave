@@ -1,8 +1,9 @@
 package mysql
 
 import (
-	"backend/internal/config"
 	"fmt"
+
+	"backend/internal/config"
 
 	"go.uber.org/zap"
 	"gorm.io/driver/mysql"

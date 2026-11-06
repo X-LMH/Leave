@@ -36,7 +36,6 @@ async function handleSubmit() {
   await validate();
   await authStore.login(model.userName, model.password);
 }
-
 </script>
 
 <template>

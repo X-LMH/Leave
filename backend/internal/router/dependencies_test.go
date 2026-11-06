@@ -1,6 +1,8 @@
 package router
 
 import (
+	"testing"
+
 	"backend/internal/config"
 	admincontroller "backend/internal/controller/admin"
 	appcontroller "backend/internal/controller/app"
@@ -11,7 +13,6 @@ import (
 	commonservice "backend/internal/service/common"
 	"backend/internal/testutil"
 	"backend/internal/testutil/sessiontest"
-	"testing"
 
 	"go.uber.org/zap"
 )

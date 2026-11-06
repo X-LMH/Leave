@@ -1,10 +1,11 @@
 package common
 
 import (
+	"errors"
+
 	"backend/internal/dao/mysql"
 	"backend/internal/dto"
 	"backend/internal/models"
-	"errors"
 
 	"go.uber.org/zap"
 )

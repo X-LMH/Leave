@@ -388,7 +388,12 @@
 <script setup lang="uts">
 import { themeClass as resolveThemeClass, themeImage as resolveThemeImage } from '@/utils/app-theme.uts'
 import { computed, nextTick, ref } from 'vue'
-import { pickerIndicator as resolvePickerIndicator, pickerMaskTop as resolvePickerMaskTop, pickerMaskBottom as resolvePickerMaskBottom, pickerBottomInset as resolvePickerBottomInset } from '@/utils/picker-theme.uts'
+import {
+	pickerIndicator as resolvePickerIndicator,
+	pickerMaskTop as resolvePickerMaskTop,
+	pickerMaskBottom as resolvePickerMaskBottom,
+	pickerBottomInset as resolvePickerBottomInset
+} from '@/utils/picker-theme.uts'
 import ThemedPicker from '@/components/ThemedPicker.uvue'
 import PageTransition from '@/components/PageTransition.uvue'
 import { createRecord, getLeaveTypes, LeaveTypeOption } from '@/utils/api.uts'
@@ -981,7 +986,9 @@ function pickerBottomInset(): number {
 	line-height: 36px;
 	padding-left: 12px;
 }
-.dark-approval-reset { color: $ios-dark-blue; }
+.dark-approval-reset {
+	color: $ios-dark-blue;
+}
 .submit-page {
 	flex: 1;
 	background-color: $ios-page;
@@ -1320,12 +1327,26 @@ function pickerBottomInset(): number {
 .contrast-destination-picker-item-text {
 	color: #ffffff;
 }
-.date-placeholder { color: #8e909d; }
-.dark-date-placeholder { color: #aeaeb8; }
-.contrast-date-placeholder { color: #d2d3dc; }
-.destination-panel-title { font-size: 15px; font-weight: 600; color: #17181b; }
-.dark-destination-panel-title { color: #f2f2f7; }
-.contrast-destination-panel-title { color: #ffffff; }
+.date-placeholder {
+	color: #8e909d;
+}
+.dark-date-placeholder {
+	color: #aeaeb8;
+}
+.contrast-date-placeholder {
+	color: #d2d3dc;
+}
+.destination-panel-title {
+	font-size: 15px;
+	font-weight: 600;
+	color: #17181b;
+}
+.dark-destination-panel-title {
+	color: #f2f2f7;
+}
+.contrast-destination-panel-title {
+	color: #ffffff;
+}
 .region-summary {
 	flex: 1;
 	margin-right: 12px;
@@ -1333,13 +1354,32 @@ function pickerBottomInset(): number {
 	line-height: 23px;
 	color: $ios-ink;
 }
-.dark-region-summary { color: $ios-dark-ink; }
-.contrast-region-summary { color: #ffffff; }
-.region-headings { flex-direction: row; padding-top: 8px; }
-.region-heading { flex: 1; text-align: center; font-size: 12px; color: $ios-secondary; }
-.dark-region-heading { color: $ios-dark-secondary; }
-.contrast-region-heading { color: #d2d3dc; }
-.region-wheel { width: 100%; height: 220px; }
+.dark-region-summary {
+	color: $ios-dark-ink;
+}
+.contrast-region-summary {
+	color: #ffffff;
+}
+.region-headings {
+	flex-direction: row;
+	padding-top: 8px;
+}
+.region-heading {
+	flex: 1;
+	text-align: center;
+	font-size: 12px;
+	color: $ios-secondary;
+}
+.dark-region-heading {
+	color: $ios-dark-secondary;
+}
+.contrast-region-heading {
+	color: #d2d3dc;
+}
+.region-wheel {
+	width: 100%;
+	height: 220px;
+}
 .region-wheel-text {
 	width: 100%;
 	padding: 0 6px;
@@ -1348,6 +1388,10 @@ function pickerBottomInset(): number {
 	text-align: center;
 	color: $ios-ink;
 }
-.dark-region-wheel-text { color: $ios-dark-ink; }
-.contrast-region-wheel-text { color: #ffffff; }
+.dark-region-wheel-text {
+	color: $ios-dark-ink;
+}
+.contrast-region-wheel-text {
+	color: #ffffff;
+}
 </style>

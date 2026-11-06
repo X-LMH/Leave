@@ -1,10 +1,11 @@
 package admin
 
 import (
-	"backend/internal/dto"
-	"backend/internal/models"
 	"strings"
 	"testing"
+
+	"backend/internal/dto"
+	"backend/internal/models"
 )
 
 func TestNormalizeApartment(t *testing.T) {

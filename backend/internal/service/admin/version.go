@@ -1,8 +1,9 @@
 package admin
 
 import (
-	"backend/internal/models"
 	"strings"
+
+	"backend/internal/models"
 )
 
 const (

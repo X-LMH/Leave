@@ -1,14 +1,15 @@
 package admin
 
 import (
-	"backend/internal/config"
-	"backend/internal/dao/mysql"
-	adminservice "backend/internal/service/admin"
-	"github.com/gin-gonic/gin"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
+	"backend/internal/config"
+	"backend/internal/dao/mysql"
+	adminservice "backend/internal/service/admin"
+
+	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
 

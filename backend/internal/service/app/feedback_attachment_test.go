@@ -1,9 +1,6 @@
 package app
 
 import (
-	"backend/internal/config"
-	"backend/internal/dao/mysql"
-	"backend/internal/models"
 	"bytes"
 	"encoding/json"
 	"errors"
@@ -14,6 +11,10 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"backend/internal/config"
+	"backend/internal/dao/mysql"
+	"backend/internal/models"
 
 	"go.uber.org/zap"
 )

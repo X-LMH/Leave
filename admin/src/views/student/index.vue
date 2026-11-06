@@ -259,7 +259,8 @@ function confirmResetPassword(row: Pick<StudentListItem, 'id' | 'studentId'>) {
     positiveText: '重置密码',
     negativeText: '取消',
     onPositiveClick: async () => {
-      if (editing.value || opening.value || saving.value || resettingPassword.value || changingId.value !== null) return false;
+      if (editing.value || opening.value || saving.value || resettingPassword.value || changingId.value !== null)
+        return false;
       resettingPassword.value = true;
       try {
         const { error } = await resetStudentPassword(id);
@@ -617,7 +618,10 @@ void reload();
               >
                 {{ selected.status === 1 ? '停用账号' : '启用账号' }}
               </NButton>
-              <NButton :disabled="saving || resettingPassword" @click="editing ? (editing = false) : (drawerVisible = false)">
+              <NButton
+                :disabled="saving || resettingPassword"
+                @click="editing ? (editing = false) : (drawerVisible = false)"
+              >
                 {{ editing ? '取消编辑' : '关闭' }}
               </NButton>
               <NButton v-if="editing" type="primary" :loading="saving" @click="submit">保存修改</NButton>

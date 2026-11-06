@@ -1,6 +1,12 @@
 package middleware
 
 import (
+	"context"
+	"encoding/json"
+	"errors"
+	"net/http/httptest"
+	"testing"
+
 	"backend/internal/config"
 	"backend/internal/dao/mysql"
 	redisdao "backend/internal/dao/redis"
@@ -10,11 +16,6 @@ import (
 	"backend/internal/session"
 	"backend/internal/testutil/sessiontest"
 	"backend/internal/utils/jwt"
-	"context"
-	"encoding/json"
-	"errors"
-	"net/http/httptest"
-	"testing"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"

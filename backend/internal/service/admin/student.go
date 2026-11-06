@@ -1,6 +1,10 @@
 package admin
 
 import (
+	"errors"
+	"strings"
+	"unicode/utf8"
+
 	"backend/internal/config"
 	"backend/internal/dao/mysql"
 	"backend/internal/dto"
@@ -9,9 +13,6 @@ import (
 	"backend/internal/utils/file"
 	passwordutil "backend/internal/utils/password"
 	"backend/internal/utils/validator"
-	"errors"
-	"strings"
-	"unicode/utf8"
 
 	"go.uber.org/zap"
 	"gorm.io/gorm"

@@ -1,17 +1,18 @@
 package middleware
 
 import (
-	redisdao "backend/internal/dao/redis"
-	"backend/internal/dto"
-	requestlog "backend/internal/logger"
-	"backend/internal/request"
-	"backend/internal/response"
 	"context"
 	"fmt"
 	"net/netip"
 	"strconv"
 	"strings"
 	"time"
+
+	redisdao "backend/internal/dao/redis"
+	"backend/internal/dto"
+	requestlog "backend/internal/logger"
+	"backend/internal/request"
+	"backend/internal/response"
 
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"

@@ -1,9 +1,10 @@
 package app
 
 import (
-	"backend/internal/models"
 	"reflect"
 	"testing"
+
+	"backend/internal/models"
 )
 
 func TestAppVersionResponse(t *testing.T) {

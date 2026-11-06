@@ -1,13 +1,14 @@
 package redis
 
 import (
-	"backend/internal/config"
 	"context"
 	"errors"
 	"fmt"
 	"net"
 	"strconv"
 	"time"
+
+	"backend/internal/config"
 
 	"github.com/redis/go-redis/v9"
 )

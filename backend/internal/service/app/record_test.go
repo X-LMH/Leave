@@ -1,10 +1,11 @@
 package app
 
 import (
-	"backend/internal/dto"
-	"backend/internal/models"
 	"testing"
 	"time"
+
+	"backend/internal/dto"
+	"backend/internal/models"
 )
 
 func TestValidateAndNormalizeRecordRequest(t *testing.T) {

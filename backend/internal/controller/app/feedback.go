@@ -1,16 +1,17 @@
 package app
 
 import (
-	"backend/internal/dto"
-	logutil "backend/internal/logger"
-	"backend/internal/request"
-	"backend/internal/response"
-	appservice "backend/internal/service/app"
 	"errors"
 	"fmt"
 	"mime/multipart"
 	"net/http"
 	"strconv"
+
+	"backend/internal/dto"
+	logutil "backend/internal/logger"
+	"backend/internal/request"
+	"backend/internal/response"
+	appservice "backend/internal/service/app"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"

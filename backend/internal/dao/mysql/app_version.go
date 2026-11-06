@@ -1,9 +1,10 @@
 package mysql
 
 import (
+	"errors"
+
 	"backend/internal/dto"
 	"backend/internal/models"
-	"errors"
 
 	"gorm.io/gorm"
 )
@@ -58,8 +59,14 @@ func (s *DAO) GetCurrentAppVersion(platform string) (*models.AppVersion, error) 
 
 func (s *DAO) GetAppVersionUpdates(platform string, versionCode int) ([]models.AppVersion, error) {
 	var versions []models.AppVersion
-	err := s.db.Where("platform = ? AND version_code > ? AND status IN ?", platform, versionCode, []string{models.AppVersionStatusPublished, models.AppVersionStatusArchived}).
-		Order("version_code ASC").Find(&versions).Error
+	err := s.db.Where(
+		"platform = ? AND version_code > ? AND status IN ?",
+		platform,
+		versionCode,
+		[]string{models.AppVersionStatusPublished, models.AppVersionStatusArchived},
+	).
+		Order("version_code ASC").
+		Find(&versions).Error
 	return versions, err
 }
 

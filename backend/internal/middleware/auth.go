@@ -1,6 +1,9 @@
 package middleware
 
 import (
+	"errors"
+	"strings"
+
 	"backend/internal/dao/mysql"
 	requestlog "backend/internal/logger"
 	"backend/internal/models"
@@ -8,8 +11,6 @@ import (
 	"backend/internal/response"
 	"backend/internal/session"
 	"backend/internal/utils/jwt"
-	"errors"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"

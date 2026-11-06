@@ -438,7 +438,6 @@ test('feedback does not create URLs for partially loaded details after unmount',
   assert.equal(urls.created.length, 0);
 });
 
-
 test('feedback handling filter applies on query and resets to all statuses', async () => {
   const { page } = loadPage('feedback', pageApi('feedback'));
   await settle();

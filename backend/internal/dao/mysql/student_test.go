@@ -1,11 +1,12 @@
 package mysql
 
 import (
-	"backend/internal/dto"
-	"backend/internal/models"
 	"errors"
 	"testing"
 	"time"
+
+	"backend/internal/dto"
+	"backend/internal/models"
 
 	"gorm.io/gorm"
 )

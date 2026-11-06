@@ -1,10 +1,11 @@
 package admin
 
 import (
-	"backend/internal/dto"
-	"backend/internal/models"
 	"reflect"
 	"testing"
+
+	"backend/internal/dto"
+	"backend/internal/models"
 )
 
 func TestNormalizeAppVersionQuery(t *testing.T) {

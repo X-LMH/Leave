@@ -2,8 +2,9 @@ package jwt
 
 import (
 	"errors"
-	jwt "github.com/golang-jwt/jwt/v5"
 	"time"
+
+	jwt "github.com/golang-jwt/jwt/v5"
 )
 
 // Manager 保存当前应用实例的签名配置，供登录和鉴权共同使用。

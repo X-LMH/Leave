@@ -1,6 +1,12 @@
 package app
 
 import (
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+
 	"backend/internal/config"
 	"backend/internal/dao/mysql"
 	"backend/internal/request"
@@ -8,11 +14,6 @@ import (
 	appservice "backend/internal/service/app"
 	"backend/internal/testutil"
 	"backend/internal/testutil/sessiontest"
-	"encoding/json"
-	"net/http"
-	"net/http/httptest"
-	"strings"
-	"testing"
 
 	"github.com/gin-gonic/gin"
 	drivermysql "github.com/go-sql-driver/mysql"

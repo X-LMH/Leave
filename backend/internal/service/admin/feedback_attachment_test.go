@@ -1,16 +1,10 @@
 package admin
 
 import (
-	"backend/internal/config"
-	"backend/internal/dao/mysql"
-	"backend/internal/dto"
-	"backend/internal/models"
-	appservice "backend/internal/service/app"
 	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"gorm.io/gorm"
 	"image"
 	"image/png"
 	"mime/multipart"
@@ -19,7 +13,14 @@ import (
 	"path/filepath"
 	"testing"
 
+	"backend/internal/config"
+	"backend/internal/dao/mysql"
+	"backend/internal/dto"
+	"backend/internal/models"
+	appservice "backend/internal/service/app"
+
 	"go.uber.org/zap"
+	"gorm.io/gorm"
 )
 
 func TestFeedbackAttachmentPaths(t *testing.T) {

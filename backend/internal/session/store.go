@@ -2,9 +2,6 @@
 package session
 
 import (
-	"backend/internal/config"
-	redisdao "backend/internal/dao/redis"
-	"backend/internal/models"
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
@@ -14,6 +11,10 @@ import (
 	"errors"
 	"strings"
 	"time"
+
+	"backend/internal/config"
+	redisdao "backend/internal/dao/redis"
+	"backend/internal/models"
 )
 
 // 登录来源独立于账号角色，管理员也可以通过 App 建立会话。

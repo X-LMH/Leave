@@ -12,21 +12,33 @@ test('hidden record panel stops restoring later pages and can refresh after retu
     exports: {},
     uni: { getSystemInfoSync: () => ({ windowWidth: 400 }) },
     defineProps: () => ({ active: true }),
-    defineExpose: exposed => { panel = exposed; },
-    require: name => name === 'vue' ? {
-      ref: value => ({ value }),
-      onUnmounted: () => {},
-      watch: (_source, callback) => { setActive = callback; callback(true); }
-    } : {
-      getCurrentUser: () => ({ student_id: 'student' }),
-      getRecords: page => new Promise(resolve => requests.push({ page, resolve }))
-    }
+    defineExpose: exposed => {
+      panel = exposed;
+    },
+    require: name =>
+      name === 'vue'
+        ? {
+            ref: value => ({ value }),
+            onUnmounted: () => {},
+            watch: (_source, callback) => {
+              setActive = callback;
+              callback(true);
+            }
+          }
+        : {
+            getCurrentUser: () => ({ student_id: 'student' }),
+            getRecords: page => new Promise(resolve => requests.push({ page, resolve }))
+          }
   };
   const source = readFileSync(new URL('../../frontend/components/RecordsTabContent.uvue', import.meta.url), 'utf8')
-    .split('<script setup lang="uts">')[1].split('</script>')[0];
-  vm.runInNewContext(ts.transpileModule(source, {
-    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }
-  }).outputText, context);
+    .split('<script setup lang="uts">')[1]
+    .split('</script>')[0];
+  vm.runInNewContext(
+    ts.transpileModule(source, {
+      compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }
+    }).outputText,
+    context
+  );
   vm.runInNewContext('currentPage.value = 3', context);
   panel.refresh();
   assert.equal(requests.length, 1);
