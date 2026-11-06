@@ -390,10 +390,6 @@ function openEdit() {
 	uni.navigateTo({ url: '/pages/profile/edit' })
 }
 
-function openRecords() {
-	uni.navigateTo({ url: '/pages/leave/records' })
-}
-
 function openFeedback() {
 	uni.navigateTo({ url: '/pages/profile/feedback' })
 }
