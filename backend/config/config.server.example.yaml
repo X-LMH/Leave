@@ -33,11 +33,6 @@ mysql:
   user: leave_list
   password: ""
 
-# 仅保留旧实现配置，当前服务不使用 JWT，也不要求 JWT_SECRET。
-jwt:
-  secret: ""
-  expiration_days: 30
-
 session:
   student_ttl: 720h
   admin_ttl: 8h

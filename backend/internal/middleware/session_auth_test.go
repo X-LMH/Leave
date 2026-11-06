@@ -15,7 +15,6 @@ import (
 	"backend/internal/response"
 	"backend/internal/session"
 	"backend/internal/testutil/sessiontest"
-	"backend/internal/utils/jwt"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -100,10 +99,8 @@ func TestSessionAuthentication(t *testing.T) {
 	}
 	call("", response.CodeNeedLogin)
 	call(token, response.CodeSuccess) // An admin App session can access management APIs.
-	legacy, err := jwt.NewManager("legacy-test", 1).GenerateToken("admin", models.RoleAdmin)
-	if err != nil {
-		t.Fatal(err)
-	}
+	// 固定的旧 JWT 样例，仅验证会话认证拒绝旧格式，不再依赖 JWT 签发实现。
+	const legacy = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdHVkZW50X2lkIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJleHAiOjQxMDI0NDQ4MDB9.BVnNuiNNK6y7MOXEWcPynVITgpJZItJRmoA6KNImAMw"
 	call(legacy, response.CodeInvalidToken)
 	user.Status = models.UserStatusDisabled
 	user.AuthVersion++

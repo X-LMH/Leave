@@ -211,7 +211,7 @@ main() {
   set +a
   # Viper's automatic environment lookup must not redirect migrations to another DB.
   unset MYSQL_HOST MYSQL_PORT MYSQL_DATABASE MYSQL_USER
-  test -n "${MYSQL_PASSWORD:-}" && test -n "${JWT_SECRET:-}"
+  test -n "${MYSQL_PASSWORD:-}"
   BACKUP="$APP_ROOT/backups/deploy/$RUN_ID-$(date +%s%N)"
   mkdir -p "$BACKUP"
   PHASE=preflight

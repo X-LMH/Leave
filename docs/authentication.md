@@ -1,6 +1,6 @@
 # 认证与会话
 
-App、Web 管理端使用 32 字节随机数编码的 Base64URL Token，通过 `Authorization: Bearer <token>` 发送。JWT 工具及独立测试保留，服务不再装配 JWT，也不要求 JWT 密钥。
+App、Web 管理端使用 32 字节随机数编码的 Base64URL Token，通过 `Authorization: Bearer <token>` 发送。服务仅使用 Redis 会话认证；旧 JWT 实现、配置和签名依赖已移除。
 
 ## 存储与鉴权
 

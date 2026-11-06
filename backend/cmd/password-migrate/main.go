@@ -64,7 +64,7 @@ func run(args []string, out io.Writer) error {
 	return migrate(db, *apply, out)
 }
 
-// 只读取数据库配置，不要求 JWT、上传目录等服务配置。
+// 只读取数据库配置，不要求会话、上传目录等服务配置。
 func readDatabaseConfig(path string) (*driver.Config, error) {
 	v := viper.New()
 	v.SetConfigFile(path)

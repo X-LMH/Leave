@@ -29,7 +29,6 @@ func TestLoadRedisConfig(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Chdir(t.TempDir())
 			t.Setenv("MYSQL_PASSWORD", "test-password")
-			t.Setenv("JWT_SECRET", "test-secret")
 			t.Setenv("REDIS_PASSWORD", tt.password)
 			if tt.password == "" && !tt.keepEmptyEnv {
 				if err := os.Unsetenv("REDIS_PASSWORD"); err != nil {
@@ -39,7 +38,7 @@ func TestLoadRedisConfig(t *testing.T) {
 			if err := os.Mkdir("config", 0755); err != nil {
 				t.Fatal(err)
 			}
-			content := "jwt:\n  expiration_days: 30\nstorage:\n  root_dir: ./uploads\n  base_url: /uploads\napp:\n  namespace: test\n  port: 10000\nsession:\n  student_ttl: 720h\n  admin_ttl: 8h\n" + tt.yaml
+			content := "storage:\n  root_dir: ./uploads\n  base_url: /uploads\napp:\n  namespace: test\n  port: 10000\nsession:\n  student_ttl: 720h\n  admin_ttl: 8h\n" + tt.yaml
 			if err := os.WriteFile("config/config.local.yaml", []byte(content), 0600); err != nil {
 				t.Fatal(err)
 			}

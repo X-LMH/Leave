@@ -58,7 +58,7 @@
 
 ```text
 config/                             # 服务器 YAML，不随发布覆盖
-.env                                # MYSQL_PASSWORD、REDIS_PASSWORD（JWT_SECRET 仅旧实现使用），不上传
+.env                                # MYSQL_PASSWORD、REDIS_PASSWORD，不上传
 admin/current -> releases/vN/
 admin/releases/vN/                  # index.html、assets 等
 packages/android/                   # 保留历史 APK

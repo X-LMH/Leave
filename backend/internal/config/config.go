@@ -11,11 +11,6 @@ import (
 )
 
 // 配置按启动时加载的实例传递，各组件只接收需要的部分。
-type JWTConfig struct {
-	Secret         string `mapstructure:"secret"`
-	ExpirationDays int    `mapstructure:"expiration_days"`
-}
-
 type SessionConfig struct {
 	StudentTTL time.Duration `mapstructure:"student_ttl"`
 	AdminTTL   time.Duration `mapstructure:"admin_ttl"`
@@ -53,7 +48,6 @@ type Config struct {
 	Session SessionConfig `mapstructure:"session"`
 	Redis   RedisConfig   `mapstructure:"redis"`
 	Log     LogConfig     `mapstructure:"log"`
-	JWT     JWTConfig     `mapstructure:"jwt"`
 	Mysql   MySQLConfig   `mapstructure:"mysql"`
 	App     AppConfig     `mapstructure:"app"`
 	Storage StorageConfig `mapstructure:"storage"`
@@ -76,7 +70,6 @@ func Load() (Config, error) {
 	for _, binding := range [][2]string{
 		{"mysql.password", "MYSQL_PASSWORD"},
 		{"redis.password", "REDIS_PASSWORD"},
-		{"jwt.secret", "JWT_SECRET"},
 	} {
 		if err := v.BindEnv(binding[0], binding[1]); err != nil {
 			return Config{}, fmt.Errorf("绑定环境变量失败: %w", err)
@@ -92,7 +85,6 @@ func Load() (Config, error) {
 	if err := v.Unmarshal(&cfg); err != nil {
 		return Config{}, fmt.Errorf("解析配置失败: %w", err)
 	}
-	cfg.JWT.Secret = strings.TrimSpace(cfg.JWT.Secret)
 	cfg.Redis.Host = strings.TrimSpace(cfg.Redis.Host)
 	cfg.App.Namespace = strings.TrimSpace(cfg.App.Namespace)
 	cfg.App.PackageDir = strings.TrimSpace(cfg.App.PackageDir)

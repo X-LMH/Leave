@@ -37,12 +37,6 @@ mysql:
   user: root
   password: ""
 
-# JWT 配置仅保留给旧实现，当前服务不再使用。
-jwt:
-  # 当前服务不要求配置 JWT_SECRET。
-  secret: ""
-  expiration_days: 30
-
 session:
   student_ttl: 720h
   admin_ttl: 8h

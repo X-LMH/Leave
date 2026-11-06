@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestFindConfigFile(t *testing.T) {
@@ -57,11 +58,10 @@ func TestLoadLogConfig(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Chdir(t.TempDir())
 			t.Setenv("MYSQL_PASSWORD", "test-password")
-			t.Setenv("JWT_SECRET", "test-secret")
 			if err := os.Mkdir("config", 0755); err != nil {
 				t.Fatal(err)
 			}
-			content := "redis:\n  host: localhost\n  port: 6379\njwt:\n  expiration_days: 30\nstorage:\n  root_dir: ./uploads\n  base_url: /uploads\napp:\n  namespace: test\n  port: 10000\nsession:\n  student_ttl: 720h\n  admin_ttl: 8h\n" + tt.logYAML
+			content := "redis:\n  host: localhost\n  port: 6379\nstorage:\n  root_dir: ./uploads\n  base_url: /uploads\napp:\n  namespace: test\n  port: 10000\nsession:\n  student_ttl: 720h\n  admin_ttl: 8h\n" + tt.logYAML
 			if err := os.WriteFile("config/config.local.yaml", []byte(content), 0600); err != nil {
 				t.Fatal(err)
 			}
@@ -80,11 +80,10 @@ func TestInitReadsTestConfig(t *testing.T) {
 
 	t.Chdir(t.TempDir())
 	t.Setenv("MYSQL_PASSWORD", "test-password")
-	t.Setenv("JWT_SECRET", "test-secret")
 	if err := os.Mkdir("config", 0755); err != nil {
 		t.Fatal(err)
 	}
-	content := "redis:\n  host: localhost\n  port: 6379\napp:\n  namespace: test\n  port: 9000\nmysql:\n  database: leave_list_test\njwt:\n  expiration_days: 30\nstorage:\n  root_dir: ./uploads\n  base_url: /api/v1/uploads\nsession:\n  student_ttl: 720h\n  admin_ttl: 8h\n"
+	content := "redis:\n  host: localhost\n  port: 6379\napp:\n  namespace: test\n  port: 9000\nmysql:\n  database: leave_list_test\nstorage:\n  root_dir: ./uploads\n  base_url: /api/v1/uploads\nsession:\n  student_ttl: 720h\n  admin_ttl: 8h\n"
 	if err := os.WriteFile("config/config.test.yaml", []byte(content), 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -105,14 +104,14 @@ func TestInitFromReleaseDirectory(t *testing.T) {
 			if err := os.Mkdir(filepath.Join(root, "config"), 0755); err != nil {
 				t.Fatal(err)
 			}
-			content := "redis:\n  host: localhost\n  port: 6379\napp:\n  namespace: test\n  port: 9000\nmysql:\n  database: leave_list_test\njwt:\n  expiration_days: 30\nstorage:\n  root_dir: /test/uploads\n  base_url: /api/v1/uploads\nsession:\n  student_ttl: 720h\n  admin_ttl: 8h\n"
+			content := "redis:\n  host: localhost\n  port: 6379\napp:\n  namespace: test\n  port: 9000\nmysql:\n  database: leave_list_test\nstorage:\n  root_dir: /test/uploads\n  base_url: /api/v1/uploads\nsession:\n  student_ttl: 720h\n  admin_ttl: 8h\n"
 			if err := os.WriteFile(filepath.Join(root, "config/config.test.yaml"), []byte(content), 0600); err != nil {
 				t.Fatal(err)
 			}
-			if err := os.WriteFile(filepath.Join(root, ".env"), []byte("MYSQL_PASSWORD=release-password\nREDIS_PASSWORD=redis-release-password\nJWT_SECRET=release-secret\n"), 0600); err != nil {
+			if err := os.WriteFile(filepath.Join(root, ".env"), []byte("MYSQL_PASSWORD=release-password\nREDIS_PASSWORD=redis-release-password\n"), 0600); err != nil {
 				t.Fatal(err)
 			}
-			for _, key := range []string{"MYSQL_PASSWORD", "REDIS_PASSWORD", "JWT_SECRET"} {
+			for _, key := range []string{"MYSQL_PASSWORD", "REDIS_PASSWORD"} {
 				t.Setenv(key, "")
 				if err := os.Unsetenv(key); err != nil {
 					t.Fatal(err)
@@ -127,7 +126,7 @@ func TestInitFromReleaseDirectory(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if cfg.Mysql.Database != "leave_list_test" || cfg.Mysql.Password != "release-password" || cfg.Redis.Password != "redis-release-password" || cfg.JWT.Secret != "release-secret" {
+			if cfg.Mysql.Database != "leave_list_test" || cfg.Mysql.Password != "release-password" || cfg.Redis.Password != "redis-release-password" {
 				t.Fatal("release directory did not load root test YAML and .env")
 			}
 		})
@@ -136,7 +135,6 @@ func TestInitFromReleaseDirectory(t *testing.T) {
 
 func TestInitValidatesStorage(t *testing.T) {
 	t.Setenv("MYSQL_PASSWORD", "test-password")
-	t.Setenv("JWT_SECRET", "test-secret")
 	tests := []struct {
 		name      string
 		root      string
@@ -156,7 +154,7 @@ func TestInitValidatesStorage(t *testing.T) {
 			if err := os.Mkdir("config", 0755); err != nil {
 				t.Fatal(err)
 			}
-			content := fmt.Sprintf("app:\n  namespace: test\n  port: 10000\nsession:\n  student_ttl: 720h\n  admin_ttl: 8h\nredis:\n  host: localhost\n  port: 6379\njwt:\n  expiration_days: 30\nstorage:\n  root_dir: %q\n  base_url: %q\n", tt.root, tt.base)
+			content := fmt.Sprintf("app:\n  namespace: test\n  port: 10000\nsession:\n  student_ttl: 720h\n  admin_ttl: 8h\nredis:\n  host: localhost\n  port: 6379\nstorage:\n  root_dir: %q\n  base_url: %q\n", tt.root, tt.base)
 			if err := os.WriteFile("config/config.local.yaml", []byte(content), 0600); err != nil {
 				t.Fatal(err)
 			}
@@ -177,12 +175,11 @@ func TestInitValidatesStorage(t *testing.T) {
 func TestLoadKeepsIndependentConfiguration(t *testing.T) {
 	t.Chdir(t.TempDir())
 	t.Setenv("MYSQL_PASSWORD", "environment-password")
-	t.Setenv("JWT_SECRET", "environment-secret")
 	if err := os.Mkdir("config", 0755); err != nil {
 		t.Fatal(err)
 	}
 	path := "config/config.local.yaml"
-	firstYAML := "redis:\n  host: localhost\n  port: 6379\napp:\n  namespace: test\n  port: 9001\n  package_dir: ./first-apks\nmysql:\n  password: yaml-password\njwt:\n  secret: yaml-secret\n  expiration_days: 1\nstorage:\n  root_dir: ./first\n  base_url: /first\nsession:\n  student_ttl: 720h\n  admin_ttl: 8h\n"
+	firstYAML := "redis:\n  host: localhost\n  port: 6379\napp:\n  namespace: test\n  port: 9001\n  package_dir: ./first-apks\nmysql:\n  password: yaml-password\nstorage:\n  root_dir: ./first\n  base_url: /first\nsession:\n  student_ttl: 720h\n  admin_ttl: 1h\n"
 	if err := os.WriteFile(path, []byte(firstYAML), 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -190,7 +187,7 @@ func TestLoadKeepsIndependentConfiguration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	secondYAML := "redis:\n  host: localhost\n  port: 6379\njwt:\n  expiration_days: 7\nstorage:\n  root_dir: ./second\n  base_url: /second\napp:\n  namespace: test\n  port: 10000\nsession:\n  student_ttl: 720h\n  admin_ttl: 8h\n"
+	secondYAML := "redis:\n  host: localhost\n  port: 6379\nstorage:\n  root_dir: ./second\n  base_url: /second\napp:\n  namespace: test\n  port: 10000\nsession:\n  student_ttl: 720h\n  admin_ttl: 2h\n"
 	if err := os.WriteFile(path, []byte(secondYAML), 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -198,14 +195,14 @@ func TestLoadKeepsIndependentConfiguration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if first.App.Port != 9001 || first.App.PackageDir != "./first-apks" || first.Storage.RootDir != "./first" || first.Storage.BaseURL != "/first" || first.JWT.ExpirationDays != 1 {
+	if first.App.Port != 9001 || first.App.PackageDir != "./first-apks" || first.Storage.RootDir != "./first" || first.Storage.BaseURL != "/first" || first.Session.AdminTTL != time.Hour {
 		t.Fatal("loading another configuration changed the first instance")
 	}
-	if second.App.Port != 10000 || second.App.PackageDir != "" || second.Storage.RootDir != "./second" || second.JWT.ExpirationDays != 7 {
+	if second.App.Port != 10000 || second.App.PackageDir != "" || second.Storage.RootDir != "./second" || second.Session.AdminTTL != 2*time.Hour {
 		t.Fatal("second load retained settings from the first load")
 	}
 	for _, cfg := range []Config{first, second} {
-		if cfg.Mysql.Password != "environment-password" || cfg.JWT.Secret != "environment-secret" {
+		if cfg.Mysql.Password != "environment-password" {
 			t.Fatal("environment overrides were not preserved")
 		}
 	}

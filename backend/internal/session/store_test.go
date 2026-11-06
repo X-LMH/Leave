@@ -15,7 +15,6 @@ import (
 	"backend/internal/models"
 	"backend/internal/session"
 	"backend/internal/testutil/sessiontest"
-	"backend/internal/utils/jwt"
 )
 
 func TestSessionLifecycle(t *testing.T) {
@@ -115,10 +114,8 @@ func TestSessionRejectsInvalidDataAndUnavailableStorage(t *testing.T) {
 	if _, err := s.Get(ctx, token); !errors.Is(err, session.ErrInvalid) {
 		t.Fatal("expired Redis key accepted", err)
 	}
-	legacy, err := jwt.NewManager("test-only", 1).GenerateToken("admin", "admin")
-	if err != nil {
-		t.Fatal(err)
-	}
+	// 固定的旧 JWT 样例，仅验证会话认证拒绝旧格式，不再依赖 JWT 签发实现。
+	const legacy = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdHVkZW50X2lkIjoiYWRtaW4iLCJyb2xlIjoiYWRtaW4iLCJleHAiOjQxMDI0NDQ4MDB9.BVnNuiNNK6y7MOXEWcPynVITgpJZItJRmoA6KNImAMw"
 	for _, invalid := range []string{"", "bad", legacy, token + "extra"} {
 		if _, err := s.Get(ctx, invalid); !errors.Is(err, session.ErrInvalid) {
 			t.Fatal("invalid token accepted")

@@ -16,7 +16,8 @@ func TestSessionConfiguration(t *testing.T) {
 		yaml      string
 		wantError string
 	}{
-		{name: "explicit without JWT", yaml: appYAML + sessionYAML},
+		{name: "explicit session configuration", yaml: appYAML + sessionYAML},
+		{name: "obsolete configuration keys are ignored", yaml: appYAML + sessionYAML + "jwt:\n  secret: obsolete\n  expiration_days: invalid\n"},
 		{name: "missing namespace", yaml: "app:\n  port: 8080\n" + sessionYAML, wantError: "app.namespace"},
 		{name: "empty namespace", yaml: "app:\n  namespace: ''\n  port: 8080\n" + sessionYAML, wantError: "app.namespace"},
 		{name: "ambiguous namespace", yaml: "app:\n  namespace: 'test:auth'\n  port: 8080\n" + sessionYAML, wantError: "app.namespace"},
@@ -32,7 +33,6 @@ func TestSessionConfiguration(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Chdir(t.TempDir())
 			t.Setenv("MYSQL_PASSWORD", "isolated-test-password")
-			t.Setenv("JWT_SECRET", "")
 			if err := os.Mkdir("config", 0755); err != nil {
 				t.Fatal(err)
 			}

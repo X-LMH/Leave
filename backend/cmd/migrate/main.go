@@ -28,8 +28,7 @@ const (
 
 // main initializes the database schema from the versioned table definitions.
 // It intentionally does not use the application config initializer because a
-// database migration must not require unrelated application settings such as
-// the JWT secret.
+// database migration must not require unrelated HTTP or session settings.
 func main() {
 	loadDotEnv()
 

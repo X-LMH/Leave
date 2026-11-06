@@ -33,7 +33,7 @@ chmod +x scripts/password-migrate
 ./scripts/password-migrate -config config/config.server.yaml -env .env
 ```
 
-只要求 MySQL 配置，不需要 JWT 或上传目录设置。`MYSQL_PASSWORD` 环境变量优先于 YAML；`.env` 不覆盖进程已有环境变量。默认读取当前目录 `.env`，不存在时使用已有环境变量或 YAML，也可以用 `-env ""` 跳过文件加载。必须显式指定 `-config`，避免自动选择错误环境。
+只要求 MySQL 配置，不需要会话或上传目录设置。`MYSQL_PASSWORD` 环境变量优先于 YAML；`.env` 不覆盖进程已有环境变量。默认读取当前目录 `.env`，不存在时使用已有环境变量或 YAML，也可以用 `-env ""` 跳过文件加载。必须显式指定 `-config`，避免自动选择错误环境。
 
 ## 行为与恢复
 

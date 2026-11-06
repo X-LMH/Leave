@@ -84,8 +84,6 @@ func TestRegisterIntegration(t *testing.T) {
 	settings.Mysql.Database = schema
 	settings.Mysql.User = cfg.User
 	settings.Mysql.Password = cfg.Passwd
-	settings.JWT.Secret = "isolated-register-test"
-	settings.JWT.ExpirationDays = 1
 	db, err := mysql.Open(settings.Mysql)
 	if err != nil {
 		t.Fatal("cannot open isolated database")

@@ -36,7 +36,7 @@ func TestChangePasswordValidationAndRole(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			r := gin.New()
-			// Set the context normally populated by JWT middleware; no database needed.
+			// Set the context normally populated by session middleware; no database needed.
 			r.Use(func(c *gin.Context) {
 				c.Set(request.CtxStuID, "test-admin")
 				c.Set(request.CtxRole, tc.role)

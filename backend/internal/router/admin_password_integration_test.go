@@ -86,9 +86,6 @@ func TestAdminPasswordIntegration(t *testing.T) {
 	if err := testDB.Exec(string(definition)).Error; err != nil {
 		t.Fatal(err)
 	}
-
-	settings.JWT.Secret = "isolated-password-test"
-	settings.JWT.ExpirationDays = 1
 	dao = mysql.NewDAO(testDB, zap.NewNop())
 	initialHash, err := passwordutil.Hash("old-pass")
 	if err != nil {

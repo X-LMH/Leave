@@ -1,6 +1,6 @@
 # 上传头像
 
-`POST /api/v1/profile/avatar`，沿用现有版本校验和 JWT 登录校验。
+`POST /api/v1/profile/avatar`，沿用现有版本校验和 Redis 会话登录校验。
 
 请求使用 `multipart/form-data`，文件字段为 `file`，一次上传一个文件。
 支持 JPEG、PNG，最大 5 MiB，宽高分别不超过 4096 像素。

@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"errors"
-	"strings"
 
 	"backend/internal/dao/mysql"
 	requestlog "backend/internal/logger"
@@ -10,76 +9,10 @@ import (
 	"backend/internal/request"
 	"backend/internal/response"
 	"backend/internal/session"
-	"backend/internal/utils/jwt"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
-
-// JWTAuthMiddleware jwt认证中间件
-func JWTAuthMiddleware(tokens *jwt.Manager, dao *mysql.DAO, logger *zap.Logger) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		// 获取请求头中的Authorization
-		authHeader := c.GetHeader(session.AuthorizationHeader)
-
-		// 不含有请求头
-		if authHeader == "" {
-			response.Error(c, response.CodeNeedLogin)
-			c.Abort() // 终止请求链，不再执行后续处理
-			return
-		}
-
-		// 分析请求头
-		parts := strings.SplitN(authHeader, " ", 2)
-		if !(len(parts) == 2 && parts[0] == "Bearer") {
-			// 格式错误，返回401
-			response.Error(c, response.CodeInvalidToken)
-			c.Abort()
-			return
-		}
-
-		// 解析JWT令牌
-		claims, err := tokens.ParseToken(parts[1]) // parts[1]是提取出的令牌字符串
-		if err != nil {
-			response.Error(c, response.CodeInvalidToken)
-			c.Abort()
-			return
-		}
-		if err := dao.EnsureUserActive(claims.StudentID); err != nil {
-			if !errors.Is(err, mysql.ErrorUserNotExist) && !errors.Is(err, mysql.ErrorUserDisabled) {
-				logger.With(requestlog.RequestFields(c)...).Error("查询认证用户状态失败",
-					zap.String("operation", "auth.ensure_user_active"),
-					requestlog.Error(err),
-				)
-			}
-			response.Error(c, response.CodeNeedLogin)
-			c.Abort()
-			return
-		}
-		if claims.Role == models.RoleAdmin {
-			// 角色可能在令牌签发后变更，管理员声明须与数据库当前角色一致。
-			user, err := dao.FindUserByStudentID(claims.StudentID)
-			if err != nil && !errors.Is(err, mysql.ErrorUserNotExist) {
-				logger.With(requestlog.RequestFields(c)...).Error("查询管理员身份失败",
-					zap.String("operation", "auth.find_admin"),
-					requestlog.Error(err),
-				)
-			}
-			if err != nil || user.Role != models.RoleAdmin || user.Status != models.UserStatusActive {
-				response.Error(c, response.CodeNeedLogin)
-				c.Abort()
-				return
-			}
-		}
-
-		// 令牌验证通过，将用户信息存入上下文
-		c.Set(request.CtxStuID, claims.StudentID)
-		c.Set(request.CtxRole, claims.Role)
-
-		// 继续执行后续的处理函数（如业务逻辑）
-		c.Next()
-	}
-}
 
 // AdminAuthMiddleware 仅允许管理员访问受保护的管理端接口。
 func AdminAuthMiddleware() gin.HandlerFunc {
