@@ -245,3 +245,8 @@ git commit -m "db: add app version channel"
 - [ ] 是否已经运行相关测试？
 
 生产环境的 migration 应由发布流程统一执行，不建议通过手工修改线上数据库完成结构变更。
+
+
+### 分类更新说明
+
+当前发布配置统一位于 `deploy/release.yaml`。`app.android.release_notes` 支持 features、improvements、bug_fixes、notices 四类字符串数组，也兼容历史数组。新说明直接以 JSON 对象保存到现有 `app_versions.release_notes` 列；无需每次发版创建 migration。000014 只变更字段注释，不转换旧数据；down 也不会恢复旧后端对 JSON 数组的假设。接口保留展开数组并新增分类字段，详见 [版本接口说明](../docs/app-version.md)。

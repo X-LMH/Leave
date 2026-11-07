@@ -47,10 +47,11 @@ type OverviewRecord struct {
 }
 
 type OverviewVersion struct {
-	VersionName  string    `json:"version_name"`
-	VersionCode  int       `json:"version_code"`
-	PublishedAt  time.Time `json:"published_at"`
-	ReleaseNotes []string  `json:"release_notes"`
+	VersionName         string               `json:"version_name"`
+	VersionCode         int                  `json:"version_code"`
+	PublishedAt         time.Time            `json:"published_at"`
+	ReleaseNotes        []string             `json:"release_notes"`
+	ReleaseNotesGrouped *ReleaseNotesGrouped `json:"release_notes_grouped"`
 }
 
 type AdminOverview struct {

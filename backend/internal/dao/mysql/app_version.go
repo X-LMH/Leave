@@ -57,6 +57,7 @@ func (s *DAO) GetCurrentAppVersion(platform string) (*models.AppVersion, error) 
 	return version, nil
 }
 
+// GetAppVersionUpdates returns relevant release notes from newest to oldest.
 func (s *DAO) GetAppVersionUpdates(platform string, versionCode int) ([]models.AppVersion, error) {
 	var versions []models.AppVersion
 	err := s.db.Where(
@@ -65,7 +66,7 @@ func (s *DAO) GetAppVersionUpdates(platform string, versionCode int) ([]models.A
 		versionCode,
 		[]string{models.AppVersionStatusPublished, models.AppVersionStatusArchived},
 	).
-		Order("version_code ASC").
+		Order("version_code DESC").
 		Find(&versions).Error
 	return versions, err
 }

@@ -1,13 +1,13 @@
 package app
 
 import (
-	"encoding/json"
 	"errors"
 	"strings"
 
 	"backend/internal/dao/mysql"
 	"backend/internal/dto"
 	"backend/internal/models"
+	"backend/internal/service/common"
 
 	"go.uber.org/zap"
 )
@@ -43,10 +43,16 @@ func (a *AppVersionService) GetCurrentAppVersion(platform string, currentVersion
 		Updates:           make([]dto.AppVersionUpdate, 0, len(updates)),
 	}
 	for _, update := range updates {
+		notes, grouped, parseErr := common.ParseReleaseNotes(update.ReleaseNotes)
+		if parseErr != nil {
+			a.logger.Warn("Invalid App release notes", zap.Uint64("version_id", update.ID), zap.Error(parseErr))
+			notes = []string{}
+		}
 		response.Updates = append(response.Updates, dto.AppVersionUpdate{
-			VersionCode:  update.VersionCode,
-			VersionName:  update.VersionName,
-			ReleaseNotes: releaseNotes(update.ReleaseNotes),
+			VersionCode:         update.VersionCode,
+			VersionName:         update.VersionName,
+			ReleaseNotes:        notes,
+			ReleaseNotesGrouped: grouped,
 		})
 	}
 	return response, nil
@@ -69,12 +75,4 @@ func (a *AppVersionService) IsCurrentAppVersion(platform string, versionCode int
 		return nil, false, err
 	}
 	return current, versionCode >= current.LatestVersionCode, nil
-}
-
-func releaseNotes(value string) []string {
-	var notes []string
-	if value != "" {
-		_ = json.Unmarshal([]byte(value), &notes)
-	}
-	return notes
 }

@@ -52,6 +52,22 @@ module Release
     value
   end
 
+  NOTE_LABELS = {
+    'features' => '新增功能', 'improvements' => '优化',
+    'bug_fixes' => '问题修复', 'notices' => '更新须知'
+  }.freeze
+
+  def self.normalize_notes(value)
+    validate_list = lambda do |items|
+      raise 'release_notes entries must be nonblank strings' unless items.is_a?(Array) && items.all? { |n| n.is_a?(String) && !n.match?(/\A[[:space:]]*\z/) }
+      items
+    end
+    return validate_list.call(value) if value.is_a?(Array)
+    raise 'release_notes must be a string list or category mapping' unless value.is_a?(Hash)
+    raise 'Unknown release_notes category' unless (value.keys - NOTE_LABELS.keys).empty?
+    NOTE_LABELS.keys.to_h { |key| [key, validate_list.call(value.fetch(key, []))] }
+  end
+
   def self.read(tag, root = ROOT)
     match = TAG.match(tag.to_s)
     raise 'Only back/admin/app release tags are supported' unless match
@@ -71,8 +87,7 @@ module Release
       raise "#{tag}（标签版本 #{version}）与 frontend/manifest.json 的 versionName=#{name.inspect} 不一致，发布已停止" unless name == version
       raise 'Invalid manifest versionCode' unless code && code.to_i.positive? && code.to_i <= 4_294_967_295
       android = config.fetch('app').fetch('android')
-      notes = android.fetch('release_notes')
-      raise 'release_notes must be a string list' unless notes.is_a?(Array) && notes.all? { |n| n.is_a?(String) }
+      notes = normalize_notes(android.fetch('release_notes'))
       directory = android.fetch('apk_directory')
       raise 'apk_directory must be repository-relative' unless directory.is_a?(String) && !directory.empty? && !Pathname.new(directory).absolute?
       path = File.realpath(File.join(root, directory))
@@ -117,8 +132,7 @@ module Release
       code = integer(app.fetch('version_code'), 'version_code')
       raise 'Invalid app version' unless version.match?(/\A\d+\.\d+\.\d+\z/) && version == app.fetch('version_name')
       raise 'Invalid APK filename' unless app.fetch('apk_name') == "leave-android-#{code}-#{version}.apk"
-      notes = app.fetch('release_notes')
-      raise 'Invalid release notes' unless notes.is_a?(Array) && notes.all? { |n| n.is_a?(String) }
+      normalize_notes(app.fetch('release_notes'))
     end
     info
   end

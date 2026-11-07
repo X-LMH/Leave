@@ -1,5 +1,6 @@
 <template>
 	<view :class="themeClass('update-page')">
+		<view :class="themeClass('update-safe-top')"></view>
 		<view :class="themeClass('update-content')">
 			<scroll-view
 				id="update-scroll"
@@ -10,13 +11,17 @@
 					:class="themeClass('update-main')"
 					:style="{ minHeight: updateMainHeight + 'px' }"
 				>
-					<image
-						:class="themeClass('update-illustration')"
-						:src="themeImage('/static/update/version-update.svg')"
-						mode="aspectFit"
-					/>
-					<text :class="themeClass('update-title')">发现新版本</text>
-					<text :class="themeClass('update-subtitle')">更新后可继续使用</text>
+					<view :class="themeClass('update-heading')">
+						<image
+							:class="themeClass('update-illustration')"
+							:src="themeImage('/static/update/version-update.svg')"
+							mode="aspectFit"
+						/>
+						<view :class="themeClass('update-heading-copy')">
+							<text :class="themeClass('update-title')">发现新版本</text>
+							<text :class="themeClass('update-subtitle')">更新后可继续使用</text>
+						</view>
+					</view>
 
 					<view
 						v-if="loadingVersion"
@@ -38,38 +43,59 @@
 					</view>
 					<view
 						v-else
-						:class="themeClass('version-card')"
+						:class="themeClass('update-details')"
 					>
-						<view :class="themeClass('version-row')">
-							<text :class="themeClass('version-label')">当前版本</text>
-							<text :class="themeClass('version-value')">{{ currentVersionName }}</text>
-						</view>
-						<view :class="themeClass('version-row')">
-							<text :class="themeClass('version-label')">最新版本</text>
-							<text :class="themeClass('version-value version-value-highlight')">{{ latestVersionName }}</text>
+						<view :class="themeClass('version-card')">
+							<view :class="themeClass('version-summary')">
+								<view :class="themeClass('version-row')">
+									<text :class="themeClass('version-label')">当前版本</text>
+									<text :class="themeClass('version-value')">{{ currentVersionName }}</text>
+								</view>
+								<text :class="themeClass('version-direction')" aria-hidden="true">→</text>
+								<view :class="themeClass('version-row version-row-latest')">
+									<text :class="themeClass('version-label version-label-latest')">最新版本</text>
+									<text :class="themeClass('version-value version-value-highlight')">{{ latestVersionName }}</text>
+								</view>
+							</view>
 						</view>
 						<view :class="themeClass('notes-section')">
-							<text :class="themeClass('notes-title')">本次更新</text>
+							<text :class="themeClass('notes-title')">更新记录</text>
 							<view
 								v-if="updateGroups.length == 0"
 								:class="themeClass('note-row')"
 							>
-								<view :class="themeClass('note-dot')"></view>
-								<text :class="themeClass('note-text')">修复已知问题并提升使用体验</text>
+								<text :class="themeClass('note-text')">该版本暂无更新说明</text>
 							</view>
 							<view
-								v-for="update in updateGroups"
+								v-for="(update, updateIndex) in updateGroups"
 								:key="update.version_code"
-								:class="themeClass('update-group')"
+								:class="themeClass(updateIndex > 0 ? 'update-group update-group-separated' : 'update-group')"
 							>
-								<text :class="themeClass('update-version')">{{ update.version_name }}</text>
+								<view :class="themeClass('update-version-heading')">
+									<text :class="themeClass('update-version')">{{ update.version_name }}</text>
+									<text
+										:class="themeClass(update.version_code == latestVersionCode ? 'update-version-meta update-version-latest' : 'update-version-meta')"
+									>{{ update.version_code == latestVersionCode ? '最新版本' : '历史更新' }}</text>
+								</view>
+								<text
+									v-if="releaseNoteSections(update).length == 0"
+									:class="themeClass('note-text note-empty')"
+								>该版本暂无更新说明</text>
 								<view
-									v-for="(note, noteIndex) in update.release_notes"
-									:key="noteIndex"
-									:class="themeClass('note-row')"
+									v-for="section in releaseNoteSections(update)"
+									:key="section.title"
+									:class="themeClass('note-category')"
 								>
-									<view :class="themeClass('note-dot')"></view>
-									<text :class="themeClass('note-text')">{{ note }}</text>
+									<text :class="themeClass('note-category-title')">{{ section.title }}</text>
+									<view :class="themeClass('note-items')">
+										<view
+											v-for="(note, noteIndex) in section.items"
+											:key="noteIndex"
+											:class="themeClass(noteIndex > 0 ? 'note-row note-row-spaced' : 'note-row')"
+										>
+											<text :class="themeClass('note-text')">{{ note }}</text>
+										</view>
+									</view>
 								</view>
 							</view>
 						</view>
@@ -117,15 +143,25 @@
 <script setup lang="uts">
 import { themeClass as resolveThemeClass, themeImage as resolveThemeImage } from '@/utils/app-theme.uts'
 import { computed, nextTick, ref, watch } from 'vue'
+import { refreshAppTheme } from '@/utils/app-theme.uts'
 import {
 	AppVersionInfo,
 	AppVersionUpdate,
 	getAppDownloadURL,
 	getCurrentAppVersion,
 	getStoredUpdateInfo,
-	saveUpdateInfo
+	saveUpdateInfo,
+	releaseNoteSections as resolveReleaseNoteSections,
+	ReleaseNoteSection
 } from '@/utils/api.uts'
 import { getAppVersion } from '@/utils/device.uts'
+
+// Keep template calls local for native UTS compilation.
+function releaseNoteSections(update: AppVersionUpdate): ReleaseNoteSection[] {
+	return resolveReleaseNoteSections(update)
+}
+
+onShow(() => refreshAppTheme())
 
 const latestVersion = ref<AppVersionInfo | null>(getStoredUpdateInfo())
 const loadingVersion = ref(latestVersion.value == null)
@@ -163,10 +199,15 @@ const currentVersionName = computed((): string => getAppVersion())
 const latestVersionName = computed((): string =>
 	latestVersion.value == null ? '' : latestVersion.value.latest_version_name
 )
+const latestVersionCode = computed((): number =>
+	latestVersion.value == null ? 0 : latestVersion.value.latest_version_code
+)
 const updateGroups = computed((): AppVersionUpdate[] => {
 	if (latestVersion.value == null) return []
-	const updates = latestVersion.value.updates
-	return updates
+	// Sort a copy so historical cached responses also display newest first.
+	return latestVersion.value.updates.slice().sort((a: AppVersionUpdate, b: AppVersionUpdate): number =>
+		b.version_code - a.version_code
+	)
 })
 const actionText = computed((): string => {
 	if (downloading.value) return '正在下载'
@@ -273,110 +314,203 @@ function themeImage(source: string): string {
 	flex: 1;
 	background-color: $ios-page;
 }
+.update-safe-top {
+	height: var(--status-bar-height);
+	flex-shrink: 0;
+}
 .update-content {
 	flex: 1;
-	padding: 0 56rpx 40rpx;
+	padding: 0 24px 24px;
 	align-items: center;
 }
 .update-main {
 	box-sizing: border-box;
 	width: 100%;
-	justify-content: center;
 	align-items: center;
-	padding: 40rpx 0;
+	padding: 28px 0 24px;
 	flex-shrink: 0;
 }
+.update-heading {
+	width: 100%;
+	flex-direction: row;
+	align-items: center;
+}
+.update-heading-copy {
+	flex: 1;
+	margin-left: 12px;
+}
+.update-details {
+	width: 100%;
+	margin-top: 24px;
+}
+.version-direction {
+	width: 20px;
+	margin: 30px 12px 0;
+	flex-shrink: 0;
+	color: $ios-blue;
+	font-size: 22px;
+	line-height: 36px;
+	text-align: center;
+}
+.dark-version-direction {
+	color: $ios-dark-blue;
+}
+.version-summary {
+	flex-direction: row;
+	align-items: flex-start;
+}
 .update-illustration {
-	width: 240rpx;
-	height: 240rpx;
+	width: 44px;
+	height: 44px;
+	flex-shrink: 0;
 }
 .update-title {
-	margin-top: 28rpx;
 	color: $ios-ink;
-	font-size: 24px;
+	font-size: 20px;
 	font-weight: 600;
-	text-align: center;
-	line-height: 32px;
+	line-height: 28px;
 }
 .update-subtitle {
-	margin-top: 16rpx;
+	margin-top: 4px;
 	color: $ios-secondary;
 	font-size: 13px;
-	text-align: center;
 	line-height: 22px;
 }
 .version-card {
 	width: 100%;
-	margin-top: 44rpx;
-	padding: 32rpx;
+	padding: 24px;
 	box-sizing: border-box;
-	border-radius: 23px;
-	background-color: $ios-surface;
+	border-radius: 20px;
+	background-color: #edf3ff;
 }
 .version-row {
-	flex-direction: row;
-	justify-content: space-between;
-	align-items: center;
-	padding: 12rpx 0;
+	flex: 1;
+	min-width: 0;
+}
+.version-row-latest {
+	flex: 1.2;
 }
 .version-label {
 	color: $ios-secondary;
 	font-size: 14px;
+	font-weight: 500;
+	line-height: 22px;
 }
-.version-value {
-	min-width: 84rpx;
-	box-sizing: border-box;
-	color: $ios-ink;
-	font-size: 14px;
-	font-weight: 600;
-	text-align: center;
-}
-.version-value-highlight {
-	padding: 6rpx 0;
-	border-radius: 12rpx;
-	background-color: #e4edfc;
+.version-label-latest {
 	color: $ios-blue;
 }
+.version-value {
+	margin-top: 10px;
+	color: $ios-ink;
+	font-size: 24px;
+	font-weight: 600;
+	line-height: 36px;
+}
+.version-value-highlight {
+	color: $ios-blue;
+	font-size: 28px;
+	font-weight: 700;
+}
 .notes-section {
-	margin-top: 28rpx;
-	padding-top: 26rpx;
-	border-top-width: 1rpx;
+	width: 100%;
+	margin-top: 20px;
+	padding: 20px;
+	box-sizing: border-box;
+	border-radius: 16px;
+	background-color: $ios-surface;
+}
+.notes-title {
+	color: $ios-secondary;
+	font-size: 13px;
+	font-weight: 400;
+	line-height: 20px;
+}
+.update-group {
+	margin-top: 16px;
+}
+.update-group-separated {
+	margin-top: 24px;
+	padding-top: 24px;
+	border-top-width: 1px;
 	border-top-style: solid;
 	border-top-color: $ios-separator;
 }
-.notes-title {
-	margin-bottom: 14rpx;
-	color: $ios-ink;
-	font-size: 14px;
-	font-weight: 700;
+.update-version-heading {
+	flex-direction: row;
+	align-items: center;
 }
-.update-group {
-	margin-top: 18rpx;
+.update-version-meta {
+	margin-left: 12px;
+	flex-shrink: 0;
+	color: $ios-secondary;
+	font-size: 12px;
+	line-height: 20px;
 }
-.update-version {
-	color: $ios-ink;
-	font-size: 14px;
+.update-version-latest {
+	color: $ios-blue;
 	font-weight: 600;
 }
-.note-row {
-	margin-top: 10rpx;
-	flex-direction: row;
-	padding-left: 16rpx;
+.note-empty {
+	margin-top: 12px;
 }
-.note-dot {
-	width: 4px;
-	height: 4px;
-	margin-top: 9px;
-	margin-right: 16rpx;
-	border-radius: 4rpx;
-	background-color: $ios-blue;
+.dark-update-group-separated {
+	border-top-color: $ios-dark-separator;
+}
+.dark-update-version-meta {
+	color: $ios-dark-secondary;
+}
+.dark-update-version-latest {
+	color: $ios-dark-blue;
+}
+.contrast-update-group-separated {
+	border-top-color: #737580;
+}
+.contrast-update-version-meta {
+	color: #d2d3dc;
+}
+.update-version {
+	flex: 1;
+	min-width: 0;
+	color: $ios-ink;
+	font-size: 17px;
+	font-weight: 600;
+	line-height: 26px;
+}
+.note-category {
+	margin-top: 14px;
+	flex-direction: row;
+	align-items: flex-start;
+}
+.note-category-title {
+	width: 52px;
+	margin-right: 12px;
 	flex-shrink: 0;
+	color: $ios-secondary;
+	font-size: 12px;
+	font-weight: 400;
+	line-height: 25px;
+}
+.dark-note-category-title {
+	color: $ios-dark-secondary;
+}
+.contrast-note-category-title {
+	color: #ffffff;
+}
+.note-items {
+	flex: 1;
+	min-width: 0;
+}
+.note-row-spaced {
+	margin-top: 8px;
+}
+.note-row {
+	flex-direction: row;
 }
 .note-text {
 	flex: 1;
-	color: $ios-secondary;
-	font-size: 14px;
-	line-height: 22px;
+	color: #454851;
+	font-size: 15px;
+	line-height: 25px;
 }
 .loading-panel {
 	width: 100%;
@@ -425,14 +559,14 @@ function themeImage(source: string): string {
 }
 .update-button {
 	width: 100%;
-	border-radius: 26px;
+	border-radius: 18px;
 	background-color: $ios-blue;
 	color: #ffffff;
-	font-size: 17px;
+	font-size: 16px;
 	font-weight: 600;
 	flex-shrink: 0;
-	height: 52px;
-	line-height: 52px;
+	height: 50px;
+	line-height: 50px;
 	padding: 0;
 }
 .action-error {
@@ -471,32 +605,31 @@ function themeImage(source: string): string {
 	color: $ios-dark-secondary;
 }
 .dark-version-card {
-	background-color: $ios-dark-surface;
+	background-color: #18253c;
 }
 .dark-version-label {
 	color: $ios-dark-secondary;
+}
+.dark-version-label-latest {
+	color: $ios-dark-blue;
 }
 .dark-version-value {
 	color: $ios-dark-ink;
 }
 .dark-version-value-highlight {
-	background-color: #1c2b43;
 	color: $ios-dark-blue;
 }
 .dark-notes-section {
-	border-top-color: $ios-dark-separator;
+	background-color: $ios-dark-surface;
 }
 .dark-notes-title {
-	color: $ios-dark-ink;
+	color: $ios-dark-secondary;
 }
 .dark-update-version {
 	color: $ios-dark-ink;
 }
-.dark-note-dot {
-	background-color: $ios-dark-button;
-}
 .dark-note-text {
-	color: $ios-dark-secondary;
+	color: #c6c7d0;
 }
 .dark-panel-message {
 	color: $ios-dark-secondary;

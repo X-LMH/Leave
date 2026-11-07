@@ -215,9 +215,10 @@ func (o *OverviewService) getOverviewClientVersions(tx *gorm.DB, now time.Time) 
 		return dto.OverviewVersionUsage{}, nil, err
 	}
 	return usage, &dto.OverviewVersion{
-		VersionName:  version.VersionName,
-		VersionCode:  version.VersionCode,
-		PublishedAt:  version.PublishedAt,
-		ReleaseNotes: version.ReleaseNotes,
+		VersionName:         version.VersionName,
+		VersionCode:         version.VersionCode,
+		PublishedAt:         version.PublishedAt,
+		ReleaseNotes:        version.ReleaseNotes,
+		ReleaseNotesGrouped: version.ReleaseNotesGrouped,
 	}, nil
 }

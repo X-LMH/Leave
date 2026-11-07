@@ -97,7 +97,7 @@ export function themeImage(source: string): string {
 	return darkImages.get(source) ?? source
 }
 
-// 仅替换经过配色的线性 SVG；头像、附件和更新插画保持原图。
+// 仅替换经过配色的线性 SVG；头像和附件保持原图。
 const darkImages = new Map<string, string>()
 
 darkImages.set('/static/ios/arrow-blue.svg', '/static/ios/arrow-blue-dark.svg')
@@ -121,3 +121,5 @@ darkImages.set('/static/common/tabbar/records-outline-blue.svg', '/static/common
 darkImages.set('/static/common/tabbar/records-outline.svg', '/static/common/tabbar/records-outline-dark.svg')
 darkImages.set('/static/common/tabbar/home-outline.svg', '/static/common/tabbar/home-outline-dark.svg')
 darkImages.set('/static/common/tabbar/profile-outline.svg', '/static/common/tabbar/profile-outline-dark.svg')
+
+darkImages.set('/static/update/version-update.svg', '/static/update/version-update-dark.svg')

@@ -46,6 +46,7 @@ func TestAdminAppVersionNotes(t *testing.T) {
 		{"null", []string{}, true},
 		{"[]", []string{}, true},
 		{`["修复登录","优化交互"]`, []string{"修复登录", "优化交互"}, true},
+		{`{"features":["新增"],"notices":["重新登录"]}`, []string{"新增", "重新登录"}, true},
 		{"broken", nil, false},
 		{`{"note":"修复"}`, nil, false},
 		{`[123]`, nil, false},

@@ -22,7 +22,7 @@ func IsValidAppVersionStatus(status string) bool {
 }
 
 // AppVersion 是一个平台已发布客户端版本的记录。
-// ReleaseNotes 以 JSON 数组形式存储，序列化和反序列化由 Service 层处理。
+// ReleaseNotes 以分类 JSON 对象或历史 JSON 数组形式存储，序列化和反序列化由 Service 层处理。
 type AppVersion struct {
 	ID           uint64    `gorm:"column:id;primaryKey;autoIncrement"`
 	Platform     string    `gorm:"column:platform"`

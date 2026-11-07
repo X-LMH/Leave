@@ -34,6 +34,15 @@ class VersionSQLTest < Minitest::Test
       info['app']['release_notes'] = ['覆盖更新']
       query("USE #{database}; SET sql_mode='NO_BACKSLASH_ESCAPES';\n#{Release.version_sql(info)}")
       assert_equal '["覆盖更新"]', query("SELECT release_notes FROM #{database}.app_versions;")
+      info['app']['release_notes'] = Release.normalize_notes({'features' => ['新增'], 'notices' => ['重新登录']})
+      2.times { query("USE #{database};\n#{Release.version_sql(info)}") }
+      assert_equal 'OBJECT', query("SELECT JSON_TYPE(release_notes) FROM #{database}.app_versions;")
+      assert_equal '重新登录', query("SELECT JSON_UNQUOTE(JSON_EXTRACT(release_notes, '$.notices[0]')) FROM #{database}.app_versions;")
+      %w[up down].each do |direction|
+        migration = File.read(File.join(Release::ROOT, "backend/database/migrations/000014_categorize_release_notes.#{direction}.sql"))
+        query("USE #{database};\n#{migration}")
+        assert_equal 'OBJECT', query("SELECT JSON_TYPE(release_notes) FROM #{database}.app_versions;")
+      end
       info['tag'] = 'app-test-v1.0.1'
       info['app'].merge!('version_name' => '1.0.1', 'version_code' => 12, 'apk_name' => 'leave-android-12-1.0.1.apk')
       query("USE #{database};\n#{Release.version_sql(info)}")

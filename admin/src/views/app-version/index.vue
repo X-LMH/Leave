@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ReleaseNotes from './components/release-notes.vue';
 import { computed, h, reactive, ref } from 'vue';
 import { NButton, NTag, useThemeVars } from 'naive-ui';
 import type { DataTableColumns } from 'naive-ui';
@@ -247,10 +248,7 @@ void reload();
           </div>
           <section class="release-current__notes" aria-label="完整更新说明">
             <h3>更新说明</h3>
-            <ul v-if="current.releaseNotes?.length">
-              <li v-for="(note, index) in current.releaseNotes" :key="index">{{ note }}</li>
-            </ul>
-            <p v-else>该版本未填写更新说明。</p>
+            <ReleaseNotes :notes="current.releaseNotes" :grouped="current.releaseNotesGrouped" />
           </section>
           <div class="release-current__actions">
             <NButton size="small" type="primary" :loading="downloading" @click="downloadLatestPackage">

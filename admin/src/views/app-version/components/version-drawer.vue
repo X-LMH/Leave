@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ReleaseNotes from './release-notes.vue';
 import { computed } from 'vue';
 import { useThemeVars } from 'naive-ui';
 import { useAppStore } from '@/store/modules/app';
@@ -74,10 +75,7 @@ async function copyPackage() {
         </section>
         <section class="version-section">
           <h3>更新说明</h3>
-          <ol v-if="record.releaseNotes?.length" class="version-notes">
-            <li v-for="(note, index) in record.releaseNotes" :key="index">{{ note }}</li>
-          </ol>
-          <p v-else class="version-muted">该版本未填写更新说明。</p>
+          <ReleaseNotes :notes="record.releaseNotes" :grouped="record.releaseNotesGrouped" />
         </section>
       </template>
       <template #footer>

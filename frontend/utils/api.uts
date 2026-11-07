@@ -47,10 +47,37 @@ export type AppVersionInfo = {
 	updates: AppVersionUpdate[]
 }
 
+export type ReleaseNotesGrouped = {
+	features: string[]
+	improvements: string[]
+	bug_fixes: string[]
+	notices: string[]
+}
+
+export type ReleaseNoteSection = {
+	title: string
+	items: string[]
+}
+
+export function releaseNoteSections(update: AppVersionUpdate): ReleaseNoteSection[] {
+	const grouped = update.release_notes_grouped
+	if (grouped == null) {
+		return update.release_notes.length == 0 ? [] : [{ title: '更新内容', items: update.release_notes }]
+	}
+	const sections: ReleaseNoteSection[] = [
+		{ title: '新增功能', items: grouped.features },
+		{ title: '优化', items: grouped.improvements },
+		{ title: '问题修复', items: grouped.bug_fixes },
+		{ title: '更新须知', items: grouped.notices }
+	]
+	return sections.filter((section: ReleaseNoteSection): boolean => section.items.length > 0)
+}
+
 export type AppVersionUpdate = {
 	version_code: number
 	version_name: string
 	release_notes: string[]
+	release_notes_grouped: ReleaseNotesGrouped | null
 }
 
 let isRedirectingToUpdate = false
@@ -370,10 +397,25 @@ function appVersionInfoFromJSON(data: UTSJSONObject): AppVersionInfo {
 	if (updatesData != null) {
 		for (const update of updatesData) {
 			const updateNotes = update['release_notes'] as string[] | null
+			const groupedData = update['release_notes_grouped'] as UTSJSONObject | null
+			let grouped: ReleaseNotesGrouped | null = null
+			if (groupedData != null) {
+				const features = groupedData['features'] as string[] | null
+				const improvements = groupedData['improvements'] as string[] | null
+				const fixes = groupedData['bug_fixes'] as string[] | null
+				const notices = groupedData['notices'] as string[] | null
+				grouped = {
+					features: features == null ? [] : features,
+					improvements: improvements == null ? [] : improvements,
+					bug_fixes: fixes == null ? [] : fixes,
+					notices: notices == null ? [] : notices
+				}
+			}
 			updates.push({
 				version_code: update['version_code'] as number,
 				version_name: update['version_name'] as string,
-				release_notes: updateNotes == null ? [] : updateNotes
+				release_notes: updateNotes == null ? [] : updateNotes,
+				release_notes_grouped: grouped
 			})
 		}
 	}

@@ -5,7 +5,7 @@ CREATE TABLE `app_versions`
     `version_code`  INT UNSIGNED    NOT NULL COMMENT '构建版本号，用于版本校验',
     `version_name`  VARCHAR(32)     NOT NULL COMMENT '展示版本号',
     `package_file`  VARCHAR(255)    NOT NULL COMMENT '安装包文件名，仅允许目录内的 APK 文件',
-    `release_notes` JSON            NULL COMMENT '更新说明 JSON 数组',
+    `release_notes` JSON            NULL COMMENT '更新说明 JSON 分类对象或历史数组',
     `status`        VARCHAR(20)     NOT NULL DEFAULT 'published' COMMENT 'published=当前可用，archived=历史版本',
     `published_at`  DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '发布时间',
     `created_at`    DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',

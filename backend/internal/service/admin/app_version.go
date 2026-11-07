@@ -1,13 +1,13 @@
 package admin
 
 import (
-	"encoding/json"
 	"errors"
 	"strings"
 
 	"backend/internal/dao/mysql"
 	"backend/internal/dto"
 	"backend/internal/models"
+	"backend/internal/service/common"
 
 	"go.uber.org/zap"
 )
@@ -38,26 +38,22 @@ func normalizeAppVersionQuery(query *dto.AppVersionListQuery) error {
 }
 
 func adminAppVersion(row *models.AppVersion) (*dto.AdminAppVersion, error) {
-	notes := make([]string, 0)
-	if row.ReleaseNotes != "" {
-		if err := json.Unmarshal([]byte(row.ReleaseNotes), &notes); err != nil {
-			return nil, err
-		}
-		if notes == nil {
-			notes = make([]string, 0)
-		}
+	notes, grouped, err := common.ParseReleaseNotes(row.ReleaseNotes)
+	if err != nil {
+		return nil, err
 	}
 	return &dto.AdminAppVersion{
-		ID:           row.ID,
-		Platform:     row.Platform,
-		VersionCode:  row.VersionCode,
-		VersionName:  row.VersionName,
-		PackageFile:  row.PackageFile,
-		ReleaseNotes: notes,
-		Status:       row.Status,
-		PublishedAt:  row.PublishedAt,
-		CreatedAt:    row.CreatedAt,
-		UpdatedAt:    row.UpdatedAt,
+		ID:                  row.ID,
+		Platform:            row.Platform,
+		VersionCode:         row.VersionCode,
+		VersionName:         row.VersionName,
+		PackageFile:         row.PackageFile,
+		ReleaseNotes:        notes,
+		ReleaseNotesGrouped: grouped,
+		Status:              row.Status,
+		PublishedAt:         row.PublishedAt,
+		CreatedAt:           row.CreatedAt,
+		UpdatedAt:           row.UpdatedAt,
 	}, nil
 }
 

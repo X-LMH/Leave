@@ -29,6 +29,20 @@ class ReleaseTest < Minitest::Test
     count.times { |i| File.write(File.join(@root, "deploy/releases/package #{i}.apk"), 'apk') }
   end
 
+  def test_categorized_notes_validation_and_sql
+    prepare_app
+    grouped = {'notices' => ['重新登录'], 'features' => ['新增']}
+    write_config('app' => {'android' => {'apk_directory' => 'deploy/releases', 'release_notes' => grouped}})
+    info = Release.read('app-v1.0.0', @root)
+    assert_equal %w[features improvements bug_fixes notices], info['app']['release_notes'].keys
+    assert_equal [], info['app']['release_notes']['bug_fixes']
+    sql = Release.version_sql(info)
+    assert_includes sql, JSON.generate(info['app']['release_notes']).unpack1('H*')
+    [nil, 'text', {'unknown' => []}, {'features' => [1]}, {'notices' => [' ']}, {'features' => ['　']}, ['']].each do |invalid|
+      assert_raises(StandardError) { Release.normalize_notes(invalid) }
+    end
+  end
+
   def test_non_app_does_not_require_manifest_or_apk
     write_config('app' => nil)
     assert_equal 'back', Release.read('back-test-v1', @root)['mode']

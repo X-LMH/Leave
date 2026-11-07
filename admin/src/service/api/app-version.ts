@@ -9,6 +9,23 @@ export const appVersionPlatformLabel: Record<AppVersionPlatform, string> = {
   web: 'Web'
 };
 
+export interface ReleaseNotesGrouped {
+  features: string[];
+  improvements: string[];
+  bug_fixes: string[];
+  notices: string[];
+}
+
+export function releaseNoteSections(notes: string[], grouped?: ReleaseNotesGrouped | null) {
+  if (!grouped) return notes.length ? [{ title: '更新内容', items: notes }] : [];
+  return [
+    { title: '新增功能', items: grouped.features },
+    { title: '优化', items: grouped.improvements },
+    { title: '问题修复', items: grouped.bug_fixes },
+    { title: '更新须知', items: grouped.notices }
+  ].filter(section => section.items.length > 0);
+}
+
 export interface AppVersionRecord {
   id: number;
   platform: AppVersionPlatform;
@@ -16,6 +33,7 @@ export interface AppVersionRecord {
   versionName: string;
   packageFile: string;
   releaseNotes: string[];
+  releaseNotesGrouped?: ReleaseNotesGrouped | null;
   status: AppVersionStatus;
   publishedAt: number;
   createdAt: number;
@@ -37,6 +55,7 @@ interface AppVersionWire {
   version_name: string;
   package_file: string;
   release_notes: string[];
+  release_notes_grouped?: ReleaseNotesGrouped | null;
   status: AppVersionStatus;
   published_at: string;
   created_at: string;
@@ -51,6 +70,7 @@ function versionRecord(row: AppVersionWire): AppVersionRecord {
     versionName: row.version_name,
     packageFile: row.package_file,
     releaseNotes: row.release_notes,
+    releaseNotesGrouped: row.release_notes_grouped ?? null,
     status: row.status,
     publishedAt: new Date(row.published_at).getTime(),
     createdAt: new Date(row.created_at).getTime(),
