@@ -97,7 +97,7 @@
     "vite-plugin-svg-icons": "2.0.1",
     "vite-plugin-vue-devtools": "8.1.2",
     "vite-plugin-vue-transition-root-validator": "^0.1.0",
-    "vue-tsc": "3.2.8"
+    "vue-tsc": "3.3.14"
   },
   "simple-git-hooks": {
     "commit-msg": "pnpm sa git-commit-verify",
