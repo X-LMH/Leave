@@ -155,8 +155,10 @@ Database and Redis integration tests require isolated local test instances; see 
 - [Deployment and app releases](deploy/README.md)
 - [Development conventions](AGENTS.md)
 
-The detailed guides are currently written in Chinese.
-
 - [Feature implementation status (Chinese)](docs/feature-status.md)
 - [Contributing (Chinese)](CONTRIBUTING.md)
 - [Security reporting (Chinese)](SECURITY.md)
+- [Android release checklist (Chinese)](docs/release-checklist.md)
+- [Maintainer checklist (Chinese)](docs/maintainer-checklist.md)
+
+The detailed guides are currently written in Chinese.

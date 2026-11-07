@@ -154,7 +154,8 @@ pnpm build
 - [数据库初始化与迁移](backend/database/README.md)
 - [部署与客户端发布](deploy/README.md)
 - [项目开发约定](AGENTS.md)
-
 - [功能实现状态](docs/feature-status.md)
 - [参与贡献](CONTRIBUTING.md)
 - [安全问题报告](SECURITY.md)
+- [Android 发布验收清单](docs/release-checklist.md)
+- [维护者待办](docs/maintainer-checklist.md)
