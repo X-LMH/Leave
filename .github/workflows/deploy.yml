@@ -101,6 +101,10 @@ jobs:
       queue: max
     steps:
       - uses: actions/checkout@v5
+        with:
+          # Fetch annotated tags directly; a shallow tag checkout can create a
+          # lightweight tag that conflicts with a later fetch of the real tag.
+          fetch-depth: 0
       - uses: actions/download-artifact@v7
         with:
           name: backend-bin
@@ -120,9 +124,7 @@ jobs:
         if: needs.metadata.outputs.mode == 'app' && needs.metadata.outputs.environment == 'prod'
         env:
           RELEASE_TAG: ${{ github.ref_name }}
-        run: |
-          git fetch --tags --unshallow
-          ruby deploy/github-release.rb prepare github-release
+        run: ruby deploy/github-release.rb prepare github-release
       - uses: actions/upload-artifact@v6
         if: needs.metadata.outputs.mode == 'app' && needs.metadata.outputs.environment == 'prod'
         with:
