@@ -7,9 +7,12 @@ import ts from 'typescript';
 function loadModule(path, additions = '', globals = {}) {
   const context = { exports: {}, require: () => ({}), process: { env: {} }, ...globals };
   const source = readFileSync(new URL(path, import.meta.url), 'utf8') + additions;
-  vm.runInNewContext(ts.transpileModule(source, {
-    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }
-  }).outputText, context);
+  vm.runInNewContext(
+    ts.transpileModule(source, {
+      compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }
+    }).outputText,
+    context
+  );
   return context.exports;
 }
 const admin = loadModule('../src/service/api/app-version.ts');
@@ -20,16 +23,32 @@ const app = loadModule('../../frontend/utils/api.uts', '\nexport { appVersionInf
 const plain = value => JSON.parse(JSON.stringify(value));
 const grouped = { features: ['新增'], improvements: ['优化'], bug_fixes: ['修复'], notices: ['重新登录'] };
 function payload(notes, categories) {
-  return { platform: 'android', latest_version_code: 17, latest_version_name: '1.2.0', updates: [
-    { version_code: 17, version_name: '1.2.0', release_notes: notes, ...(categories === undefined ? {} : { release_notes_grouped: categories }) }
-  ] };
+  return {
+    platform: 'android',
+    latest_version_code: 17,
+    latest_version_name: '1.2.0',
+    updates: [
+      {
+        version_code: 17,
+        version_name: '1.2.0',
+        release_notes: notes,
+        ...(categories === undefined ? {} : { release_notes_grouped: categories })
+      }
+    ]
+  };
 }
 
 test('App and admin display categorized entries once in a fixed order', () => {
   const update = app.appVersionInfoFromJSON(payload(['展开兼容内容'], grouped)).updates[0];
   const sections = plain(app.releaseNoteSections(update));
-  assert.deepEqual(sections.map(s => s.title), ['新增功能', '优化', '问题修复', '更新须知']);
-  assert.deepEqual(sections.flatMap(s => s.items), ['新增', '优化', '修复', '重新登录']);
+  assert.deepEqual(
+    sections.map(s => s.title),
+    ['新增功能', '优化', '问题修复', '更新须知']
+  );
+  assert.deepEqual(
+    sections.flatMap(s => s.items),
+    ['新增', '优化', '修复', '重新登录']
+  );
   assert.deepEqual(plain(admin.releaseNoteSections(['展开兼容内容'], grouped)), sections);
 });
 
@@ -53,5 +72,8 @@ test('categorized cache round-trips and missing categories normalize to empty li
 test('empty notes hide all sections rather than claiming fixes', () => {
   assert.deepEqual(plain(app.releaseNoteSections(app.appVersionInfoFromJSON(payload([])).updates[0])), []);
   assert.deepEqual(plain(app.releaseNoteSections(app.appVersionInfoFromJSON(payload([], {})).updates[0])), []);
-  assert.deepEqual(plain(admin.releaseNoteSections([], { features: [], improvements: [], bug_fixes: [], notices: [] })), []);
+  assert.deepEqual(
+    plain(admin.releaseNoteSections([], { features: [], improvements: [], bug_fixes: [], notices: [] })),
+    []
+  );
 });

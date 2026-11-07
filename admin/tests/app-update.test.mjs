@@ -6,11 +6,20 @@ import ts from 'typescript';
 
 function nativeSource(source) {
   let web = false;
-  return source.split('\n').filter(line => {
-    if (line.includes('// #ifdef WEB')) { web = true; return false; }
-    if (line.includes('// #endif') && web) { web = false; return false; }
-    return !web;
-  }).join('\n');
+  return source
+    .split('\n')
+    .filter(line => {
+      if (line.includes('// #ifdef WEB')) {
+        web = true;
+        return false;
+      }
+      if (line.includes('// #endif') && web) {
+        web = false;
+        return false;
+      }
+      return !web;
+    })
+    .join('\n');
 }
 
 function setup(mode = 'auto', system = 'light', stored = null) {
@@ -21,13 +30,17 @@ function setup(mode = 'auto', system = 'light', stored = null) {
   const downloads = [];
   const installations = [];
   const hooks = {};
-  let versionRequest = async () => { throw new Error('版本服务暂不可用'); };
+  let versionRequest = async () => {
+    throw new Error('版本服务暂不可用');
+  };
   const uni = {
     getStorageSync: key => storage.get(key) ?? '',
     setStorageSync: (key, value) => storage.set(key, value),
     getDeviceInfo: () => ({ osTheme }),
     getAppBaseInfo: () => ({ appTheme }),
-    onAppThemeChange: callback => { themeChange = callback; },
+    onAppThemeChange: callback => {
+      themeChange = callback;
+    },
     setAppTheme: options => {
       appTheme = options.theme;
       themeChange?.({ appTheme: appTheme === 'auto' ? osTheme : appTheme });
@@ -38,48 +51,94 @@ function setup(mode = 'auto', system = 'light', stored = null) {
     downloadFile: options => {
       const request = { options, progress: null };
       downloads.push(request);
-      return { onProgressUpdate: callback => { request.progress = callback; } };
+      return {
+        onProgressUpdate: callback => {
+          request.progress = callback;
+        }
+      };
     },
     installApk: options => installations.push(options)
   };
   const vue = {
     reactive: value => value,
     ref: value => ({ value }),
-    computed: getter => ({ get value() { return getter(); } }),
-    nextTick: callback => { callback?.(); },
+    computed: getter => ({
+      get value() {
+        return getter();
+      }
+    }),
+    nextTick: callback => {
+      callback?.();
+    },
     watch: () => {}
   };
   function evaluate(source, dependencies, globals = {}) {
-    const context = { exports: {}, uni, ...globals, require: name => {
-      if (name === 'vue') return vue;
-      if (name in dependencies) return dependencies[name];
-      throw new Error(`Unexpected module: ${name}`);
-    } };
-    vm.runInNewContext(ts.transpileModule(source, {
-      compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }
-    }).outputText, context);
+    const context = {
+      exports: {},
+      uni,
+      ...globals,
+      require: name => {
+        if (name === 'vue') return vue;
+        if (name in dependencies) return dependencies[name];
+        throw new Error(`Unexpected module: ${name}`);
+      }
+    };
+    vm.runInNewContext(
+      ts.transpileModule(source, {
+        compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }
+      }).outputText,
+      context
+    );
     return context.exports;
   }
-  const theme = evaluate(nativeSource(readFileSync(new URL('../../frontend/utils/app-theme.uts', import.meta.url), 'utf8')), {
-    '@/utils/navigation-preferences.uts': { systemIncreasesContrast: () => false }
-  });
-  theme.initializeAppTheme();
-  const pageSource = readFileSync(new URL('../../frontend/pages/update/index.uvue', import.meta.url), 'utf8').split('<script setup lang="uts">')[1].split('</script>')[0];
-  const page = evaluate(pageSource + '\nexport { updateGroups, loadVersion, downloadAndInstall, redownloadApk, latestVersion, loadingVersion, loadError, downloading, installing, downloadedApk, downloadProgressDisplay, actionText, actionError, themeClass, themeImage };', {
-    '@/utils/app-theme.uts': theme,
-    '@/utils/navigation-preferences.uts': { configureNavigationRadio() {} },
-    '@/utils/device.uts': { getAppVersion: () => '1.1.0' },
-    '@/utils/api.uts': {
-      getStoredUpdateInfo: () => stored,
-      getCurrentAppVersion: () => versionRequest(),
-      saveUpdateInfo: info => storage.set('leave_update_info', JSON.stringify(info)),
-      getAppDownloadURL: () => 'http://127.0.0.1:8080/api/v1/app-download?platform=android',
-      releaseNoteSections: () => []
+  const theme = evaluate(
+    nativeSource(readFileSync(new URL('../../frontend/utils/app-theme.uts', import.meta.url), 'utf8')),
+    {
+      '@/utils/navigation-preferences.uts': { systemIncreasesContrast: () => false }
     }
-  }, Object.fromEntries(['onReady', 'onResize', 'onShow', 'onLoad', 'onBackPress'].map(name => [name, callback => { hooks[name] = callback; }])));
-  return { theme, page, storage, downloads, installations, hooks,
-    request: callback => { versionRequest = callback; },
-    systemTheme: value => { osTheme = value; if (appTheme === 'auto') themeChange?.({ appTheme: value }); }
+  );
+  theme.initializeAppTheme();
+  const pageSource = readFileSync(new URL('../../frontend/pages/update/index.uvue', import.meta.url), 'utf8')
+    .split('<script setup lang="uts">')[1]
+    .split('</script>')[0];
+  const page = evaluate(
+    pageSource +
+      '\nexport { updateGroups, loadVersion, downloadAndInstall, redownloadApk, latestVersion, loadingVersion, loadError, downloading, installing, downloadedApk, downloadProgressDisplay, actionText, actionError, themeClass, themeImage };',
+    {
+      '@/utils/app-theme.uts': theme,
+      '@/utils/navigation-preferences.uts': { configureNavigationRadio() {} },
+      '@/utils/device.uts': { getAppVersion: () => '1.1.0' },
+      '@/utils/api.uts': {
+        getStoredUpdateInfo: () => stored,
+        getCurrentAppVersion: () => versionRequest(),
+        saveUpdateInfo: info => storage.set('leave_update_info', JSON.stringify(info)),
+        getAppDownloadURL: () => 'http://127.0.0.1:8080/api/v1/app-download?platform=android',
+        releaseNoteSections: () => []
+      }
+    },
+    Object.fromEntries(
+      ['onReady', 'onResize', 'onShow', 'onLoad', 'onBackPress'].map(name => [
+        name,
+        callback => {
+          hooks[name] = callback;
+        }
+      ])
+    )
+  );
+  return {
+    theme,
+    page,
+    storage,
+    downloads,
+    installations,
+    hooks,
+    request: callback => {
+      versionRequest = callback;
+    },
+    systemTheme: value => {
+      osTheme = value;
+      if (appTheme === 'auto') themeChange?.({ appTheme: value });
+    }
   };
 }
 
@@ -96,10 +155,20 @@ test('update page follows global appearance without its own selector', () => {
 });
 
 test('updates sort numerically newest first without changing historical cache order', () => {
-  const versions = [2, 11, 3].map(version_code => ({version_code, version_name: String(version_code), release_notes: []}));
+  const versions = [2, 11, 3].map(version_code => ({
+    version_code,
+    version_name: String(version_code),
+    release_notes: []
+  }));
   const { page } = setup('auto', 'light', { updates: versions });
-  assert.deepEqual(Array.from(page.updateGroups.value, version => version.version_code), [11, 3, 2]);
-  assert.deepEqual(versions.map(version => version.version_code), [2, 11, 3]);
+  assert.deepEqual(
+    Array.from(page.updateGroups.value, version => version.version_code),
+    [11, 3, 2]
+  );
+  assert.deepEqual(
+    versions.map(version => version.version_code),
+    [2, 11, 3]
+  );
 });
 
 test('update page restores explicit appearance on cold start and refreshes on return', () => {

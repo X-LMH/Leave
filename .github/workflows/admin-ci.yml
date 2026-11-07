@@ -43,6 +43,8 @@ jobs:
         run: pnpm typecheck
       - name: Lint without modifying source
         run: pnpm exec oxlint && pnpm exec eslint .
+      - name: Check formatting without modifying source
+        run: pnpm exec oxfmt --check src packages build tests
       - name: Run existing Node tests
         run: node --test tests/*.test.mjs
       - name: Build admin
