@@ -157,3 +157,4 @@ pnpm build
 
 - [功能实现状态](docs/feature-status.md)
 - [参与贡献](CONTRIBUTING.md)
+- [安全问题报告](SECURITY.md)

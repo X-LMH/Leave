@@ -159,3 +159,4 @@ The detailed guides are currently written in Chinese.
 
 - [Feature implementation status (Chinese)](docs/feature-status.md)
 - [Contributing (Chinese)](CONTRIBUTING.md)
+- [Security reporting (Chinese)](SECURITY.md)
