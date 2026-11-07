@@ -79,7 +79,7 @@ go run ./cmd/migrate -config ./config/config.local.yaml
 make migrate
 ```
 
-如果迁移因执行失败而处于 dirty 状态，再次运行 `make migrate` 会自动将状态回退到上一个版本并重试该迁移。自动重试前应确认上一次失败没有留下无法重复执行的部分变更。
+如果迁移因执行失败而处于 dirty 状态，再次运行 `make migrate` 会停止并报告当前版本，不会自动回退版本或重试 SQL。先备份并检查失败迁移是否留下部分变更，人工修复数据库与 `schema_migrations` 状态后再运行；不要仅清除 dirty 标记就重复执行可能已部分生效的 SQL。
 
 迁移程序支持同一文件内的多条 SQL 语句。`.down.sql` 文件不由该命令自动执行；需要回滚时，应先确认影响范围和备份，再通过数据库客户端执行对应的回滚脚本，并将 `schema_migrations` 状态恢复到上一个版本。
 
