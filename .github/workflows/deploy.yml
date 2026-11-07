@@ -116,6 +116,19 @@ jobs:
         run: |
           ruby deploy/read-release.rb --tag "$RELEASE_TAG" --bundle bundle
           tar -czf bundle.tar.gz bundle
+      - name: Prepare GitHub Release assets
+        if: needs.metadata.outputs.mode == 'app' && needs.metadata.outputs.environment == 'prod'
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          git fetch --tags --unshallow
+          ruby deploy/github-release.rb prepare github-release
+      - uses: actions/upload-artifact@v6
+        if: needs.metadata.outputs.mode == 'app' && needs.metadata.outputs.environment == 'prod'
+        with:
+          name: github-release
+          path: github-release/
+          if-no-files-found: error
       - name: Check SSH credentials
         env:
           SERVER_HOST: ${{ secrets.SERVER_HOST }}
@@ -180,3 +193,30 @@ jobs:
             cd "$stage"
             tar -xzf bundle.tar.gz
             bash "$stage/bundle/scripts/deploy-release.sh" "$RUN_ID" "$RELEASE_ENV"
+
+  release:
+    name: Publish GitHub Release
+    needs: [metadata, deploy]
+    if: >-
+      always() && !cancelled() && needs.deploy.result == 'success' &&
+      needs.metadata.outputs.mode == 'app' && needs.metadata.outputs.environment == 'prod'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    concurrency:
+      group: leave-github-release
+      cancel-in-progress: false
+      queue: max
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v7
+        with:
+          name: github-release
+          path: github-release
+      - name: Publish verified APK and notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          ruby deploy/github-release.rb publish github-release >> "$GITHUB_STEP_SUMMARY"

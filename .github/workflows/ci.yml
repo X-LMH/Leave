@@ -82,6 +82,7 @@ jobs:
       - name: Test release metadata and shell coordination
         run: |
           ruby deploy/tests/release_test.rb
+          ruby deploy/tests/github_release_test.rb
           bash deploy/tests/deploy_test.sh
 
       - name: Test App version SQL on isolated MySQL

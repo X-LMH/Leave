@@ -202,3 +202,31 @@ Actions 重试生成新尝试目录，优先重新运行失败 job 以复用原�
 发布前必须先执行 `000013_add_user_auth_version.up.sql`，再启动新服务；源码提交不会自动对现有业务数据库执行迁移。旧 JWT 在新服务中全部失效，需要重新登录。不同环境配置独立的 `app.namespace`。数据库 migration 操作遵循前文现有部署流程。
 
 Redis 故障返回 HTTP 503，客户端保留 Token，恢复后可重试；Redis 会话数据丢失或被淘汰后需要重新登录。会话由 TTL 自动过期，不运行 MySQL 会话清理任务。回滚认证版本字段后如需再次升级，必须换用新的 namespace 或明确清除旧会话，避免认证版本重置后恢复旧会话。
+
+
+## 分类说明与 GitHub Release
+
+唯一人工来源是 `deploy/release.yaml` 的 `app.android.release_notes`：
+
+```yaml
+release_notes:
+  features:
+    - 新增功能说明
+  improvements:
+    - 体验优化说明
+  bug_fixes: []
+  notices:
+    - 更新后需重新登录
+```
+
+旧字符串数组继续兼容。分类仅支持以上四项，遗漏项按空数组处理；未知分类、非字符串或空白条目会在发布校验阶段失败。数据库保存 JSON 分类对象，后端为旧客户端展开数组，新客户端和管理端显示分类，无需重复填写文案。
+
+仅后续 `app-vX.Y.Z` 正式发布在部署成功后自动创建 GitHub Release。发布前将同一标签的 APK、说明和 SHA-256 校验文件存入本次 Actions artifact；附件采用 `leave-android-{versionCode}-{versionName}.apk`，与服务端发布的 APK 字节一致。测试、后端和管理端标签不创建 Release。
+
+Release job 使用 Actions 自带的 GITHUB_TOKEN，仅该 job 拥有 contents: write。先创建草稿，上传并下载核验附件，再公开。草稿重跑只补齐缺失附件；已公开的 Release 校验一致后复用，附件不同或缺失时失败，不自动覆盖。较旧版本重跑不会抢占 Latest。完整更新记录链接使用当前历史中最近的较低 App 正式标签，没有前一标签时指向当前版本的提交记录。
+
+Release 失败不会回滚成功部署。查看 job 日志与运行摘要，修复权限或网络问题后仅重跑失败的 Release job；不要移动标签，也不要为重试重新部署。artifact 已过期时无法仅重跑发布任务，需按新版本正常发布流程处理。
+
+此功能不会改写已有标签的工作流，也不补发 1.1.0。发布新 App 前需递增 manifest 版本并重新打包，提交对应 APK。后端源码发生变化时必须递增 backend.version，再按测试到正式的原流程发布，避免同版本不可变产物冲突。
+
+本地逻辑验证：`ruby deploy/tests/release_test.rb`、`ruby deploy/tests/github_release_test.rb`、`bash deploy/tests/deploy_test.sh`。独立 MySQL 中按现有环境运行 `deploy/tests/sql_test.rb`，新增用例验证对象保存、幂等更新及注释 migration；这些测试不发布真实 Release。
