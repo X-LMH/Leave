@@ -1,0 +1,37 @@
+name: Leave Go Vulnerability Scan
+
+on:
+  pull_request:
+    branches:
+      - master
+  schedule:
+    # Monday 03:00 Asia/Shanghai; scheduled runs use the default branch.
+    - cron: '0 19 * * 0'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: go-vulnerability-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  scan:
+    name: Scan Go dependencies
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+      - name: Install pinned govulncheck
+        # v1.8.0 requires Go >= 1.26; backend/go.mod currently requires 1.27.1.
+        run: go install golang.org/x/vuln/cmd/govulncheck@v1.8.0
+      - name: Scan reachable vulnerabilities
+        run: govulncheck ./...
