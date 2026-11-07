@@ -1,0 +1,33 @@
+version: 2
+updates:
+  - package-ecosystem: gomod
+    directory: /backend
+    schedule:
+      interval: weekly
+      day: monday
+      time: '03:00'
+      timezone: Asia/Shanghai
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: 'chore(deps)'
+  # Dependabot uses the npm ecosystem for pnpm manifests and lockfiles.
+  - package-ecosystem: npm
+    directory: /admin
+    schedule:
+      interval: weekly
+      day: monday
+      time: '03:00'
+      timezone: Asia/Shanghai
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: 'chore(deps)'
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '03:00'
+      timezone: Asia/Shanghai
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: 'ci(deps)'
