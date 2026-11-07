@@ -8,12 +8,26 @@ $ssh = Join-Path $env:WINDIR "$systemDirectory/OpenSSH/ssh.exe"
 $air = Get-Command air -ErrorAction SilentlyContinue
 $airPath = if ($air) { $air.Source } else { Join-Path $env:USERPROFILE 'go/bin/air.exe' }
 $sshProcess = $null
+$sshErrorLog = Join-Path ([IO.Path]::GetTempPath()) ('leave-dev-ssh-{0}.log' -f [guid]::NewGuid())
 $exitCode = 0
+
+function Test-TunnelPort([int]$Port) {
+    $client = New-Object Net.Sockets.TcpClient
+    try {
+        $connection = $client.ConnectAsync('127.0.0.1', $Port)
+        if (-not $connection.Wait(200)) { return $false }
+        return $client.Connected
+    } catch {
+        return $false
+    } finally {
+        $client.Dispose()
+    }
+}
+
 Push-Location (Join-Path $projectRoot 'backend')
 try {
     if (-not (Test-Path -LiteralPath $airPath)) { throw 'Air was not found.' }
-    $ports = [Net.NetworkInformation.IPGlobalProperties]::GetIPGlobalProperties().GetActiveTcpListeners().Port
-    if ($ports -contains 16379 -or $ports -contains 13306) {
+    if ((Test-TunnelPort 16379) -or (Test-TunnelPort 13306)) {
         throw 'Port 16379 or 13306 is already in use.'
     }
     $sshArguments = @(
@@ -25,14 +39,15 @@ try {
         '-o', 'ServerAliveInterval=15', '-o', 'ServerAliveCountMax=3',
         $settings.host
     )
-    $sshProcess = Start-Process $ssh -ArgumentList $sshArguments -PassThru -WindowStyle Hidden
+    $sshProcess = Start-Process $ssh -ArgumentList $sshArguments -PassThru -WindowStyle Hidden -RedirectStandardError $sshErrorLog
     $deadline = [DateTime]::UtcNow.AddSeconds(12)
     do {
+        $sshProcess.Refresh()
         if ($sshProcess.HasExited) { throw 'SSH tunnel failed. Check SSH connectivity and the key.' }
+        $ready = (Test-TunnelPort 16379) -and (Test-TunnelPort 13306)
+        if ($ready) { break }
         if ([DateTime]::UtcNow -gt $deadline) { throw 'SSH tunnel startup timed out.' }
         Start-Sleep -Milliseconds 100
-        $ports = [Net.NetworkInformation.IPGlobalProperties]::GetIPGlobalProperties().GetActiveTcpListeners().Port
-        $ready = $ports -contains 16379 -and $ports -contains 13306
     } until ($ready)
     Write-Host 'Redis :16379 and MySQL :13306 tunnels ready. Starting Air...'
     & $airPath -c .air.toml
@@ -47,8 +62,12 @@ try {
             $sshProcess.WaitForExit()
         }
         $sshProcess.Dispose()
+        if ($exitCode -ne 0 -and (Test-Path -LiteralPath $sshErrorLog)) {
+            Get-Content -LiteralPath $sshErrorLog | ForEach-Object { Write-Host $_ -ForegroundColor Red }
+        }
         Write-Host 'Redis and MySQL tunnels closed.'
     }
+    Remove-Item -LiteralPath $sshErrorLog -ErrorAction SilentlyContinue
     Pop-Location
 }
 exit $exitCode
