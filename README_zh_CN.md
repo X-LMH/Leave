@@ -159,3 +159,7 @@ pnpm build
 - [安全问题报告](SECURITY.md)
 - [Android 发布验收清单](docs/release-checklist.md)
 - [维护者待办](docs/maintainer-checklist.md)
+
+## 许可证
+
+Leave 自有代码采用 [GNU GPL v3.0 only](LICENSE)（`GPL-3.0-only`），Copyright (C) 2026 avery-my。第三方代码和素材沿用各自许可，包括 Soybean Admin 的 [MIT 声明](admin/LICENSE)。详见 [许可证与分发说明](docs/licensing.md)。

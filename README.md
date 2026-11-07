@@ -162,3 +162,7 @@ Database and Redis integration tests require isolated local test instances; see 
 - [Maintainer checklist (Chinese)](docs/maintainer-checklist.md)
 
 The detailed guides are currently written in Chinese.
+
+## License
+
+Leave original code is licensed under [GNU GPL v3.0 only](LICENSE) (`GPL-3.0-only`). Copyright (C) 2026 avery-my. Third-party code and assets retain their own licenses, including the Soybean Admin [MIT notice](admin/LICENSE). See [licensing and distribution notes (Chinese)](docs/licensing.md).
