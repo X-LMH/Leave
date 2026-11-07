@@ -156,3 +156,5 @@ Database and Redis integration tests require isolated local test instances; see 
 - [Development conventions](AGENTS.md)
 
 The detailed guides are currently written in Chinese.
+
+- [Feature implementation status (Chinese)](docs/feature-status.md)

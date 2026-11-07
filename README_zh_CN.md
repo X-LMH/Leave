@@ -154,3 +154,5 @@ pnpm build
 - [数据库初始化与迁移](backend/database/README.md)
 - [部署与客户端发布](deploy/README.md)
 - [项目开发约定](AGENTS.md)
+
+- [功能实现状态](docs/feature-status.md)
