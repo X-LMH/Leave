@@ -136,8 +136,10 @@ class GitHubReleaseTest < Minitest::Test
   def test_deploy_checkout_includes_history_and_annotated_tags_before_preparation
     workflow = YAML.load_file(File.join(Release::ROOT, '.github/workflows/deploy.yml'))
     steps = workflow.fetch('jobs').fetch('deploy').fetch('steps')
-    checkout_index = steps.index { |step| step['uses'] == 'actions/checkout@v5' }
+    checkout_index = steps.index { |step| step.fetch('uses', '').start_with?('actions/checkout@') }
     preparation_index = steps.index { |step| step['name'] == 'Prepare GitHub Release assets' }
+    refute_nil checkout_index, 'Deployment must check out the repository'
+    refute_nil preparation_index, 'Deployment must prepare GitHub Release assets'
     assert_operator checkout_index, :<, preparation_index
     assert_equal 0, steps[checkout_index].fetch('with').fetch('fetch-depth')
     refute steps.any? { |step| step.fetch('run', '').include?('--unshallow') }
