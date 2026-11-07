@@ -1,4 +1,4 @@
-name: Leave Backend CI
+name: Leave CI
 
 on:
   pull_request:
@@ -7,97 +7,18 @@ on:
   push:
     branches:
       - master
-  workflow_call:
-    inputs:
-      release_artifact:
-        type: boolean
-        default: false
 
 permissions:
   contents: read
 
 concurrency:
-  group: backend-ci-${{ github.workflow }}-${{ github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  test:
-    name: Check, test and build backend
-    runs-on: ubuntu-22.04
-    timeout-minutes: 30
-    services:
-      redis:
-        image: redis:7.4
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd="redis-cli ping"
-          --health-interval=5s
-          --health-timeout=3s
-          --health-retries=10
-      mysql:
-        image: mysql:8.0
-        env:
-          MYSQL_ROOT_PASSWORD: password
-          MYSQL_DATABASE: leave_ci
-        ports:
-          - 3306:3306
-        options: >-
-          --health-cmd="mysqladmin ping -h 127.0.0.1 -ppassword"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=10
-
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
-
-      - name: Set up Go
-        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
-        with:
-          go-version-file: backend/go.mod
-          cache-dependency-path: backend/go.sum
-
-      - name: Check Go format
-        working-directory: backend
-        run: test -z "$(gofmt -l .)"
-
-      - name: Run go vet
-        working-directory: backend
-        run: go vet ./...
-
-      - name: Download Go dependencies
-        working-directory: backend
-        run: go mod download
-
-      - name: Run Go tests
-        working-directory: backend
-        env:
-          MYSQL_TEST_DSN: root:password@tcp(127.0.0.1:3306)/leave_ci?multiStatements=true
-          ADMIN_TEST_MYSQL_DSN: root:password@tcp(127.0.0.1:3306)/leave_ci?multiStatements=true
-          RATE_LIMIT_TEST_REDIS_ADDR: 127.0.0.1:6379
-          SESSION_TEST_REDIS_ADDR: 127.0.0.1:6379
-        run: go test ./...
-
-      - name: Test release metadata and shell coordination
-        run: |
-          ruby deploy/tests/release_test.rb
-          ruby deploy/tests/github_release_test.rb
-          bash deploy/tests/deploy_test.sh
-
-      - name: Test App version SQL on isolated MySQL
-        env:
-          DEPLOY_TEST_MYSQL: '1'
-          MYSQL_PWD: password
-        run: ruby deploy/tests/sql_test.rb
-
-      - name: Build Linux server and migration tool
-        run: bash deploy/build-linux.sh
-
-      - name: Upload backend release artifact
-        if: inputs.release_artifact
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
-        with:
-          name: backend-bin
-          path: bin/
-          if-no-files-found: error
+  backend:
+    name: Backend
+    uses: ./.github/workflows/backend-ci.yml
+  admin:
+    name: Admin
+    uses: ./.github/workflows/admin-ci.yml

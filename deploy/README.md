@@ -135,9 +135,19 @@ curl --fail -H 'Host: admin.leave.mhspace.dpdns.org' http://127.0.0.1:80/api/v1/
 
 ## 工作流与发布顺序
 
-`.github/workflows/ci.yml` 在目标为 master 的 PR 和 master 分支 push 时执行完整后端 CI，并通过 workflow_call 供测试、生产发布复用相同检查。CI 执行 Go 格式、vet、单元及 MySQL、Redis 集成测试、Ruby 元数据测试、Bash 部署夹具测试、App 版本 SQL 测试及 Linux 编译；Redis 使用独立容器，通过 RATE_LIMIT_TEST_REDIS_ADDR 和 SESSION_TEST_REDIS_ADDR 分别启用限流及会话集成测试。
+`.github/workflows/ci.yml` 是统一入口：在目标为 master 的 PR 和 master 分支 push 时启动一次 `Leave CI`，并行调用 `backend-ci.yml` 和 `admin-ci.yml`。两个模块工作流只接受 `workflow_call`，不再直接响应 push 或 PR，所以一次普通 push 只出现一条主 CI 运行记录，内部保留两个模块的检查结果。新提交会取消同一分支尚未完成的旧 CI；不同模块的并发组前缀不同，不会互相取消。
 
-`.github/workflows/admin-ci.yml` 在目标为 master 的 PR 和 master 分支 push 时执行管理端类型检查、不自动修复的 lint、现有 Node 测试及生产、测试两种模式构建。构建使用 `.env.prod.example` 和 `.env.test.example`，不读取服务器配置或部署 Secrets，也不执行发布。两条 CI 不按修改路径跳过，便于配置稳定的合并检查；后端检查限时 30 分钟，管理端检查限时 20 分钟。如需阻止检查失败的 PR 合并，需在 GitHub 的 master 分支规则中将对应检查设为必需。admin 标签发布仍执行相同检查及所选环境构建。
+`backend-ci.yml` 执行 Go 格式、vet、单元及 MySQL、Redis 集成测试、Ruby 元数据测试、Bash 部署夹具测试、App 版本 SQL 测试及 Linux 编译，限时 30 分钟。Redis 使用独立容器，通过 RATE_LIMIT_TEST_REDIS_ADDR 和 SESSION_TEST_REDIS_ADDR 分别启用限流及会话集成测试。标签部署直接调用该后端工作流并请求构建产物，不调用主 CI，避免额外运行完整管理端 CI。
+
+`admin-ci.yml` 执行管理端类型检查、不自动修复的 lint、格式检查、现有 Node 测试及生产、测试两种模式构建，限时 20 分钟。构建使用 `.env.prod.example` 和 `.env.test.example`，不读取服务器配置或部署 Secrets，也不执行发布。admin 标签发布仍执行原有检查及所选环境构建。
+
+主 CI 不按修改路径跳过，便于提供稳定的合并检查。如果 master 分支规则已有必需检查，合入本次改动后需从实际运行结果中重新选择带 `Backend /`、`Admin /` 前缀的检查，移除旧检查名称。Go 漏洞扫描仍独立运行于 PR、定时和手动事件，因此 PR 页面还可能有一条安全扫描记录；普通 master push 不触发它，也不触发标签部署。
+
+**已知 CI 故障：checkout 改为 SHA 后发布测试报错**
+
+2026-11-07，提交 `52bfcc1` 的 [后端 CI](https://github.com/avery-my/Leave/actions/runs/42366375711) 在 `Test release metadata and shell coordination` 步骤失败。Go 检查与测试已通过；Ruby 的 `test_deploy_checkout_includes_history_and_annotated_tags_before_preparation` 仍精确匹配 `actions/checkout@v5`，而工作流已固定完整 SHA，导致查找返回 nil，在比较步骤顺序时抛出 `NoMethodError: undefined method '<' for nil:NilClass`。后续 Bash 夹具、SQL 测试及 Linux 编译未执行。
+
+该测试应按 `actions/checkout@` 识别动作，并明确断言 checkout 与发布准备步骤存在，再检查执行顺序及 `fetch-depth: 0`。不要为迁就旧测试将固定 SHA 改回版本标签，也不要跳过该测试。修复后可运行 `ruby deploy/tests/github_release_test.rb`，远端全流程仍需新提交的 CI 验证；重跑旧提交仍使用旧测试。
 
 服务器测试、生产 YAML 都需包含正确的 redis 配置，并在各自根目录 .env 中设置 REDIS_PASSWORD（启用认证时）。CD 在迁移和停止旧后端之前，以宝塔运行用户从项目根目录执行新程序的 `-check-redis`，复用服务配置加载及 Redis 认证、PING 检查；失败时终止发布，保留旧后端运行。不自动安装或重启 Redis，也不将服务器凭据打入发布包。
 

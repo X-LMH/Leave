@@ -40,7 +40,7 @@ jobs:
   backend:
     name: Check and build backend
     needs: metadata
-    uses: ./.github/workflows/ci.yml
+    uses: ./.github/workflows/backend-ci.yml
     with:
       release_artifact: true
 
