@@ -1,0 +1,23 @@
+name: 功能建议
+description: 讨论使用场景和改进方案
+title: '[Feature] '
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: 场景与当前限制
+      description: 谁在什么场景下遇到了什么问题？请勿包含私人数据。
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 希望的行为与涉及模块
+      description: 说明期望结果和最小可用范围。
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 替代方案与验收方式
+      description: 如有替代方案或可验证的完成条件，请一并说明。

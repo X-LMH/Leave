@@ -1,0 +1,51 @@
+name: 问题报告
+description: 报告可复现的功能问题（安全漏洞请勿公开提交）
+title: '[Bug] '
+body:
+  - type: markdown
+    attributes:
+      value: 请先搜索已有 Issue。不要上传密码、Token、真实学号或私人附件；漏洞请查看仓库 SECURITY.md。
+  - type: dropdown
+    id: module
+    attributes:
+      label: 受影响模块
+      options:
+        - Android 客户端
+        - Web 管理端
+        - Go 后端
+        - 部署或文档
+        - 跨模块
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: 版本与环境
+      description: 填写提交或版本号；按模块补充 Android/HBuilderX、浏览器或 Go/数据库版本。
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 最小复现步骤
+      description: 写明前置条件、操作步骤及发生频率。
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 预期结果
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: 实际结果
+      description: 可附脱敏日志或截图，不要包含敏感配置。
+    validations:
+      required: true
+  - type: textarea
+    id: checks
+    attributes:
+      label: 已尝试的排查与验证
+      description: 写明检查结果；未验证时直接说明。

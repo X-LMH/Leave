@@ -158,3 +158,4 @@ Database and Redis integration tests require isolated local test instances; see 
 The detailed guides are currently written in Chinese.
 
 - [Feature implementation status (Chinese)](docs/feature-status.md)
+- [Contributing (Chinese)](CONTRIBUTING.md)

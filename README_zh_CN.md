@@ -156,3 +156,4 @@ pnpm build
 - [项目开发约定](AGENTS.md)
 
 - [功能实现状态](docs/feature-status.md)
+- [参与贡献](CONTRIBUTING.md)
