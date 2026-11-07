@@ -32,20 +32,9 @@ body:
     validations:
       required: true
   - type: textarea
-    id: expected
+    id: result
     attributes:
-      label: 预期结果
+      label: 预期与实际结果
+      description: 原本希望发生什么，实际发生了什么？可附脱敏截图或日志。
     validations:
       required: true
-  - type: textarea
-    id: actual
-    attributes:
-      label: 实际结果
-      description: 可附脱敏日志或截图，不要包含敏感配置。
-    validations:
-      required: true
-  - type: textarea
-    id: checks
-    attributes:
-      label: 已尝试的排查与验证
-      description: 写明检查结果；未验证时直接说明。
