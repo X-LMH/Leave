@@ -23,7 +23,7 @@ jobs:
       app_root: ${{ steps.release.outputs.app_root }}
       admin_dist: ${{ steps.release.outputs.admin_dist }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - name: Read unified release metadata
         id: release
         env:
@@ -53,11 +53,11 @@ jobs:
       run:
         working-directory: admin
     steps:
-      - uses: actions/checkout@v5
-      - uses: pnpm/action-setup@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5
         with:
           version: 10
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: 22
           cache: pnpm
@@ -80,7 +80,7 @@ jobs:
         env:
           RELEASE_ENV: ${{ needs.metadata.outputs.environment }}
         run: pnpm "build:$RELEASE_ENV"
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: admin-dist
           path: admin/${{ needs.metadata.outputs.admin_dist }}/
@@ -102,16 +102,16 @@ jobs:
       cancel-in-progress: false
       queue: max
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           # Fetch annotated tags directly; a shallow tag checkout can create a
           # lightweight tag that conflicts with a later fetch of the real tag.
           fetch-depth: 0
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         with:
           name: backend-bin
           path: bin
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         if: needs.metadata.outputs.mode == 'admin'
         with:
           name: admin-dist
@@ -127,7 +127,7 @@ jobs:
         env:
           RELEASE_TAG: ${{ github.ref_name }}
         run: ruby deploy/github-release.rb prepare github-release
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         if: needs.metadata.outputs.mode == 'app' && needs.metadata.outputs.environment == 'prod'
         with:
           name: github-release
@@ -142,7 +142,7 @@ jobs:
         run: |
           test -n "$SERVER_HOST" && test -n "$SERVER_PORT" && test -n "$SERVER_USERNAME" && test -n "$SERVER_SSH_KEY"
       - name: Prepare isolated upload directory
-        uses: appleboy/ssh-action@v1
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
         env:
           RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}
           RELEASE_ENV: ${{ needs.metadata.outputs.environment }}
@@ -165,7 +165,7 @@ jobs:
             test ! -e "$root/.deploy/$RUN_ID"
             mkdir "$root/.deploy/$RUN_ID"
       - name: Upload bundle
-        uses: appleboy/scp-action@v1
+        uses: appleboy/scp-action@ff85246acaad7bdce478db94a363cd2bf7c90345 # v1
         with:
           host: ${{ secrets.SERVER_HOST }}
           port: ${{ secrets.SERVER_PORT }}
@@ -174,7 +174,7 @@ jobs:
           source: bundle.tar.gz
           target: ${{ needs.metadata.outputs.app_root }}/.deploy/${{ github.run_id }}-${{ github.run_attempt }}
       - name: Coordinate deployment
-        uses: appleboy/ssh-action@v1
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
         env:
           RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}
           RELEASE_ENV: ${{ needs.metadata.outputs.environment }}
@@ -213,8 +213,8 @@ jobs:
       cancel-in-progress: false
       queue: max
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/download-artifact@v7
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         with:
           name: github-release
           path: github-release
