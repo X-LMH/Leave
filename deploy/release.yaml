@@ -1,14 +1,18 @@
 backend:
-  version: 8
+  version: 9
 
 admin:
-  version: 4
+  version: 5
 
 app:
   android:
     apk_directory: deploy/releases
     release_notes:
-      - 新增请假审批时间选择，优化请假申请体验
-      - 优化假条详情的字体与字号显示，使用自己手机的字体
-      - 优化页面切换时的请假记录加载与个人资料刷新
-      - 更新后需重新登录
+      features: []
+      improvements:
+        - 优化版本更新页面，版本信息和更新内容更清晰
+        - 更新内容分类展示，最近的更新排在前面，查阅更方便
+        - 调整更新页面的深色配色，夜间查看更舒适
+      bug_fixes:
+        - 修复请假审批时间检查不完整的问题，避免提交不合理的时间
+      notices: []
