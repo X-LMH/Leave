@@ -5,7 +5,7 @@
 <h1 align="center">Leave</h1>
 
 <p align="center">
-  一个假条模拟程序，包含 Android 客户端、Web 管理端和 Go 后端。
+  一个假条模拟与学习项目，包含 Android 客户端、Web 管理端和 Go 后端。
 </p>
 
 <p align="center">
@@ -16,6 +16,8 @@
   <a href="https://github.com/avery-my/Leave/releases/latest"><img src="https://img.shields.io/github/v/release/avery-my/Leave?style=flat-square&amp;label=release" alt="Release" /></a>
   <a href="https://github.com/avery-my/Leave/releases"><img src="https://img.shields.io/github/downloads/avery-my/Leave/total?style=flat-square&amp;logo=github" alt="Downloads" /></a>
 </p>
+
+项目用于学习假条生成及相关账号、数据管理，不包含学校审批流程，也不提供正式请假授权。
 
 ## 功能
 
@@ -33,7 +35,7 @@
 
 | 平台 | 安装包 | 下载 |
 | --- | --- | --- |
-| Android | APK | [Leave 1.1.0](https://github.com/avery-my/Leave/releases/download/app-v1.1.0/leave-android-16-1.1.0.apk) |
+| Android | APK | [最新 Android APK](https://github.com/avery-my/Leave/releases/latest) |
 
 Web 管理端和 Go 后端需自行部署，参见下方的[从源码运行](#从源码运行)和[部署说明](deploy/README.md)。
 

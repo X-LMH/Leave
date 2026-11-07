@@ -5,7 +5,7 @@
 <h1 align="center">Leave</h1>
 
 <p align="center">
-  A leave-slip simulator with an Android app, a web admin panel and a Go backend.
+  A leave-slip simulation and learning project with an Android app, a web admin panel and a Go backend.
 </p>
 
 <p align="center">
@@ -16,6 +16,8 @@
   <a href="https://github.com/avery-my/Leave/releases/latest"><img src="https://img.shields.io/github/v/release/avery-my/Leave?style=flat-square&amp;label=release" alt="Release" /></a>
   <a href="https://github.com/avery-my/Leave/releases"><img src="https://img.shields.io/github/downloads/avery-my/Leave/total?style=flat-square&amp;logo=github" alt="Downloads" /></a>
 </p>
+
+This project explores leave-slip generation and related account and data management. It does not implement a school approval workflow or provide official leave authorization.
 
 ## Features
 
@@ -33,7 +35,7 @@ Get the latest Android package from [GitHub Releases](https://github.com/avery-m
 
 | Platform | Package | Download |
 | --- | --- | --- |
-| Android | APK | [Leave 1.1.0](https://github.com/avery-my/Leave/releases/download/app-v1.1.0/leave-android-16-1.1.0.apk) |
+| Android | APK | [Latest Android APK](https://github.com/avery-my/Leave/releases/latest) |
 
 The web admin and Go backend require your own deployment. See [Run from source](#run-from-source) below and the [deployment guide](deploy/README.md).
 
